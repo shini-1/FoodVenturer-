@@ -1,8 +1,6 @@
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { app } from '../../services/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from '@react-native-firebase/auth';
+import { doc, getDoc, setDoc, updateDoc } from '@react-native-firebase/firestore';
+import { firestoreInstance, authInstance } from '../../services/firebase';
 
 export interface AdminProfile {
   uid: string;
@@ -25,30 +23,24 @@ class AdminAuthService {
   async signIn(email: string, password: string): Promise<AdminProfile> {
     try {
       // Use direct Firebase functions
-      if (!app) {
-        throw new Error('Firebase app not initialized');
-      }
-      const auth = getAuth(app);
-      const firestore = getFirestore(app);
-
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(authInstance, email, password);
       const uid = userCredential.user.uid;
 
       // Verify this is an admin account
-      const adminDoc = await getDoc(doc(firestore, this.ADMINS_COLLECTION, uid));
-      if (!adminDoc.exists()) {
-        await signOut(auth);
+      const adminDoc = await getDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid));
+      if (!adminDoc.exists) {
+        await signOut(authInstance);
         throw new Error('Access denied: Not an admin account');
       }
 
       const adminData = adminDoc.data();
       if (!adminData?.isActive) {
-        await signOut(auth);
+        await signOut(authInstance);
         throw new Error('Account suspended. Contact support.');
       }
 
       // Update last login
-      await updateDoc(doc(firestore, this.ADMINS_COLLECTION, uid), {
+      await updateDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid), {
         lastLogin: new Date(),
       });
 
@@ -81,13 +73,7 @@ class AdminAuthService {
   }): Promise<AdminProfile> {
     try {
       // First create Firebase auth user
-      if (!app) {
-        throw new Error('Firebase app not initialized');
-      }
-      const auth = getAuth(app);
-      const firestore = getFirestore(app);
-
-      const userCredential = await createUserWithEmailAndPassword(auth, adminData.email, adminData.password);
+      const userCredential = await createUserWithEmailAndPassword(authInstance, adminData.email, adminData.password);
       const uid = userCredential.user.uid;
 
       // Create admin profile in Firestore
@@ -102,7 +88,7 @@ class AdminAuthService {
         isActive: true,
       };
 
-      await setDoc(doc(firestore, this.ADMINS_COLLECTION, uid), adminProfile);
+      await setDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid), adminProfile);
 
       return { uid, ...adminProfile };
     } catch (error: any) {
@@ -116,17 +102,11 @@ class AdminAuthService {
    */
   async getCurrentUser(): Promise<AdminProfile | null> {
     try {
-      if (!app) {
-        return null;
-      }
-      const auth = getAuth(app);
-      const firestore = getFirestore(app);
-
-      const currentUser = auth.currentUser;
+      const currentUser = authInstance.currentUser;
 
       if (!currentUser) return null;
 
-      const adminDoc = await getDoc(doc(firestore, this.ADMINS_COLLECTION, currentUser.uid));
+      const adminDoc = await getDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, currentUser.uid));
       if (!adminDoc.exists()) return null;
 
       const adminData = adminDoc.data();
@@ -152,11 +132,7 @@ class AdminAuthService {
    */
   async resetPassword(email: string): Promise<void> {
     try {
-      if (!app) {
-        throw new Error('Firebase app not initialized');
-      }
-      const auth = getAuth(app);
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(authInstance, email);
     } catch (error: any) {
       console.error('Reset admin password error:', error);
       throw new Error(error.message || 'Failed to send password reset email');
@@ -168,11 +144,7 @@ class AdminAuthService {
    */
   async signOut(): Promise<void> {
     try {
-      if (!app) {
-        throw new Error('Firebase app not initialized');
-      }
-      const auth = getAuth(app);
-      await signOut(auth);
+      await signOut(authInstance);
     } catch (error: any) {
       console.error('Admin sign out error:', error);
       throw new Error(error.message || 'Failed to sign out');
@@ -184,11 +156,7 @@ class AdminAuthService {
    */
   async updateProfile(uid: string, updates: Partial<AdminProfile>): Promise<void> {
     try {
-      if (!app) {
-        throw new Error('Firebase app not initialized');
-      }
-      const firestore = getFirestore(app);
-      await updateDoc(doc(firestore, this.ADMINS_COLLECTION, uid), {
+      await updateDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid), {
         ...updates,
         updatedAt: new Date(),
       });
@@ -203,11 +171,7 @@ class AdminAuthService {
    */
   async deactivateAdmin(uid: string): Promise<void> {
     try {
-      if (!app) {
-        throw new Error('Firebase app not initialized');
-      }
-      const firestore = getFirestore(app);
-      await updateDoc(doc(firestore, this.ADMINS_COLLECTION, uid), {
+      await updateDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid), {
         isActive: false,
         deactivatedAt: new Date(),
       });
@@ -222,11 +186,7 @@ class AdminAuthService {
    */
   async reactivateAdmin(uid: string): Promise<void> {
     try {
-      if (!app) {
-        throw new Error('Firebase app not initialized');
-      }
-      const firestore = getFirestore(app);
-      await updateDoc(doc(firestore, this.ADMINS_COLLECTION, uid), {
+      await updateDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid), {
         isActive: true,
         reactivatedAt: new Date(),
       });

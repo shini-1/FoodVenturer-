@@ -1,5 +1,5 @@
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { getStorageInstance } from './firebase';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from '@react-native-firebase/storage';
+import { storageInstance } from './firebase';
 import { RestaurantOwner } from '../types';
 
 const RESTAURANT_IMAGES_FOLDER = 'restaurant-images';
@@ -15,7 +15,7 @@ export async function uploadRestaurantImage(imageUri: string, restaurantId: stri
     const filename = `${restaurantId}_${imageType}_${timestamp}.${fileExtension}`;
 
     // Create storage reference
-    const storageRef = ref(getStorageInstance(), `${RESTAURANT_IMAGES_FOLDER}/${filename}`);
+    const storageRef = ref(storageInstance, `${RESTAURANT_IMAGES_FOLDER}/${filename}`);
 
     // Convert image URI to blob
     const response = await fetch(imageUri);
@@ -45,7 +45,7 @@ export async function deleteRestaurantImage(imageUrl: string): Promise<void> {
     const filename = urlParts[urlParts.length - 1].split('?')[0];
 
     // Create storage reference
-    const storageRef = ref(getStorageInstance(), `${RESTAURANT_IMAGES_FOLDER}/${filename}`);
+    const storageRef = ref(storageInstance, `${RESTAURANT_IMAGES_FOLDER}/${filename}`);
 
     // Delete the file
     await deleteObject(storageRef);

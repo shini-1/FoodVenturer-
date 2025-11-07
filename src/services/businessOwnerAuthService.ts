@@ -7,7 +7,7 @@ import {
   User as FirebaseUser,
   GoogleAuthProvider,
   signInWithCredential,
-} from 'firebase/auth';
+} from '@react-native-firebase/auth';
 import {
   doc,
   setDoc,
@@ -17,9 +17,8 @@ import {
   query,
   where,
   getDocs,
-} from 'firebase/firestore';
-import { getAuthInstance } from '../../services/firebase';
-import { getFirestoreInstance } from '../../services/firebase';
+} from '@react-native-firebase/firestore';
+import { firestoreInstance, authInstance } from '../../services/firebase';
 
 export interface BusinessOwnerProfile {
   uid: string;
@@ -44,11 +43,11 @@ export interface SignUpData {
 
 class BusinessOwnerAuthService {
   private get auth() {
-    return getAuthInstance();
+    return authInstance;
   }
 
   private get firestore() {
-    return getFirestoreInstance();
+    return firestoreInstance;
   }
 
   /**

@@ -1,9 +1,9 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User } from '../types';
-import { getAuthInstance } from '../services/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from '@react-native-firebase/auth';
 import { businessOwnerAuthService, BusinessOwnerProfile } from '../src/services/businessOwnerAuthService';
 import { adminAuthService, AdminProfile } from '../src/services/adminAuthService';
+import { authInstance, initializeFirebase } from '../services/firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -23,8 +23,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const auth = getAuthInstance();
-      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      initializeFirebase();
+      const auth = authInstance;
+
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
           // Check if this is a business owner by looking up their profile
           try {
@@ -83,8 +85,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const auth = getAuthInstance();
-      await signInWithEmailAndPassword(auth, email, password);
+      initializeFirebase();
+      await signInWithEmailAndPassword(authInstance, email, password);
     } catch (error) {
       throw error;
     }
@@ -92,8 +94,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = async (email: string, password: string) => {
     try {
-      const auth = getAuthInstance();
-      await createUserWithEmailAndPassword(auth, email, password);
+      initializeFirebase();
+      await createUserWithEmailAndPassword(authInstance, email, password);
     } catch (error) {
       throw error;
     }
@@ -125,8 +127,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      const auth = getAuthInstance();
-      await signOut(auth);
+      initializeFirebase();
+      await signOut(authInstance);
     } catch (error) {
       throw error;
     }
