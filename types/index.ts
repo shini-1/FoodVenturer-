@@ -1,0 +1,58 @@
+export interface User {
+  uid: string;
+  email: string;
+  role: 'user' | 'business' | 'admin' | 'business_owner';
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  businessName?: string;
+}
+
+export interface Restaurant {
+  id: string;
+  name: string;
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  image?: string; // Optional logo/image URL
+  // add more fields
+}
+
+export interface RestaurantOwner {
+  id: string;
+  userId: string;
+  businessName: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  image?: string;
+  description?: string;
+  cuisineType?: string;
+  status: 'approved' | 'rejected' | 'pending';
+  createdAt: number;
+  approvedAt?: number;
+  rejectionReason?: string;
+}
+
+export interface RestaurantSubmission {
+  id: string;
+  ownerId: string;
+  businessName: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  image?: string;
+  description: string;
+  cuisineType: string;
+  submittedAt: number;
+  status: 'pending' | 'approved' | 'rejected';
+}
