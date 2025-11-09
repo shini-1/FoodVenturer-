@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider } from './theme/ThemeContext';
 import { AuthProvider } from './components/AuthContext';
+import { NetworkProvider } from './src/contexts/NetworkContext';
 import RoleSelectionScreen from './screens/RoleSelectionScreen';
 import HomeScreen from './screens/HomeScreen';
 import BusinessPanelScreen from './screens/BusinessPanelScreen';
@@ -52,8 +53,10 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        {renderScreen()}
-        <StatusBar style="auto" />
+        <NetworkProvider>
+          {renderScreen()}
+          <StatusBar style="auto" />
+        </NetworkProvider>
       </AuthProvider>
     </ThemeProvider>
   );

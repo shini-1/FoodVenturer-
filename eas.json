@@ -12,6 +12,7 @@
       "distribution": "internal"
     },
     "production": {
+      "buildType": "apk",
       "env": {
         "NODE_ENV": "production"
       }

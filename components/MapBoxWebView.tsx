@@ -1,6 +1,7 @@
 import React from 'react';
 import { WebView } from 'react-native-webview';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useNetwork } from '../src/contexts/NetworkContext';
 
 interface Restaurant {
   id: string;
@@ -13,7 +14,8 @@ interface MapBoxWebViewProps {
 }
 
 function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
-  console.log('🗺️ MapBoxWebView: Rendering with', restaurants.length, 'restaurants');
+  const { isOnline } = useNetwork();
+  console.log('🗺️ MapBoxWebView: Rendering with', restaurants.length, 'restaurants, online:', isOnline);
 
   const mapboxToken = 'pk.eyJ1Ijoic2hpbmlpaSIsImEiOiJjbWhkZGIwZzYwMXJmMmtxMTZpY294c2V6In0.zuQl6u8BJxOgimXHxMiNqQ';
 
@@ -356,30 +358,47 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
   `;
 
   return (
-    <WebView
-      source={{ html }}
-      style={{ flex: 1 }}
-      javaScriptEnabled={true}
-      domStorageEnabled={true}
-      allowsInlineMediaPlayback={true}
-      mixedContentMode="compatibility"
-      allowFileAccess={true}
-      allowUniversalAccessFromFileURLs={true}
-      onLoadStart={() => console.log('🗺️ 2D Terrain WebView load started')}
-      onLoadEnd={() => console.log('🗺️ 2D Terrain WebView load completed')}
-      onMessage={(event) => {
-        console.log('🗺️ 2D Terrain WebView message:', event.nativeEvent.data);
-      }}
-      onError={(error) => {
-        console.error('🗺️ 2D Terrain WebView error:', error);
-      }}
-    />
+    <View style={{ flex: 1 }}>
+      {!isOnline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>⚠️ You're offline. Map may not load properly.</Text>
+        </View>
+      )}
+      <WebView
+        source={{ html }}
+        style={{ flex: 1 }}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        allowsInlineMediaPlayback={true}
+        mixedContentMode="compatibility"
+        allowFileAccess={true}
+        allowUniversalAccessFromFileURLs={true}
+        onLoadStart={() => console.log('🗺️ 2D Terrain WebView load started')}
+        onLoadEnd={() => console.log('🗺️ 2D Terrain WebView load completed')}
+        onMessage={(event) => {
+          console.log('🗺️ 2D Terrain WebView message:', event.nativeEvent.data);
+        }}
+        onError={(error) => {
+          console.error('🗺️ 2D Terrain WebView error:', error);
+        }}
+      />
+    </View>
   );
 }
 
 export default MapBoxWebView;
 
 const styles = StyleSheet.create({
+  offlineBanner: {
+    backgroundColor: '#ffeaa7',
+    padding: 10,
+    alignItems: 'center',
+  },
+  offlineText: {
+    color: '#d63031',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
   fallbackContainer: {
     flex: 1,
     justifyContent: 'center',

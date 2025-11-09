@@ -1,4 +1,31 @@
 // src/services/geocodingService.ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
+
+// Cache key generator
+function getCacheKey(lat: number, lng: number): string {
+  return `geocode_${lat.toFixed(4)}_${lng.toFixed(4)}`;
+}
+
+// Get cached result
+async function getCachedGeocode(lat: number, lng: number): Promise<string | null> {
+  try {
+    const cached = await AsyncStorage.getItem(getCacheKey(lat, lng));
+    return cached;
+  } catch (error) {
+    console.warn('Failed to get cached geocode:', error);
+    return null;
+  }
+}
+
+// Set cached result
+async function setCachedGeocode(lat: number, lng: number, address: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(getCacheKey(lat, lng), address);
+  } catch (error) {
+    console.warn('Failed to cache geocode:', error);
+  }
+}
 export async function reverseGeocodeWeb(lat: number, lng: number): Promise<string> {
   try {
     // Using BigDataCloud free geocoding API (up to 10,000 requests/day)
@@ -181,21 +208,49 @@ export async function reverseGeocodeMapbox(lat: number, lng: number): Promise<st
   }
 }
 
-// Combined geocoding with fallback
+// Combined geocoding with fallback and caching
 export async function reverseGeocode(lat: number, lng: number): Promise<string> {
-  // Try Mapbox first (reliable, good limits)
-  const mapboxResult = await reverseGeocodeMapbox(lat, lng);
+  const cacheKey = getCacheKey(lat, lng);
 
-  // If Mapbox returned just coordinates, try OSM as fallback
-  if (mapboxResult === `${lat.toFixed(4)}, ${lng.toFixed(4)}`) {
-    const osmResult = await reverseGeocodeOSM(lat, lng);
-    if (osmResult !== `${lat.toFixed(4)}, ${lng.toFixed(4)}`) {
-      return osmResult;
-    }
-    // Last resort: BigDataCloud
-    const webResult = await reverseGeocodeWeb(lat, lng);
-    return webResult;
+  // Check if online
+  const netInfo = await NetInfo.fetch();
+  const isOnline = netInfo.isConnected ?? false;
+
+  // Try to get cached result
+  const cached = await getCachedGeocode(lat, lng);
+  if (cached && (!isOnline || cached !== `${lat.toFixed(4)}, ${lng.toFixed(4)}`)) {
+    // Return cached if offline or if cached is not fallback coords
+    return cached;
   }
 
-  return mapboxResult;
+  if (!isOnline) {
+    // Offline and no cache, return coords
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  }
+
+  // Online, try to fetch
+  try {
+    // Try Mapbox first (reliable, good limits)
+    const mapboxResult = await reverseGeocodeMapbox(lat, lng);
+
+    // If Mapbox returned just coordinates, try OSM as fallback
+    if (mapboxResult === `${lat.toFixed(4)}, ${lng.toFixed(4)}`) {
+      const osmResult = await reverseGeocodeOSM(lat, lng);
+      if (osmResult !== `${lat.toFixed(4)}, ${lng.toFixed(4)}`) {
+        await setCachedGeocode(lat, lng, osmResult);
+        return osmResult;
+      }
+      // Last resort: BigDataCloud
+      const webResult = await reverseGeocodeWeb(lat, lng);
+      await setCachedGeocode(lat, lng, webResult);
+      return webResult;
+    }
+
+    await setCachedGeocode(lat, lng, mapboxResult);
+    return mapboxResult;
+  } catch (error) {
+    console.warn('All geocoding services failed, returning cached or coords');
+    // If fetch failed, return cached or coords
+    return cached || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  }
 }
