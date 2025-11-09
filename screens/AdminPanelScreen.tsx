@@ -2,24 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Button, FlatList, Alert, TouchableOpacity, Modal, TextInput, ScrollView, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
-import { getRestaurants, deleteRestaurant, getApprovedRestaurants, getPendingRestaurants, approveRestaurant, rejectRestaurant, deleteRestaurantOwner, updateRestaurantOwner, getRestaurantStats } from '../services/restaurants';
+import { getRestaurants, deleteRestaurant, getApprovedRestaurants, getPendingRestaurants, approveRestaurant, rejectRestaurant, deleteRestaurantOwner, updateRestaurantOwner, getRestaurantStats, updateRestaurant } from '../services/restaurants';
 import { uploadAndUpdateRestaurantImage } from '../services/imageService';
 import { Restaurant, RestaurantOwner, RestaurantSubmission } from '../types';
 import { useWebLocation } from '../src/hooks/useWebLocation';
+import * as ImagePicker from 'expo-image-picker';
 import { reverseGeocode } from '../src/services/geocodingService';
-import { useWebImagePicker } from '../src/hooks/useWebImagePicker';
 
 function AdminPanelScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
   const { location: webLocation, loading: locationLoading, error: locationError, getCurrentLocation, isAvailable } = useWebLocation();
-  const { pickImage: pickImageWeb, isAvailable: imagePickerAvailable, loading: imagePickerLoading } = useWebImagePicker();
 
   // Debug logging
   console.log('🔧 AdminPanel Debug:');
   console.log('📍 Location available:', isAvailable);
   console.log('📍 Location loading:', locationLoading);
-  console.log('📷 Image picker available:', imagePickerAvailable);
-  console.log('📷 Image picker loading:', imagePickerLoading);
 
   // Force availability for testing
   const locationAvailable = true; // isAvailable;
@@ -132,26 +129,37 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
   const pickImage = async () => {
     try {
-      const result = await pickImageWeb({
-        mediaTypes: 'images'
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant permission to access your photos');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
+        console.log('📷 Selected image URI:', imageUri);
         setImageUploading(true);
 
         try {
-          // Get the restaurant ID from editingBusiness or editingRestaurant
+          // Get the restaurant ID from editingRestaurant
           const restaurantId = editingRestaurant?.id;
           if (!restaurantId) {
             Alert.alert('Error', 'No restaurant selected for editing');
             return;
           }
 
-          // Upload to Firebase Storage and update database
+          // Upload to Supabase Storage and update database
           const uploadedImageUrl = await uploadAndUpdateRestaurantImage(imageUri, restaurantId, 'logo');
 
-          // Update the appropriate form state
+          // Update the form state
           if (editingRestaurant) {
             setEditForm(prev => ({
               ...prev,
@@ -166,9 +174,9 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
           Alert.alert('Success', 'Image uploaded and saved successfully!');
 
-        } catch (uploadError) {
+        } catch (uploadError: any) {
           console.error('Image upload error:', uploadError);
-          Alert.alert('Error', 'Failed to upload image');
+          Alert.alert('Error', `Failed to upload image: ${uploadError?.message || 'Unknown error'}`);
         } finally {
           setImageUploading(false);
         }
@@ -224,8 +232,14 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         return;
       }
 
-      // For now, we'll just update local state since we don't have updateRestaurant function
-      // TODO: Implement updateRestaurant in services
+      // Update the restaurant in the database
+      await updateRestaurant(editingRestaurant.id, {
+        name,
+        location: { latitude, longitude },
+        image: editForm.image.trim() || undefined
+      });
+
+      // Update local state to reflect changes
       const updatedRestaurant: Restaurant = {
         ...editingRestaurant,
         name,
@@ -240,10 +254,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       setShowEditModal(false);
       setEditingRestaurant(null);
 
-      Alert.alert('Success', 'Restaurant updated successfully!');
-
-      // TODO: Call actual update API when implemented
-      console.log('TODO: Implement updateRestaurant API call for:', updatedRestaurant);
+      Alert.alert('Success', 'Restaurant updated successfully in database!');
 
     } catch (error: any) {
       Alert.alert('Error', `Update failed: ${error.message}`);
@@ -409,10 +420,22 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       {/* Icon Toolbar */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20, gap: 10 }}>
         <TouchableOpacity
-          onPress={handleImportRestaurants}
-          style={[styles.iconButton, { backgroundColor: theme.secondary }]}
+          onPress={async () => {
+            const { importAllRestaurants } = await import('../src/utils/bulkImport');
+            try {
+              Alert.alert('Importing', 'Please wait...');
+              const result = await importAllRestaurants();
+              Alert.alert('Success', `Imported ${result.count} restaurants successfully!`);
+              // Refresh the list
+              const data = await getRestaurants();
+              setRestaurants(data);
+            } catch (error: any) {
+              Alert.alert('Error', `Import failed: ${error.message}`);
+            }
+          }}
+          style={[styles.iconButton, { backgroundColor: '#28a745' }]}
         >
-          <Text style={styles.iconText}>📥</Text>
+          <Text style={styles.iconText}>📦</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -646,21 +669,21 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
                 <TouchableOpacity
                   onPress={pickImage}
-                  disabled={imagePickerLoading || !imagePickerAvailable}
+                  disabled={imageUploading}
                   style={{
-                    backgroundColor: imagePickerLoading ? theme.border :
-                                   !imagePickerAvailable ? '#ccc' : '#007bff',
+                    backgroundColor: imageUploading ? theme.border :
+                                       theme.primary,
                     paddingHorizontal: 15,
                     paddingVertical: 10,
                     borderRadius: 5,
                     marginRight: 10
                   }}
                 >
-                  {imagePickerLoading ? (
+                  {imageUploading ? (
                     <ActivityIndicator size="small" color={theme.text} />
                   ) : (
                     <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
-                      {!imagePickerAvailable ? '📷 Unavailable' : '📷 Select Image'}
+                      📷 Select Image
                     </Text>
                   )}
                 </TouchableOpacity>

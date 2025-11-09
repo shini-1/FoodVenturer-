@@ -294,13 +294,23 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
               console.log('🗺️ Added', restaurant.category, 'marker for:', restaurant.name);
             });
 
-            // Fit map to show all markers
+            // Fit map to show all markers with different behavior for single restaurant
             if (restaurants.length > 0) {
-              const bounds = new mapboxgl.LngLatBounds();
-              restaurants.forEach(r => {
-                bounds.extend([r.location.longitude, r.location.latitude]);
-              });
-              map.fitBounds(bounds, { padding: 50 });
+              if (restaurants.length === 1) {
+                // For single restaurant (detail screen), center on it with appropriate zoom
+                const restaurant = restaurants[0];
+                map.setCenter([restaurant.location.longitude, restaurant.location.latitude]);
+                map.setZoom(13); // Better zoom level for single restaurant detail view with more context
+                console.log('🗺️ Centered map on single restaurant:', restaurant.name, 'at zoom 13');
+              } else {
+                // For multiple restaurants, fit bounds to show all
+                const bounds = new mapboxgl.LngLatBounds();
+                restaurants.forEach(r => {
+                  bounds.extend([r.location.longitude, r.location.latitude]);
+                });
+                map.fitBounds(bounds, { padding: 50 });
+                console.log('🗺️ Fit bounds for', restaurants.length, 'restaurants');
+              }
             }
 
             console.log('🗺️ 2D Terrain map ready with categorized markers');
@@ -345,47 +355,26 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
     </html>
   `;
 
-  // Try WebView first, fallback to list if it fails
-  try {
-    return (
-      <WebView
-        source={{ html }}
-        style={{ flex: 1 }}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        allowsInlineMediaPlayback={true}
-        mixedContentMode="compatibility"
-        allowFileAccess={true}
-        allowUniversalAccessFromFileURLs={true}
-        onLoadStart={() => console.log('🗺️ 2D Terrain WebView load started')}
-        onLoadEnd={() => console.log('🗺️ 2D Terrain WebView load completed')}
-        onMessage={(event) => {
-          console.log('🗺️ 2D Terrain WebView message:', event.nativeEvent.data);
-        }}
-        onError={(error) => {
-          console.error('🗺️ 2D Terrain WebView error:', error);
-        }}
-      />
-    );
-  } catch (error) {
-    console.error('🗺️ WebView creation failed, using fallback:', error);
-    return (
-      <View style={styles.fallbackContainer}>
-        <Text style={styles.fallbackTitle}>🏔️ 2D Terrain Map</Text>
-        <Text style={styles.fallbackText}>WebView unavailable. Here are the restaurants:</Text>
-        <ScrollView style={styles.restaurantList}>
-          {restaurants.map((restaurant) => (
-            <View key={restaurant.id} style={styles.restaurantItem}>
-              <Text style={styles.restaurantName}>{restaurant.name}</Text>
-              <Text style={styles.restaurantCoords}>
-                📍 {restaurant.location.latitude.toFixed(4)}, {restaurant.location.longitude.toFixed(4)}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-    );
-  }
+  return (
+    <WebView
+      source={{ html }}
+      style={{ flex: 1 }}
+      javaScriptEnabled={true}
+      domStorageEnabled={true}
+      allowsInlineMediaPlayback={true}
+      mixedContentMode="compatibility"
+      allowFileAccess={true}
+      allowUniversalAccessFromFileURLs={true}
+      onLoadStart={() => console.log('🗺️ 2D Terrain WebView load started')}
+      onLoadEnd={() => console.log('🗺️ 2D Terrain WebView load completed')}
+      onMessage={(event) => {
+        console.log('🗺️ 2D Terrain WebView message:', event.nativeEvent.data);
+      }}
+      onError={(error) => {
+        console.error('🗺️ 2D Terrain WebView error:', error);
+      }}
+    />
+  );
 }
 
 export default MapBoxWebView;

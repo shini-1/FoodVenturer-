@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import LoginScreenNew from './LoginScreenNew';
+import RegisterScreenNew from './RegisterScreenNew';
 import AdminLoginScreen from './AdminLoginScreen';
 
 function RoleSelectionScreen({ navigation }: { navigation: any }) {
@@ -13,18 +14,20 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
 
   const handleRoleSelect = (role: string) => {
     console.log('🔍 handleRoleSelect called with role:', role);
+    console.log('🔍 Current state - showBusinessModal:', showBusinessModal, 'showAdminModal:', showAdminModal);
+
     switch (role) {
       case 'explorer':
         console.log('🔍 Navigating to Home');
         navigation.navigate('Home');
         break;
       case 'business':
-        console.log('🔍 Opening business modal');
+        console.log('🔍 Setting showBusinessModal to true');
         setAuthMode('login');
         setShowBusinessModal(true);
         break;
       case 'admin':
-        console.log('🔍 Opening admin modal');
+        console.log('🔍 Setting showAdminModal to true');
         setShowAdminModal(true);
         break;
       default:
@@ -50,26 +53,56 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {showBusinessModal ? (
-        // Show business modal content
-        <View style={styles.modalContainer}>
-          <LoginScreenNew
-            navigation={navigation}
-            onClose={handleCloseModal}
-            onSwitchToSignup={handleSwitchToRegister}
-          />
+      {/* Modal overlays - positioned absolutely over the entire screen */}
+      {(showBusinessModal || showAdminModal) && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { backgroundColor: theme?.background || '#FFFFFF' }]}>
+            {(() => {
+              console.log('🔍 Modal rendering:', { showBusinessModal, showAdminModal, authMode });
+              try {
+                if (showBusinessModal) {
+                  console.log('🔍 Rendering business modal with authMode:', authMode);
+                  return authMode === 'login' ? (
+                    <LoginScreenNew
+                      navigation={navigation}
+                      onClose={handleCloseModal}
+                      onSwitchToSignup={handleSwitchToRegister}
+                    />
+                  ) : (
+                    <RegisterScreenNew
+                      navigation={navigation}
+                      onClose={handleCloseModal}
+                      onSwitchToLogin={handleSwitchToLogin}
+                    />
+                  );
+                } else {
+                  console.log('🔍 Rendering admin modal');
+                  return (
+                    <AdminLoginScreen
+                      navigation={navigation}
+                      onClose={handleCloseAdminModal}
+                      onSwitchToSignup={() => {}}
+                    />
+                  );
+                }
+              } catch (error) {
+                console.error('Modal render error:', error);
+                return (
+                  <View style={{ padding: 20, alignItems: 'center', backgroundColor: 'white' }}>
+                    <Text style={{ color: 'red', fontSize: 16 }}>Error loading modal</Text>
+                    <Text style={{ color: 'red', fontSize: 12, marginTop: 10 }}>
+                      {error instanceof Error ? error.message : 'Unknown error'}
+                    </Text>
+                  </View>
+                );
+              }
+            })()}
+          </View>
         </View>
-      ) : showAdminModal ? (
-        // Show admin modal content
-        <View style={styles.modalContainer}>
-          <AdminLoginScreen
-            navigation={navigation}
-            onClose={handleCloseAdminModal}
-            onSwitchToSignup={() => {}}
-          />
-        </View>
-      ) : (
-        // Show normal role selection content
+      )}
+
+      {/* Normal role selection content */}
+      {!showBusinessModal && !showAdminModal && (
         <>
           <Header />
           <Text style={[styles.title, { color: theme.text }]}>Welcome to FoodVenturer</Text>
@@ -94,6 +127,7 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
           <TouchableOpacity
             style={[styles.button, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}
             onPress={() => handleRoleSelect('admin')}
+            onLongPress={() => navigation.navigate('CreateAdmin')} // Hidden admin creation for dev
           >
             <Text style={[styles.buttonText, { color: theme.text }]}>⚙️ Admin</Text>
             <Text style={[styles.buttonSubtext, { color: theme.textSecondary }]}>Manage the platform</Text>
@@ -143,11 +177,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 5,
   },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1000, // Ensure it's above other content
+  },
   modalContainer: {
-    flex: 1,
-    backgroundColor: '#E3F2FD',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: 20,
+    margin: 0, // Remove margin to use full screen
+    maxWidth: '100%', // Allow full width
+    width: '100%',
+    height: '100%', // Use full screen height
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    overflow: 'hidden', // Prevent content from spilling outside rounded corners
+  },
+  keyboardFriendlyModal: {
+    justifyContent: 'flex-start',
+    paddingTop: 20,
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: 'row',

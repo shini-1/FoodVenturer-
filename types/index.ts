@@ -16,7 +16,14 @@ export interface Restaurant {
     longitude: number;
   };
   image?: string; // Optional logo/image URL
-  // add more fields
+  category?: string;
+  rating?: number;
+  priceRange?: string; // $, $$, $$$, $$$$
+  description?: string;
+  phone?: string;
+  hours?: string;
+  website?: string;
+  // add more fields as needed
 }
 
 export interface RestaurantOwner {

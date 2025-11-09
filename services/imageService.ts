@@ -1,11 +1,10 @@
-import { ref, uploadBytes, getDownloadURL, deleteObject } from '@react-native-firebase/storage';
-import { storageInstance } from './firebase';
-import { RestaurantOwner } from '../types';
+import { supabase } from './firebase'; // This is actually the Supabase client
+import { Restaurant } from '../types';
 
-const RESTAURANT_IMAGES_FOLDER = 'restaurant-images';
+const RESTAURANT_IMAGES_BUCKET = 'restaurant-images';
 
 /**
- * Upload a restaurant image to Firebase Storage
+ * Upload a restaurant image to Supabase Storage
  */
 export async function uploadRestaurantImage(imageUri: string, restaurantId: string, imageType: 'logo' | 'cover' | 'gallery' = 'logo'): Promise<string> {
   try {
@@ -14,21 +13,36 @@ export async function uploadRestaurantImage(imageUri: string, restaurantId: stri
     const fileExtension = imageUri.split('.').pop() || 'jpg';
     const filename = `${restaurantId}_${imageType}_${timestamp}.${fileExtension}`;
 
-    // Create storage reference
-    const storageRef = ref(storageInstance, `${RESTAURANT_IMAGES_FOLDER}/${filename}`);
-
-    // Convert image URI to blob
+    // Fetch the image and convert to array buffer
     const response = await fetch(imageUri);
-    const blob = await response.blob();
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status}`);
+    }
 
-    // Upload to Firebase Storage
-    const snapshot = await uploadBytes(storageRef, blob);
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
 
-    // Get download URL
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from(RESTAURANT_IMAGES_BUCKET)
+      .upload(filename, uint8Array, {
+        contentType: `image/${fileExtension}`,
+        cacheControl: '3600',
+        upsert: false
+      });
 
-    console.log('✅ Restaurant image uploaded successfully:', downloadURL);
-    return downloadURL;
+    if (error) {
+      console.error('Supabase upload error:', error);
+      throw error;
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from(RESTAURANT_IMAGES_BUCKET)
+      .getPublicUrl(filename);
+
+    console.log('✅ Restaurant image uploaded successfully:', publicUrl);
+    return publicUrl;
   } catch (error) {
     console.error('❌ Error uploading restaurant image:', error);
     throw error;
@@ -36,7 +50,7 @@ export async function uploadRestaurantImage(imageUri: string, restaurantId: stri
 }
 
 /**
- * Delete a restaurant image from Firebase Storage
+ * Delete a restaurant image from Supabase Storage
  */
 export async function deleteRestaurantImage(imageUrl: string): Promise<void> {
   try {
@@ -44,11 +58,16 @@ export async function deleteRestaurantImage(imageUrl: string): Promise<void> {
     const urlParts = imageUrl.split('/');
     const filename = urlParts[urlParts.length - 1].split('?')[0];
 
-    // Create storage reference
-    const storageRef = ref(storageInstance, `${RESTAURANT_IMAGES_FOLDER}/${filename}`);
+    // Delete from Supabase Storage
+    const { error } = await supabase.storage
+      .from(RESTAURANT_IMAGES_BUCKET)
+      .remove([filename]);
 
-    // Delete the file
-    await deleteObject(storageRef);
+    if (error) {
+      console.error('Supabase delete error:', error);
+      throw error;
+    }
+
     console.log('✅ Restaurant image deleted successfully');
   } catch (error) {
     console.error('❌ Error deleting restaurant image:', error);
@@ -57,15 +76,15 @@ export async function deleteRestaurantImage(imageUrl: string): Promise<void> {
 }
 
 /**
- * Update restaurant's image URL in Firestore
+ * Update restaurant's image URL in Supabase
  */
 export async function updateRestaurantImage(restaurantId: string, imageUrl: string, imageType: 'logo' | 'cover' | 'gallery' = 'logo'): Promise<void> {
   try {
     // Import the update function
-    const { updateRestaurantOwner } = await import('../services/restaurants');
+    const { updateRestaurant } = await import('../services/restaurants');
 
     // Update the restaurant document with new image URL
-    await updateRestaurantOwner(restaurantId, {
+    await updateRestaurant(restaurantId, {
       image: imageUrl
     });
 
@@ -81,7 +100,14 @@ export async function updateRestaurantImage(restaurantId: string, imageUrl: stri
  */
 export async function uploadAndUpdateRestaurantImage(imageUri: string, restaurantId: string, imageType: 'logo' | 'cover' | 'gallery' = 'logo'): Promise<string> {
   try {
-    // Upload image to Firebase Storage
+    console.log('🚀 Starting image upload process...');
+
+    // Validate imageUri
+    if (!imageUri || typeof imageUri !== 'string') {
+      throw new Error('Invalid image URI provided');
+    }
+
+    // Upload image to Supabase Storage
     const imageUrl = await uploadRestaurantImage(imageUri, restaurantId, imageType);
 
     // Update restaurant record with new image URL

@@ -23,17 +23,26 @@ interface LoginScreenNewProps {
 
 function LoginScreenNew({ navigation, onClose, onSwitchToSignup }: LoginScreenNewProps) {
   console.log('🔍 LoginScreenNew rendered');
+  console.log('🔍 LoginScreenNew props:', { navigation: !!navigation, onClose: !!onClose, onSwitchToSignup: !!onSwitchToSignup });
 
   let themeContext;
   try {
     themeContext = useTheme();
     console.log('🔍 Theme loaded:', !!themeContext);
+    console.log('🔍 Theme object:', themeContext?.theme);
   } catch (themeError) {
     console.error('❌ Theme error:', themeError);
     return null; // Return null if theme fails
   }
 
-  const theme = themeContext.theme; // Extract the actual theme object
+  const theme = themeContext?.theme || {
+    background: '#FFFFFF',
+    text: '#333333',
+    textSecondary: '#666666',
+    primary: '#007AFF',
+    surface: '#F5F5F5',
+    border: '#E0E0E0'
+  }; // Fallback theme in case theme fails
   const { setUser } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -69,9 +78,7 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup }: LoginScreenNe
 
       console.log('✅ Login successful');
       onClose?.();
-      setTimeout(() => {
-        navigation.navigate('BusinessPanel');
-      }, 300);
+      // Navigation will be handled automatically by AuthContext state management
     } catch (error: any) {
       console.error('❌ Login Failed:', error.message);
     } finally {
@@ -97,10 +104,13 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup }: LoginScreenNe
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
     >
       <ScrollView
         contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
       >
         {/* Close button */}
         <TouchableOpacity
@@ -219,7 +229,10 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup }: LoginScreenNe
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 30,
+    minHeight: '100%',
   },
   closeButton: {
     alignSelf: 'flex-end',

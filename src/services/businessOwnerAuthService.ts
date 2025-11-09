@@ -1,24 +1,5 @@
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  sendPasswordResetEmail,
-  onAuthStateChanged,
-  User as FirebaseUser,
-  GoogleAuthProvider,
-  signInWithCredential,
-} from '@react-native-firebase/auth';
-import {
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-} from '@react-native-firebase/firestore';
-import { firestoreInstance, authInstance } from '../../services/firebase';
+import { supabase } from '../../services/firebase';
+import { TABLES } from '../config/supabase';
 
 export interface BusinessOwnerProfile {
   uid: string;
@@ -42,29 +23,29 @@ export interface SignUpData {
 }
 
 class BusinessOwnerAuthService {
-  private get auth() {
-    return authInstance;
-  }
-
-  private get firestore() {
-    return firestoreInstance;
-  }
+  private readonly BUSINESS_OWNERS_TABLE = TABLES.BUSINESS_OWNERS;
 
   /**
    * Sign up a new business owner
    */
   async signUp(signUpData: SignUpData): Promise<BusinessOwnerProfile> {
     try {
-      // Create Firebase Auth user
-      const userCredential = await createUserWithEmailAndPassword(
-        this.auth,
-        signUpData.email,
-        signUpData.password
-      );
+      // Create Supabase auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: signUpData.email,
+        password: signUpData.password,
+      });
 
-      // Create business owner profile
-      const profile: BusinessOwnerProfile = {
-        uid: userCredential.user.uid,
+      if (authError) throw authError;
+
+      if (!authData.user) {
+        throw new Error('Failed to create user account');
+      }
+
+      const uid = authData.user.id;
+
+      // Create business owner profile in database
+      const profile: Omit<BusinessOwnerProfile, 'uid'> = {
         email: signUpData.email,
         firstName: signUpData.firstName,
         lastName: signUpData.lastName,
@@ -75,10 +56,29 @@ class BusinessOwnerAuthService {
         isVerified: false,
       };
 
-      // Save to Firestore
-      await this.saveProfile(profile);
+      const profileData = {
+        uid,
+        email: profile.email,
+        first_name: profile.firstName,
+        last_name: profile.lastName,
+        phone_number: profile.phoneNumber,
+        business_name: profile.businessName,
+        role: profile.role,
+        created_at: profile.createdAt.toISOString(),
+        is_verified: profile.isVerified,
+      };
 
-      return profile;
+      const { error: insertError } = await supabase
+        .from(this.BUSINESS_OWNERS_TABLE)
+        .insert(profileData);
+
+      if (insertError) {
+        // Clean up auth user if profile creation failed
+        await supabase.auth.admin.deleteUser(uid);
+        throw insertError;
+      }
+
+      return { uid, ...profile };
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error));
     }
@@ -89,45 +89,22 @@ class BusinessOwnerAuthService {
    */
   async signIn(email: string, password: string): Promise<BusinessOwnerProfile> {
     try {
-      const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      // Get profile from Firestore
-      const profile = await this.getProfile(userCredential.user.uid);
+      if (error) throw error;
+
+      if (!data.user) {
+        throw new Error('Authentication failed');
+      }
+
+      // Get profile from database
+      const profile = await this.getProfile(data.user.id);
 
       if (!profile) {
         throw new Error('Business owner profile not found');
-      }
-
-      return profile;
-    } catch (error: any) {
-      throw new Error(this.getErrorMessage(error));
-    }
-  }
-
-  /**
-   * Sign in with Google
-   */
-  async signInWithGoogle(idToken: string): Promise<BusinessOwnerProfile> {
-    try {
-      const credential = GoogleAuthProvider.credential(idToken);
-      const userCredential = await signInWithCredential(this.auth, credential);
-
-      // Check if profile exists, create if not
-      let profile = await this.getProfile(userCredential.user.uid);
-
-      if (!profile) {
-        // Create new profile from Google account
-        profile = {
-          uid: userCredential.user.uid,
-          email: userCredential.user.email || '',
-          firstName: userCredential.user.displayName?.split(' ')[0] || '',
-          lastName: userCredential.user.displayName?.split(' ').slice(1).join(' ') || '',
-          role: 'business_owner',
-          createdAt: new Date(),
-          isVerified: true, // Google accounts are pre-verified
-        };
-
-        await this.saveProfile(profile);
       }
 
       return profile;
@@ -141,7 +118,8 @@ class BusinessOwnerAuthService {
    */
   async signOut(): Promise<void> {
     try {
-      await signOut(this.auth);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error));
     }
@@ -152,7 +130,8 @@ class BusinessOwnerAuthService {
    */
   async resetPassword(email: string): Promise<void> {
     try {
-      await sendPasswordResetEmail(this.auth, email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error));
     }
@@ -162,10 +141,15 @@ class BusinessOwnerAuthService {
    * Get current user profile
    */
   async getCurrentUser(): Promise<BusinessOwnerProfile | null> {
-    const currentUser = this.auth.currentUser;
-    if (!currentUser) return null;
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
 
-    return await this.getProfile(currentUser.uid);
+      if (error || !user) return null;
+
+      return await this.getProfile(user.id);
+    } catch (error) {
+      return null;
+    }
   }
 
   /**
@@ -173,21 +157,25 @@ class BusinessOwnerAuthService {
    */
   async updateProfile(uid: string, updates: Partial<BusinessOwnerProfile>): Promise<void> {
     try {
-      const profileRef = doc(this.firestore, 'businessOwners', uid);
-      await updateDoc(profileRef, {
-        ...updates,
-        updatedAt: new Date(),
-      });
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (updates.firstName) updateData.first_name = updates.firstName;
+      if (updates.lastName) updateData.last_name = updates.lastName;
+      if (updates.phoneNumber !== undefined) updateData.phone_number = updates.phoneNumber;
+      if (updates.businessName !== undefined) updateData.business_name = updates.businessName;
+      if (updates.isVerified !== undefined) updateData.is_verified = updates.isVerified;
+
+      const { error } = await supabase
+        .from(this.BUSINESS_OWNERS_TABLE)
+        .update(updateData)
+        .eq('uid', uid);
+
+      if (error) throw error;
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error));
     }
-  }
-
-  /**
-   * Listen to auth state changes
-   */
-  onAuthStateChanged(callback: (user: FirebaseUser | null) => void) {
-    return onAuthStateChanged(this.auth, callback);
   }
 
   /**
@@ -195,12 +183,15 @@ class BusinessOwnerAuthService {
    */
   async isEmailRegistered(email: string): Promise<boolean> {
     try {
-      const q = query(
-        collection(this.firestore, 'businessOwners'),
-        where('email', '==', email)
-      );
-      const querySnapshot = await getDocs(q);
-      return !querySnapshot.empty;
+      const { data, error } = await supabase
+        .from(this.BUSINESS_OWNERS_TABLE)
+        .select('email')
+        .eq('email', email)
+        .limit(1);
+
+      if (error) return false;
+
+      return data && data.length > 0;
     } catch (error) {
       return false;
     }
@@ -209,27 +200,28 @@ class BusinessOwnerAuthService {
   /**
    * Private methods
    */
-  private async saveProfile(profile: BusinessOwnerProfile): Promise<void> {
-    const profileRef = doc(this.firestore, 'businessOwners', profile.uid);
-    await setDoc(profileRef, {
-      ...profile,
-      createdAt: profile.createdAt.toISOString(),
-    });
-  }
-
   private async getProfile(uid: string): Promise<BusinessOwnerProfile | null> {
     try {
-      const profileRef = doc(this.firestore, 'businessOwners', uid);
-      const profileDoc = await getDoc(profileRef);
+      const { data, error } = await supabase
+        .from(this.BUSINESS_OWNERS_TABLE)
+        .select('*')
+        .eq('uid', uid)
+        .single();
 
-      if (!profileDoc.exists()) {
+      if (error || !data) {
         return null;
       }
 
-      const data = profileDoc.data();
       return {
-        ...data,
-        createdAt: new Date(data.createdAt),
+        uid: data.uid,
+        email: data.email,
+        firstName: data.first_name,
+        lastName: data.last_name,
+        phoneNumber: data.phone_number,
+        businessName: data.business_name,
+        role: data.role,
+        createdAt: new Date(data.created_at),
+        isVerified: data.is_verified || false,
       } as BusinessOwnerProfile;
     } catch (error) {
       return null;
@@ -237,22 +229,24 @@ class BusinessOwnerAuthService {
   }
 
   private getErrorMessage(error: any): string {
-    switch (error.code) {
-      case 'auth/email-already-in-use':
-        return 'This email is already registered';
-      case 'auth/weak-password':
-        return 'Password should be at least 6 characters';
-      case 'auth/invalid-email':
-        return 'Please enter a valid email address';
-      case 'auth/user-not-found':
-        return 'No account found with this email';
-      case 'auth/wrong-password':
-        return 'Incorrect password';
-      case 'auth/too-many-requests':
-        return 'Too many failed attempts. Please try again later';
-      default:
-        return error.message || 'An error occurred';
+    // Map Supabase auth errors to user-friendly messages
+    if (error.message?.includes('already registered')) {
+      return 'This email is already registered';
     }
+    if (error.message?.includes('Password should be')) {
+      return 'Password should be at least 6 characters';
+    }
+    if (error.message?.includes('Invalid email')) {
+      return 'Please enter a valid email address';
+    }
+    if (error.message?.includes('Invalid login credentials')) {
+      return 'Invalid email or password';
+    }
+    if (error.message?.includes('Email not confirmed')) {
+      return 'Please check your email and confirm your account';
+    }
+
+    return error.message || 'An error occurred';
   }
 }
 

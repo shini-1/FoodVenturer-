@@ -1,6 +1,6 @@
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from '@react-native-firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from '@react-native-firebase/firestore';
-import { firestoreInstance, authInstance } from '../../services/firebase';
+import { createClient } from '@supabase/supabase-js';
+import { app } from '../../services/firebase';
+import { TABLES, SUPABASE_CONFIG } from '../config/supabase';
 
 export interface AdminProfile {
   uid: string;
@@ -15,45 +15,54 @@ export interface AdminProfile {
 }
 
 class AdminAuthService {
-  private readonly ADMINS_COLLECTION = 'admins';
+  private readonly ADMINS_TABLE = TABLES.ADMINS;
 
   /**
    * Sign in as admin - separate from business owners
    */
   async signIn(email: string, password: string): Promise<AdminProfile> {
     try {
-      // Use direct Firebase functions
-      const userCredential = await signInWithEmailAndPassword(authInstance, email, password);
-      const uid = userCredential.user.uid;
+      // Sign in with Supabase auth
+      const { data, error } = await app.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (!data.user) {
+        throw new Error('Authentication failed');
+      }
+
+      const uid = data.user.id;
 
       // Verify this is an admin account
-      const adminDoc = await getDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid));
-      if (!adminDoc.exists) {
-        await signOut(authInstance);
+      const { data: adminData, error: adminError } = await app
+        .from(this.ADMINS_TABLE)
+        .select('*')
+        .eq('uid', uid)
+        .single();
+
+      if (adminError || !adminData) {
+        await app.auth.signOut();
         throw new Error('Access denied: Not an admin account');
       }
 
-      const adminData = adminDoc.data();
-      if (!adminData?.isActive) {
-        await signOut(authInstance);
+      if (!adminData.is_active) {
+        await app.auth.signOut();
         throw new Error('Account suspended. Contact support.');
       }
 
-      // Update last login
-      await updateDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid), {
-        lastLogin: new Date(),
-      });
-
       return {
         uid,
-        email: adminData.email,
+        email: adminData.email || '',
         role: 'admin',
-        firstName: adminData.firstName,
-        lastName: adminData.lastName,
-        adminLevel: adminData.adminLevel || 'support',
-        createdAt: adminData.createdAt?.toDate() || new Date(),
+        firstName: adminData.first_name || '',
+        lastName: adminData.last_name || '',
+        adminLevel: adminData.admin_level || 'support',
+        createdAt: new Date(adminData.created_at),
         lastLogin: new Date(),
-        isActive: adminData.isActive,
+        isActive: adminData.is_active || false,
       };
     } catch (error: any) {
       console.error('Admin sign-in error:', error);
@@ -62,7 +71,7 @@ class AdminAuthService {
   }
 
   /**
-   * Create new admin account (super admin only)
+   * Create new admin account (super admin only) - using service role to bypass email confirmation
    */
   async createAdmin(adminData: {
     email: string;
@@ -72,12 +81,51 @@ class AdminAuthService {
     adminLevel: 'super_admin' | 'moderator' | 'support';
   }): Promise<AdminProfile> {
     try {
-      // First create Firebase auth user
-      const userCredential = await createUserWithEmailAndPassword(authInstance, adminData.email, adminData.password);
-      const uid = userCredential.user.uid;
+      // Create a service role client to bypass email confirmation
+      const serviceSupabase = createClient(
+        SUPABASE_CONFIG.url,
+        SUPABASE_CONFIG.serviceRoleKey
+      );
 
-      // Create admin profile in Firestore
-      const adminProfile: Omit<AdminProfile, 'uid'> = {
+      // First create Supabase auth user with service role (bypasses email confirmation)
+      const { data: authData, error: authError } = await serviceSupabase.auth.admin.createUser({
+        email: adminData.email,
+        password: adminData.password,
+        email_confirm: true, // Auto-confirm the email
+      });
+
+      if (authError) throw authError;
+
+      if (!authData.user) {
+        throw new Error('Failed to create user account');
+      }
+
+      const uid = authData.user.id;
+
+      // Create admin profile in database
+      const adminProfile = {
+        uid,
+        email: adminData.email,
+        first_name: adminData.firstName,
+        last_name: adminData.lastName,
+        admin_level: adminData.adminLevel,
+        created_at: new Date().toISOString(),
+        last_login: new Date().toISOString(),
+        is_active: true,
+      };
+
+      const { error: insertError } = await app
+        .from(this.ADMINS_TABLE)
+        .insert(adminProfile);
+
+      if (insertError) {
+        // Clean up auth user if profile creation failed
+        await serviceSupabase.auth.admin.deleteUser(uid);
+        throw insertError;
+      }
+
+      return {
+        uid,
         email: adminData.email,
         role: 'admin',
         firstName: adminData.firstName,
@@ -87,10 +135,6 @@ class AdminAuthService {
         lastLogin: new Date(),
         isActive: true,
       };
-
-      await setDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid), adminProfile);
-
-      return { uid, ...adminProfile };
     } catch (error: any) {
       console.error('Create admin error:', error);
       throw new Error(error.message || 'Failed to create admin account');
@@ -102,24 +146,28 @@ class AdminAuthService {
    */
   async getCurrentUser(): Promise<AdminProfile | null> {
     try {
-      const currentUser = authInstance.currentUser;
+      const { data: { user }, error: authError } = await app.auth.getUser();
 
-      if (!currentUser) return null;
+      if (authError || !user) return null;
 
-      const adminDoc = await getDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, currentUser.uid));
-      if (!adminDoc.exists()) return null;
+      const { data: adminData, error: adminError } = await app
+        .from(this.ADMINS_TABLE)
+        .select('*')
+        .eq('uid', user.id)
+        .single();
 
-      const adminData = adminDoc.data();
+      if (adminError || !adminData) return null;
+
       return {
-        uid: currentUser.uid,
-        email: adminData.email,
+        uid: user.id,
+        email: adminData.email || '',
         role: 'admin',
-        firstName: adminData.firstName,
-        lastName: adminData.lastName,
-        adminLevel: adminData.adminLevel || 'support',
-        createdAt: adminData.createdAt?.toDate() || new Date(),
-        lastLogin: adminData.lastLogin?.toDate() || new Date(),
-        isActive: adminData.isActive,
+        firstName: adminData.first_name || '',
+        lastName: adminData.last_name || '',
+        adminLevel: adminData.admin_level || 'support',
+        createdAt: new Date(adminData.created_at),
+        lastLogin: new Date(adminData.last_login || adminData.created_at),
+        isActive: adminData.is_active || false,
       };
     } catch (error) {
       console.error('Get current admin error:', error);
@@ -132,7 +180,8 @@ class AdminAuthService {
    */
   async resetPassword(email: string): Promise<void> {
     try {
-      await sendPasswordResetEmail(authInstance, email);
+      const { error } = await app.auth.resetPasswordForEmail(email);
+      if (error) throw error;
     } catch (error: any) {
       console.error('Reset admin password error:', error);
       throw new Error(error.message || 'Failed to send password reset email');
@@ -144,7 +193,8 @@ class AdminAuthService {
    */
   async signOut(): Promise<void> {
     try {
-      await signOut(authInstance);
+      const { error } = await app.auth.signOut();
+      if (error) throw error;
     } catch (error: any) {
       console.error('Admin sign out error:', error);
       throw new Error(error.message || 'Failed to sign out');
@@ -156,10 +206,21 @@ class AdminAuthService {
    */
   async updateProfile(uid: string, updates: Partial<AdminProfile>): Promise<void> {
     try {
-      await updateDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid), {
-        ...updates,
-        updatedAt: new Date(),
-      });
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (updates.firstName) updateData.first_name = updates.firstName;
+      if (updates.lastName) updateData.last_name = updates.lastName;
+      if (updates.adminLevel) updateData.admin_level = updates.adminLevel;
+      if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
+
+      const { error } = await app
+        .from(this.ADMINS_TABLE)
+        .update(updateData)
+        .eq('uid', uid);
+
+      if (error) throw error;
     } catch (error: any) {
       console.error('Update admin profile error:', error);
       throw new Error(error.message || 'Failed to update profile');
@@ -171,10 +232,15 @@ class AdminAuthService {
    */
   async deactivateAdmin(uid: string): Promise<void> {
     try {
-      await updateDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid), {
-        isActive: false,
-        deactivatedAt: new Date(),
-      });
+      const { error } = await app
+        .from(this.ADMINS_TABLE)
+        .update({
+          is_active: false,
+          deactivated_at: new Date().toISOString(),
+        })
+        .eq('uid', uid);
+
+      if (error) throw error;
     } catch (error: any) {
       console.error('Deactivate admin error:', error);
       throw new Error(error.message || 'Failed to deactivate admin');
@@ -186,10 +252,15 @@ class AdminAuthService {
    */
   async reactivateAdmin(uid: string): Promise<void> {
     try {
-      await updateDoc(doc(firestoreInstance, this.ADMINS_COLLECTION, uid), {
-        isActive: true,
-        reactivatedAt: new Date(),
-      });
+      const { error } = await app
+        .from(this.ADMINS_TABLE)
+        .update({
+          is_active: true,
+          reactivated_at: new Date().toISOString(),
+        })
+        .eq('uid', uid);
+
+      if (error) throw error;
     } catch (error: any) {
       console.error('Reactivate admin error:', error);
       throw new Error(error.message || 'Failed to reactivate admin');

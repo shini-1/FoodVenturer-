@@ -1,9 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User } from '../types';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from '@react-native-firebase/auth';
+import { supabase, initializeFirebase } from '../services/firebase';
 import { businessOwnerAuthService, BusinessOwnerProfile } from '../src/services/businessOwnerAuthService';
 import { adminAuthService, AdminProfile } from '../src/services/adminAuthService';
-import { authInstance, initializeFirebase } from '../services/firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -22,71 +21,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    try {
-      initializeFirebase();
-      const auth = authInstance;
-
-      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-          // Check if this is a business owner by looking up their profile
-          try {
-            const businessProfile = await businessOwnerAuthService.getCurrentUser();
-            if (businessProfile) {
-              // This is a business owner
-              setUser({
-                uid: businessProfile.uid,
-                email: businessProfile.email,
-                role: businessProfile.role,
-                firstName: businessProfile.firstName,
-                lastName: businessProfile.lastName,
-                phoneNumber: businessProfile.phoneNumber,
-                businessName: businessProfile.businessName,
-              });
-              return;
-            }
-          } catch (businessError) {
-            console.log('Not a business owner account');
-          }
-
-          // Check if this is an admin by looking up their profile
-          try {
-            const adminProfile = await adminAuthService.getCurrentUser();
-            if (adminProfile) {
-              // This is an admin
-              setUser({
-                uid: adminProfile.uid,
-                email: adminProfile.email,
-                role: adminProfile.role,
-                firstName: adminProfile.firstName,
-                lastName: adminProfile.lastName,
-              });
-              return;
-            }
-          } catch (adminError) {
-            console.log('Not an admin account');
-          }
-
-          // Fallback for regular users (existing users without business/admin profiles)
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            role: 'user',
-          });
-        } else {
-          setUser(null);
-        }
-      });
-      return unsubscribe;
-    } catch (error) {
-      console.warn('Auth initialization failed:', error);
-      return () => {};
-    }
+    // Simplified: No automatic auth state listening to avoid initialization issues
+    // Auth state will be managed manually through login/logout calls
+    console.log('✅ AuthContext initialized (simplified mode)');
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       initializeFirebase();
-      await signInWithEmailAndPassword(authInstance, email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // Check if this is a business owner by looking up their profile
+      try {
+        const businessProfile = await businessOwnerAuthService.getCurrentUser();
+        if (businessProfile) {
+          // This is a business owner
+          setUser({
+            uid: businessProfile.uid,
+            email: businessProfile.email,
+            role: businessProfile.role,
+            firstName: businessProfile.firstName,
+            lastName: businessProfile.lastName,
+            phoneNumber: businessProfile.phoneNumber,
+            businessName: businessProfile.businessName,
+          });
+          return;
+        }
+      } catch (businessError) {
+        console.log('Not a business owner account');
+      }
+
+      // Check if this is an admin by looking up their profile
+      try {
+        const adminProfile = await adminAuthService.getCurrentUser();
+        if (adminProfile) {
+          // This is an admin
+          setUser({
+            uid: adminProfile.uid,
+            email: adminProfile.email,
+            role: adminProfile.role,
+            firstName: adminProfile.firstName,
+            lastName: adminProfile.lastName,
+          });
+          return;
+        }
+      } catch (adminError) {
+        console.log('Not an admin account');
+      }
+
+      // Fallback for regular users (existing users without business/admin profiles)
+      if (data.user) {
+        setUser({
+          uid: data.user.id,
+          email: data.user.email || '',
+          role: 'user',
+        });
+      }
     } catch (error) {
       throw error;
     }
@@ -95,7 +90,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = async (email: string, password: string) => {
     try {
       initializeFirebase();
-      await createUserWithEmailAndPassword(authInstance, email, password);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // For new users, just create the account - they can log in after
+      console.log('✅ User account created successfully');
     } catch (error) {
       throw error;
     }
@@ -128,7 +131,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       initializeFirebase();
-      await signOut(authInstance);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setUser(null);
     } catch (error) {
       throw error;
     }

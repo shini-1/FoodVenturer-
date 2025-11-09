@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { adminAuthService } from '../src/services/adminAuthService';
@@ -63,110 +66,123 @@ function AdminLoginScreen({ navigation, onClose, onSwitchToSignup }: AdminLoginS
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Close button */}
-      <TouchableOpacity
-        style={styles.closeButton}
-        onPress={onClose}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
       >
-        <Text style={[styles.closeButtonText, { color: theme.primary }]}>✕</Text>
-      </TouchableOpacity>
+        {/* Close button */}
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={onClose}
+        >
+          <Text style={[styles.closeButtonText, { color: theme.primary }]}>✕</Text>
+        </TouchableOpacity>
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>Admin Login</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-          Administrative access only
-        </Text>
-      </View>
-
-      {/* Form */}
-      <View style={styles.form}>
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.text }]}>Admin Email</Text>
-          <TextInput
-            style={[styles.input, {
-              backgroundColor: theme.surface,
-              color: theme.text,
-              borderColor: theme.border
-            }]}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Enter admin email"
-            placeholderTextColor={theme.textSecondary}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            blurOnSubmit={false}
-          />
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: theme.text }]}>Admin Login</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Administrative access only
+          </Text>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.text }]}>Password</Text>
-          <View style={styles.passwordContainer}>
+        {/* Form */}
+        <View style={styles.form}>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.text }]}>Admin Email</Text>
             <TextInput
-              style={[styles.input, styles.passwordInput, {
+              style={[styles.input, {
                 backgroundColor: theme.surface,
                 color: theme.text,
                 borderColor: theme.border
               }]}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Enter password"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Enter admin email"
               placeholderTextColor={theme.textSecondary}
-              secureTextEntry={!showPassword}
+              keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
               blurOnSubmit={false}
-              onSubmitEditing={() => {}}
             />
-            <TouchableOpacity
-              style={styles.eyeButton}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Text style={{ color: theme.textSecondary }}>
-                {showPassword ? '🙈' : '👁️'}
-              </Text>
-            </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Forgot Password */}
-        <TouchableOpacity
-          style={styles.forgotPassword}
-          onPress={handleForgotPassword}
-        >
-          <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>
-            Forgot Password?
-          </Text>
-        </TouchableOpacity>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.text }]}>Password</Text>
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.input, styles.passwordInput, {
+                  backgroundColor: theme.surface,
+                  color: theme.text,
+                  borderColor: theme.border
+                }]}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Enter password"
+                placeholderTextColor={theme.textSecondary}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                blurOnSubmit={false}
+                onSubmitEditing={() => {}}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Text style={{ color: theme.textSecondary }}>
+                  {showPassword ? '🙈' : '👁️'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-        {/* Login Button */}
-        <TouchableOpacity
-          style={[styles.loginButton, {
-            backgroundColor: theme.primary,
-            opacity: isLoading ? 0.6 : 1
-          }]}
-          onPress={handleLogin}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={theme.background} />
-          ) : (
-            <Text style={[styles.loginButtonText, { color: theme.background }]}>
-              Admin Login
+          {/* Forgot Password */}
+          <TouchableOpacity
+            style={styles.forgotPassword}
+            onPress={handleForgotPassword}
+          >
+            <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>
+              Forgot Password?
             </Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
+          </TouchableOpacity>
+
+          {/* Login Button */}
+          <TouchableOpacity
+            style={[styles.loginButton, {
+              backgroundColor: theme.primary,
+              opacity: isLoading ? 0.6 : 1
+            }]}
+            onPress={handleLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={theme.background} />
+            ) : (
+              <Text style={[styles.loginButtonText, { color: theme.background }]}>
+                Admin Login
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 30,
+    minHeight: '100%',
   },
   closeButton: {
     alignSelf: 'flex-end',

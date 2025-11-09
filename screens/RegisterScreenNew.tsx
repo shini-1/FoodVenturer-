@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Keyboard,
+  Dimensions,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { businessOwnerAuthService } from '../src/services/businessOwnerAuthService';
@@ -23,7 +25,14 @@ interface RegisterScreenNewProps {
 
 function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScreenNewProps) {
   const themeContext = useTheme();
-  const theme = themeContext.theme; // Extract the actual theme object
+  const theme = themeContext?.theme || {
+    background: '#FFFFFF',
+    text: '#333333',
+    textSecondary: '#666666',
+    primary: '#007AFF',
+    surface: '#F5F5F5',
+    border: '#E0E0E0'
+  }; // Fallback theme in case theme fails
   const { setUser } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -39,6 +48,27 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [screenHeight, setScreenHeight] = useState(Dimensions.get('window').height);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    const dimensionsListener = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenHeight(window.height);
+    });
+
+    return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+      dimensionsListener?.remove();
+    };
+  }, []);
 
   const updateFormData = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -72,10 +102,18 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
   };
 
   const handleSignup = async () => {
-    if (!validateForm()) return;
+    console.log('🔍 handleSignup called');
+    console.log('🔍 Form data:', formData);
 
+    if (!validateForm()) {
+      console.log('❌ Form validation failed');
+      return;
+    }
+
+    console.log('✅ Form validation passed, starting signup...');
     setIsLoading(true);
     try {
+      console.log('🔍 Calling businessOwnerAuthService.signUp...');
       const profile = await businessOwnerAuthService.signUp({
         email: formData.email.trim(),
         password: formData.password,
@@ -84,6 +122,8 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
         phoneNumber: formData.phoneNumber.trim() || undefined,
         businessName: formData.businessName.trim() || undefined,
       });
+
+      console.log('✅ Auth service returned profile:', profile);
 
       setUser({
         uid: profile.uid,
@@ -94,13 +134,16 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
       });
 
       console.log('✅ Account created successfully');
+      console.log('🔍 Calling onClose...');
       onClose?.();
-      setTimeout(() => {
-        navigation.navigate('BusinessPanel');
-      }, 300);
+      // Navigation will be handled automatically by AuthContext state management
     } catch (error: any) {
       console.error('❌ Registration Failed:', error.message);
+      console.error('❌ Full error object:', error);
+      // Show error to user
+      Alert.alert('Registration Failed', error.message || 'An error occurred during registration');
     } finally {
+      console.log('🔍 Setting loading to false');
       setIsLoading(false);
     }
   };
@@ -109,10 +152,20 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
     >
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={[
+          styles.container,
+          {
+            backgroundColor: theme.background, // Use theme background for dark mode
+            paddingTop: keyboardVisible ? 5 : 10,
+            paddingBottom: keyboardVisible ? 10 : 30,
+          }
+        ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
       >
         {/* Close button */}
         <TouchableOpacity
@@ -309,7 +362,10 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 30,
+    minHeight: '100%',
   },
   closeButton: {
     alignSelf: 'flex-end',
