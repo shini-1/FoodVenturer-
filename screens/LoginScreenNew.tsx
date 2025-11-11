@@ -78,7 +78,15 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup }: LoginScreenNe
 
       console.log('✅ Login successful');
       onClose?.();
-      // Navigation will be handled automatically by AuthContext state management
+
+      // Navigate to appropriate dashboard based on role
+      if (profile.role === 'business_owner' || profile.role === 'business') {
+        navigation.navigate('BusinessDashboard');
+      } else if (profile.role === 'admin') {
+        navigation.navigate('AdminPanel');
+      } else {
+        navigation.navigate('Home');
+      }
     } catch (error: any) {
       console.error('❌ Login Failed:', error.message);
     } finally {

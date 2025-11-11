@@ -6,6 +6,7 @@ export interface Theme {
   text: string;
   textSecondary: string;
   border: string;
+  inputBackground: string;
 }
 
 export const lightTheme: Theme = {
@@ -16,6 +17,7 @@ export const lightTheme: Theme = {
   text: '#000000',
   textSecondary: '#666666',
   border: '#E0E0E0',
+  inputBackground: '#F9F9F9',
 };
 
 export const darkTheme: Theme = {
@@ -26,4 +28,5 @@ export const darkTheme: Theme = {
   text: '#FFFFFF',
   textSecondary: '#CCCCCC',
   border: '#333333',
+  inputBackground: '#1A1A1A',
 };

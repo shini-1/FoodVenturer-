@@ -9,8 +9,14 @@ import BusinessPanelScreen from './screens/BusinessPanelScreen';
 import AdminPanelScreen from './screens/AdminPanelScreen';
 import CreateAdminScreen from './screens/CreateAdminScreen';
 import RestaurantDetailScreen from './screens/RestaurantDetailScreen';
+import BusinessDashboardScreen from './screens/BusinessDashboardScreen';
+import EditProfileScreen from './screens/EditProfileScreen';
+import MenuListScreen from './screens/MenuListScreen';
+import AddMenuItemScreen from './screens/AddMenuItemScreen';
+import EditMenuItemsScreen from './screens/EditMenuItemsScreen';
+import PostPromoScreen from './screens/PostPromoScreen';
 
-type Screen = 'RoleSelection' | 'Home' | 'BusinessPanel' | 'AdminPanel' | 'CreateAdmin' | 'RestaurantDetail';
+type Screen = 'RoleSelection' | 'Home' | 'BusinessPanel' | 'AdminPanel' | 'CreateAdmin' | 'RestaurantDetail' | 'BusinessDashboard' | 'EditProfile' | 'MenuList' | 'AddMenuItem' | 'EditMenuItems' | 'PostPromo';
 
 interface NavigationParams {
   restaurantId?: string;
@@ -45,6 +51,18 @@ export default function App() {
         return <CreateAdminScreen navigation={{ navigate }} />;
       case 'RestaurantDetail':
         return <RestaurantDetailScreen navigation={{ navigate }} route={{ params: screenParams }} />;
+      case 'BusinessDashboard':
+        return <BusinessDashboardScreen navigation={{ navigate }} />;
+      case 'EditProfile':
+        return <EditProfileScreen navigation={{ navigate }} />;
+      case 'MenuList':
+        return <MenuListScreen navigation={{ navigate }} />;
+      case 'AddMenuItem':
+        return <AddMenuItemScreen navigation={{ navigate }} />;
+      case 'EditMenuItems':
+        return <EditMenuItemsScreen navigation={{ navigate }} />;
+      case 'PostPromo':
+        return <PostPromoScreen navigation={{ navigate }} />;
       default:
         return <HomeScreen navigation={{ navigate }} />;
     }

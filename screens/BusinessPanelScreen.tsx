@@ -1,10 +1,19 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 
 function BusinessPanelScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
+
+  // Automatically navigate to business dashboard when this screen loads
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      navigation.navigate('BusinessDashboard');
+    }, 1000); // Small delay for smooth transition
+
+    return () => clearTimeout(timer);
+  }, [navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -12,9 +21,8 @@ function BusinessPanelScreen({ navigation }: { navigation: any }) {
       <View style={styles.content}>
         <Text style={[styles.title, { color: theme.text }]}>Business Owner Portal</Text>
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-          Access your business management tools
+          Redirecting to dashboard...
         </Text>
-        {/* Authentication screens will be shown as modals */}
       </View>
     </View>
   );
