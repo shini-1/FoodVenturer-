@@ -39,6 +39,16 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
     setShowBusinessModal(false);
   };
 
+  const handleLoginSuccess = () => {
+    console.log('🔍 Login success callback triggered');
+    handleCloseModal();
+    // Navigate to business dashboard after modal closes
+    setTimeout(() => {
+      console.log('🔍 Navigating to BusinessDashboard from RoleSelectionScreen');
+      navigation.navigate('BusinessDashboard');
+    }, 300);
+  };
+
   const handleCloseAdminModal = () => {
     setShowAdminModal(false);
   };
@@ -67,6 +77,7 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
                       navigation={navigation}
                       onClose={handleCloseModal}
                       onSwitchToSignup={handleSwitchToRegister}
+                      onLoginSuccess={handleLoginSuccess}
                     />
                   ) : (
                     <RegisterScreenNew

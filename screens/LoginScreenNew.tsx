@@ -19,9 +19,10 @@ interface LoginScreenNewProps {
   navigation: any;
   onClose?: () => void;
   onSwitchToSignup?: () => void;
+  onLoginSuccess?: () => void;
 }
 
-function LoginScreenNew({ navigation, onClose, onSwitchToSignup }: LoginScreenNewProps) {
+function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess }: LoginScreenNewProps) {
   console.log('🔍 LoginScreenNew rendered');
   console.log('🔍 LoginScreenNew props:', { navigation: !!navigation, onClose: !!onClose, onSwitchToSignup: !!onSwitchToSignup });
 
@@ -77,22 +78,18 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup }: LoginScreenNe
       });
 
       console.log('✅ Login successful');
+      console.log('🔍 Profile role:', profile.role);
       onClose?.();
 
-      // Navigate to appropriate dashboard based on role
-      if (profile.role === 'business_owner' || profile.role === 'business') {
-        navigation.navigate('BusinessDashboard');
-      } else if (profile.role === 'admin') {
-        navigation.navigate('AdminPanel');
-      } else {
-        navigation.navigate('Home');
-      }
+      // Call login success callback to handle navigation from parent component
+      console.log('🔍 Calling onLoginSuccess callback');
+      onLoginSuccess?.();
     } catch (error: any) {
       console.error('❌ Login Failed:', error.message);
     } finally {
       setIsLoading(false);
     }
-  }, [email, password, setUser, onClose, navigation]);
+  }, [email, password, setUser, onClose, onLoginSuccess, navigation]);
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
