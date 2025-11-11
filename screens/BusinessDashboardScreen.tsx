@@ -11,6 +11,7 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
   const { theme } = useTheme();
 
   const quickActions = [
+    { id: 'create-restaurant', label: 'Create Restaurant', icon: '🏪' },
     { id: 'menu-list', label: 'Menu List', icon: '📋' },
     { id: 'add-menu', label: 'Add Menu Item', icon: '➕' },
     { id: 'edit-menu', label: 'Edit Menu Items', icon: '✏️' },
@@ -20,6 +21,9 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
 
   const handleActionPress = (actionId: string) => {
     switch (actionId) {
+      case 'create-restaurant':
+        navigation.navigate('CreateRestaurant');
+        break;
       case 'menu-list':
         navigation.navigate('MenuList');
         break;
@@ -44,6 +48,10 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={[styles.backButtonText, { color: theme.primary }]}>← Back</Text>
+        </TouchableOpacity>
+
         <Text style={[styles.title, { color: theme.text }]}>Business Dashboard</Text>
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
@@ -77,6 +85,13 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+  },
+  backButton: {
+    marginBottom: 16,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   title: {
     fontSize: 28,

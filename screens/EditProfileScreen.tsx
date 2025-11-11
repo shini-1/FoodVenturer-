@@ -30,7 +30,7 @@ function EditProfileScreen({ navigation }: EditProfileScreenProps) {
         email,
       });
       Alert.alert('Success', 'Profile updated successfully');
-      navigation.goBack();
+      navigation.navigate('BusinessDashboard');
     } catch (error) {
       console.error('Error saving profile:', error);
       Alert.alert('Error', 'Failed to save profile');
@@ -43,7 +43,7 @@ function EditProfileScreen({ navigation }: EditProfileScreenProps) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.navigate('BusinessDashboard')} style={styles.backButton}>
           <Text style={[styles.backButtonText, { color: theme.primary }]}>← Back</Text>
         </TouchableOpacity>
 

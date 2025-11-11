@@ -277,7 +277,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
           />
           <TouchableOpacity
             style={[styles.backButton, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
-            onPress={() => navigation.navigate('Home')}
+            onPress={() => navigation.goBack()}
           >
             <Text style={{color: 'white', fontSize: 24}}>{'<'}</Text>
           </TouchableOpacity>
@@ -383,3 +383,4 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
 }
 
 export default RestaurantDetailScreen;
+

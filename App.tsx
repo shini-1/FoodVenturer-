@@ -9,6 +9,7 @@ import BusinessPanelScreen from './screens/BusinessPanelScreen';
 import AdminPanelScreen from './screens/AdminPanelScreen';
 import CreateAdminScreen from './screens/CreateAdminScreen';
 import RestaurantDetailScreen from './screens/RestaurantDetailScreen';
+import CreateRestaurantScreen from './screens/CreateRestaurantScreen';
 import BusinessDashboardScreen from './screens/BusinessDashboardScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 import MenuListScreen from './screens/MenuListScreen';
@@ -16,7 +17,7 @@ import AddMenuItemScreen from './screens/AddMenuItemScreen';
 import EditMenuItemsScreen from './screens/EditMenuItemsScreen';
 import PostPromoScreen from './screens/PostPromoScreen';
 
-type Screen = 'RoleSelection' | 'Home' | 'BusinessPanel' | 'AdminPanel' | 'CreateAdmin' | 'RestaurantDetail' | 'BusinessDashboard' | 'EditProfile' | 'MenuList' | 'AddMenuItem' | 'EditMenuItems' | 'PostPromo';
+type Screen = 'RoleSelection' | 'Home' | 'BusinessPanel' | 'AdminPanel' | 'CreateAdmin' | 'RestaurantDetail' | 'BusinessDashboard' | 'EditProfile' | 'MenuList' | 'AddMenuItem' | 'EditMenuItems' | 'PostPromo' | 'CreateRestaurant';
 
 interface NavigationParams {
   restaurantId?: string;
@@ -37,34 +38,48 @@ export default function App() {
     }
   };
 
+  const goBack = () => {
+    // For now, go back to RoleSelection as the main entry point
+    // In a real app, you'd have a navigation stack
+    setCurrentScreen('RoleSelection');
+    setScreenParams({});
+  };
+
+  const navigation = {
+    navigate,
+    goBack,
+  };
+
   const renderScreen = () => {
     switch (currentScreen) {
       case 'RoleSelection':
-        return <RoleSelectionScreen navigation={{ navigate }} />;
+        return <RoleSelectionScreen navigation={navigation} />;
       case 'Home':
-        return <HomeScreen navigation={{ navigate }} />;
+        return <HomeScreen navigation={navigation} />;
       case 'BusinessPanel':
-        return <BusinessPanelScreen navigation={{ navigate }} />;
+        return <BusinessPanelScreen navigation={navigation} />;
       case 'AdminPanel':
-        return <AdminPanelScreen navigation={{ navigate }} />;
+        return <AdminPanelScreen navigation={navigation} />;
       case 'CreateAdmin':
-        return <CreateAdminScreen navigation={{ navigate }} />;
+        return <CreateAdminScreen navigation={navigation} />;
       case 'RestaurantDetail':
-        return <RestaurantDetailScreen navigation={{ navigate }} route={{ params: screenParams }} />;
+        return <RestaurantDetailScreen navigation={navigation} route={{ params: screenParams }} />;
+      case 'CreateRestaurant':
+        return <CreateRestaurantScreen navigation={navigation} />;
       case 'BusinessDashboard':
-        return <BusinessDashboardScreen navigation={{ navigate }} />;
+        return <BusinessDashboardScreen navigation={navigation} />;
       case 'EditProfile':
-        return <EditProfileScreen navigation={{ navigate }} />;
+        return <EditProfileScreen navigation={navigation} />;
       case 'MenuList':
-        return <MenuListScreen navigation={{ navigate }} />;
+        return <MenuListScreen navigation={navigation} />;
       case 'AddMenuItem':
-        return <AddMenuItemScreen navigation={{ navigate }} />;
+        return <AddMenuItemScreen navigation={navigation} />;
       case 'EditMenuItems':
-        return <EditMenuItemsScreen navigation={{ navigate }} />;
+        return <EditMenuItemsScreen navigation={navigation} />;
       case 'PostPromo':
-        return <PostPromoScreen navigation={{ navigate }} />;
+        return <PostPromoScreen navigation={navigation} />;
       default:
-        return <HomeScreen navigation={{ navigate }} />;
+        return <HomeScreen navigation={navigation} />;
     }
   };
 

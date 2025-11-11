@@ -39,7 +39,7 @@ function PostPromoScreen({ navigation }: PostPromoScreenProps) {
       setPromoDescription('');
       setDiscount('');
       setExpiryDate('');
-      navigation.goBack();
+      navigation.navigate('BusinessDashboard');
     } catch (error) {
       console.error('Error posting promo:', error);
       Alert.alert('Error', 'Failed to post promo');
@@ -52,7 +52,7 @@ function PostPromoScreen({ navigation }: PostPromoScreenProps) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.navigate('BusinessDashboard')} style={styles.backButton}>
           <Text style={[styles.backButtonText, { color: theme.primary }]}>← Back</Text>
         </TouchableOpacity>
 
