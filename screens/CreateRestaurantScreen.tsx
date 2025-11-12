@@ -9,8 +9,10 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
+import { restaurantService, CreateRestaurantData } from '../src/services/restaurantService';
 
 interface CreateRestaurantScreenProps {
   navigation: any;
@@ -18,6 +20,7 @@ interface CreateRestaurantScreenProps {
 
 function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Form state
   const [restaurantName, setRestaurantName] = useState('');
@@ -40,27 +43,27 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
 
     setIsLoading(true);
     try {
-      // TODO: Implement restaurant creation logic
-      console.log('Creating restaurant:', {
-        restaurantName,
-        description,
-        category,
-        priceRange,
-        location,
-        imageUrl,
-        phone,
-        website,
-        hours,
-      });
+      const restaurantData: CreateRestaurantData = {
+        name: restaurantName.trim(),
+        description: description.trim(),
+        category: category.trim(),
+        priceRange: priceRange.trim(),
+        location: location.trim(),
+        imageUrl: imageUrl.trim(),
+        phone: phone.trim(),
+        website: website.trim(),
+        hours: hours.trim(),
+      };
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('🍽️ Creating restaurant with data:', restaurantData);
 
-      Alert.alert('Success', 'Restaurant created successfully!');
+      const createdRestaurant = await restaurantService.createRestaurant(restaurantData);
+
+      Alert.alert('Success', `Restaurant "${createdRestaurant.name}" created successfully!`);
       navigation.navigate('BusinessDashboard');
-    } catch (error) {
-      console.error('Error creating restaurant:', error);
-      Alert.alert('Error', 'Failed to create restaurant');
+    } catch (error: any) {
+      console.error('❌ Error creating restaurant:', error);
+      Alert.alert('Error', error.message || 'Failed to create restaurant');
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +73,7 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={() => navigation.navigate('BusinessDashboard')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.navigate('BusinessDashboard')} style={[styles.backButton, { top: insets.top + 10 }]}>
           <Text style={[styles.backButtonText, { color: theme.primary }]}>← Back</Text>
         </TouchableOpacity>
 
@@ -245,7 +248,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   backButton: {
-    marginBottom: 16,
+    position: 'absolute',
+    left: 20,
+    width: 60,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
   },
   backButtonText: {
     fontSize: 16,

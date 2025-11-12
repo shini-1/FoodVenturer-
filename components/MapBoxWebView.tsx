@@ -97,15 +97,16 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
     };
   });
 
-  // Simple 2D terrain map HTML with categorized markers and legend
+  // Simple 2D terrain map HTML with offline caching and categorized markers
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>2D Terrain Map</title>
+      <title>Offline Terrain Map</title>
       <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
       <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
+      <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-offline/v1.0.0/mapbox-gl-offline.js"></script>
       <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet">
       <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
@@ -210,9 +211,31 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
           margin-right: 6px;
           border: 1px solid #ccc;
         }
+
+        .offline-status {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          background: rgba(255, 255, 255, 0.9);
+          padding: 6px 12px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: bold;
+          z-index: 1000;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .offline-status.online {
+          color: #27ae60;
+        }
+
+        .offline-status.offline {
+          color: #e74c3c;
+        }
       </style>
     </head>
     <body>
+      <div id="offline-status" class="offline-status">Checking...</div>
       <div id="map"></div>
 
       <button id="legend-toggle" class="legend-toggle">📋 Legend</button>
@@ -246,25 +269,54 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
       </div>
 
       <script>
-        console.log('🗺️ 2D Terrain Map with categories starting...');
+        console.log('🗺️ Offline Terrain Map with caching starting...');
 
         try {
           // Initialize MapBox
           mapboxgl.accessToken = '${mapboxToken}';
           console.log('🗺️ MapBox token set');
 
+          // Check online status
+          function updateOnlineStatus() {
+            const isOnline = navigator.onLine;
+            const statusEl = document.getElementById('offline-status');
+            if (statusEl) {
+              statusEl.textContent = isOnline ? '🟢 Online' : '🔴 Offline';
+              statusEl.className = 'offline-status ' + (isOnline ? 'online' : 'offline');
+            }
+            return isOnline;
+          }
+
+          updateOnlineStatus();
+          window.addEventListener('online', updateOnlineStatus);
+          window.addEventListener('offline', updateOnlineStatus);
+
+          // Create offline region name
+          const offlineRegionName = 'foodventurer-map-region';
+
           // Create simple 2D terrain map
           const map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/outdoors-v12',
             center: [122.3649, 11.7061],
-            zoom: 13
+            zoom: 13,
+            // Enable offline capabilities
+            offline: true
           });
 
-          console.log('🗺️ 2D Terrain map created');
+          console.log('🗺️ Offline Terrain map created');
 
           map.on('load', function() {
-            console.log('🗺️ 2D Terrain map loaded successfully');
+            console.log('🗺️ Offline Terrain map loaded successfully');
+
+            // Check if offline region exists
+            if (updateOnlineStatus()) {
+              // Online: Try to download/create offline region
+              createOfflineRegion();
+            } else {
+              // Offline: Check if cached region exists
+              checkOfflineRegion();
+            }
 
             // Add restaurant markers
             const restaurants = ${JSON.stringify(categorizedRestaurants)};
@@ -315,7 +367,7 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
               }
             }
 
-            console.log('🗺️ 2D Terrain map ready with categorized markers');
+            console.log('🗺️ Offline Terrain map ready with categorized markers');
 
             // Add legend toggle functionality
             const legendToggle = document.getElementById('legend-toggle');
@@ -336,6 +388,73 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
             }));
 
           });
+
+          // Function to create offline region
+          function createOfflineRegion() {
+            console.log('🗺️ Creating offline region...');
+
+            // Define the offline region bounds (expand current view)
+            const bounds = map.getBounds();
+            const expandedBounds = [
+              [bounds.getWest() - 0.01, bounds.getSouth() - 0.01], // Southwest
+              [bounds.getEast() + 0.01, bounds.getNorth() + 0.01]  // Northeast
+            ];
+
+            const offlineRegion = new mapboxgl.OfflineRegion({
+              name: offlineRegionName,
+              bounds: expandedBounds,
+              zoom: {
+                min: 10,
+                max: 16
+              },
+              style: map.getStyle()
+            });
+
+            // Download the offline region
+            offlineRegion.download(function(progress) {
+              console.log('🗺️ Offline download progress:', Math.round(progress * 100) + '%');
+
+              // Update status
+              const statusEl = document.getElementById('offline-status');
+              if (statusEl) {
+                statusEl.textContent = '🟡 Downloading: ' + Math.round(progress * 100) + '%';
+              }
+
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'downloadProgress',
+                progress: progress
+              }));
+            }, function(error) {
+              console.error('🗺️ Offline download error:', error);
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'downloadError',
+                error: error.message
+              }));
+            }, function() {
+              console.log('🗺️ Offline region downloaded successfully');
+              updateOnlineStatus();
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'downloadComplete'
+              }));
+            });
+          }
+
+          // Function to check if offline region exists
+          function checkOfflineRegion() {
+            console.log('🗺️ Checking for existing offline region...');
+
+            // List offline regions
+            mapboxgl.offline.listOfflineRegions(function(regions) {
+              const existingRegion = regions.find(r => r.name === offlineRegionName);
+              if (existingRegion) {
+                console.log('🗺️ Found existing offline region, using cached tiles');
+                // Use the cached region
+                map.setOfflineRegion(existingRegion);
+              } else {
+                console.log('🗺️ No offline region found, map may not work offline');
+              }
+            });
+          }
 
           map.on('error', function(e) {
             console.error('🗺️ Map error:', e);
@@ -373,13 +492,40 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
         mixedContentMode="compatibility"
         allowFileAccess={true}
         allowUniversalAccessFromFileURLs={true}
-        onLoadStart={() => console.log('🗺️ 2D Terrain WebView load started')}
-        onLoadEnd={() => console.log('🗺️ 2D Terrain WebView load completed')}
+        allowFileAccessFromFileURLs={true}
+        originWhitelist={['*']}
+        onLoadStart={() => console.log('🗺️ Offline WebView load started')}
+        onLoadEnd={() => console.log('🗺️ Offline WebView load completed')}
         onMessage={(event) => {
-          console.log('🗺️ 2D Terrain WebView message:', event.nativeEvent.data);
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            console.log('🗺️ Offline WebView message:', data);
+
+            switch (data.type) {
+              case 'mapReady':
+                console.log('🗺️ Map ready with', data.restaurantCount, 'restaurants');
+                break;
+              case 'downloadProgress':
+                console.log('🗺️ Download progress:', Math.round(data.progress * 100) + '%');
+                break;
+              case 'downloadComplete':
+                console.log('🗺️ Offline download completed');
+                break;
+              case 'downloadError':
+                console.error('🗺️ Download error:', data.error);
+                break;
+              case 'mapError':
+                console.error('🗺️ Map error:', data.error);
+                break;
+              default:
+                console.log('🗺️ Unknown message type:', data.type);
+            }
+          } catch (error) {
+            console.error('🗺️ Error parsing WebView message:', error);
+          }
         }}
         onError={(error) => {
-          console.error('🗺️ 2D Terrain WebView error:', error);
+          console.error('🗺️ Offline WebView error:', error);
         }}
       />
     </View>

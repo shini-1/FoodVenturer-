@@ -3,8 +3,9 @@ import { View, Text, Button, FlatList, Alert, TouchableOpacity, Modal, TextInput
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import { getRestaurants, deleteRestaurant, getApprovedRestaurants, getPendingRestaurants, approveRestaurant, rejectRestaurant, deleteRestaurantOwner, updateRestaurantOwner, getRestaurantStats, updateRestaurant } from '../services/restaurants';
+import { menuService } from '../src/services/menuService';
 import { uploadAndUpdateRestaurantImage } from '../services/imageService';
-import { Restaurant, RestaurantOwner, RestaurantSubmission } from '../types';
+import { Restaurant, RestaurantOwner, RestaurantSubmission, MenuItem } from '../types';
 import { useWebLocation } from '../src/hooks/useWebLocation';
 import * as ImagePicker from 'expo-image-picker';
 import { reverseGeocode } from '../src/services/geocodingService';
@@ -35,9 +36,21 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     longitude: '',
     image: ''
   });
-  const [activeTab, setActiveTab] = useState<'restaurants' | 'pending'>('restaurants');
+  const [activeTab, setActiveTab] = useState<'restaurants' | 'pending' | 'menu'>('restaurants');
   const [addressCache, setAddressCache] = useState<{[key: string]: string}>({});
   const [imageUploading, setImageUploading] = useState(false);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [showMenuEditModal, setShowMenuEditModal] = useState(false);
+  const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
+  const [selectedRestaurantForMenu, setSelectedRestaurantForMenu] = useState<Restaurant | null>(null);
+  const [menuEditForm, setMenuEditForm] = useState({
+    name: '',
+    description: '',
+    price: '',
+    category: '',
+    image: '',
+    isAvailable: true
+  });
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -373,6 +386,109 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     }
   };
 
+  // Menu management functions
+  const loadMenuItems = async (restaurant: Restaurant) => {
+    try {
+      setSelectedRestaurantForMenu(restaurant);
+      const items = await menuService.getMenuItemsByRestaurant(restaurant.id);
+      setMenuItems(items);
+    } catch (error: any) {
+      console.error('Failed to load menu items:', error);
+      Alert.alert('Error', `Failed to load menu items: ${error.message}`);
+    }
+  };
+
+  const handleMenuEdit = (menuItem: MenuItem) => {
+    setEditingMenuItem(menuItem);
+    setMenuEditForm({
+      name: menuItem.name,
+      description: menuItem.description || '',
+      price: menuItem.price.toString(),
+      category: menuItem.category || '',
+      image: menuItem.image || '',
+      isAvailable: menuItem.isAvailable
+    });
+    setShowMenuEditModal(true);
+  };
+
+  const handleAddMenuItem = () => {
+    setEditingMenuItem(null);
+    setMenuEditForm({
+      name: '',
+      description: '',
+      price: '',
+      category: '',
+      image: '',
+      isAvailable: true
+    });
+    setShowMenuEditModal(true);
+  };
+
+  const handleSaveMenuItem = async () => {
+    if (!selectedRestaurantForMenu) return;
+
+    try {
+      const price = parseFloat(menuEditForm.price);
+      if (isNaN(price) || price < 0) {
+        Alert.alert('Error', 'Please enter a valid price');
+        return;
+      }
+
+      const menuItemData = {
+        restaurantId: selectedRestaurantForMenu.id,
+        name: menuEditForm.name.trim(),
+        description: menuEditForm.description.trim(),
+        price: price,
+        category: menuEditForm.category.trim(),
+        image: menuEditForm.image.trim(),
+        isAvailable: menuEditForm.isAvailable
+      };
+
+      if (editingMenuItem) {
+        // Update existing menu item
+        await menuService.updateMenuItem(editingMenuItem.id, menuItemData);
+        Alert.alert('Success', 'Menu item updated successfully!');
+      } else {
+        // Create new menu item
+        await menuService.createMenuItem(menuItemData);
+        Alert.alert('Success', 'Menu item created successfully!');
+      }
+
+      // Refresh menu items
+      await loadMenuItems(selectedRestaurantForMenu);
+      setShowMenuEditModal(false);
+      setEditingMenuItem(null);
+
+    } catch (error: any) {
+      Alert.alert('Error', `Failed to save menu item: ${error.message}`);
+    }
+  };
+
+  const handleDeleteMenuItem = async (menuItemId: string) => {
+    Alert.alert(
+      'Delete Menu Item',
+      'Are you sure you want to delete this menu item?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await menuService.deleteMenuItem(menuItemId);
+              if (selectedRestaurantForMenu) {
+                await loadMenuItems(selectedRestaurantForMenu);
+              }
+              Alert.alert('Success', 'Menu item deleted successfully!');
+            } catch (error: any) {
+              Alert.alert('Error', `Failed to delete menu item: ${error.message}`);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.background, padding: 20 }}>
       <Header />
@@ -398,6 +514,21 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
             { color: activeTab === 'restaurants' ? theme.background : theme.text }
           ]}>
             🍽️ Restaurants
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setActiveTab('menu')}
+          style={[
+            styles.tabButton,
+            activeTab === 'menu' && { backgroundColor: theme.primary }
+          ]}
+        >
+          <Text style={[
+            styles.tabText,
+            { color: activeTab === 'menu' ? theme.background : theme.text }
+          ]}>
+            📋 Menu
           </Text>
         </TouchableOpacity>
 
@@ -502,6 +633,122 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
             )}
             style={{ backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}
           />
+        </>
+      )}
+
+      {activeTab === 'menu' && (
+        <>
+          <Text style={{ fontSize: 18, marginBottom: 10, color: theme.text }}>Menu Management</Text>
+
+          {/* Restaurant Selection */}
+          <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Select Restaurant:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+            {restaurants.map((restaurant) => (
+              <TouchableOpacity
+                key={restaurant.id}
+                onPress={() => loadMenuItems(restaurant)}
+                style={[
+                  {
+                    backgroundColor: selectedRestaurantForMenu?.id === restaurant.id ? theme.primary : theme.surface,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    borderRadius: 8,
+                    marginRight: 12,
+                    borderWidth: 2,
+                    borderColor: theme.primary
+                  }
+                ]}
+              >
+                <Text style={{
+                  color: selectedRestaurantForMenu?.id === restaurant.id ? theme.background : theme.text,
+                  fontWeight: 'bold',
+                  fontSize: 14
+                }}>
+                  {restaurant.name.split(', ')[0]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Menu Items List */}
+          {selectedRestaurantForMenu && (
+            <>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <Text style={{ fontSize: 16, color: theme.text }}>
+                  Menu Items for {selectedRestaurantForMenu.name.split(', ')[0]}
+                </Text>
+                <TouchableOpacity
+                  onPress={handleAddMenuItem}
+                  style={{ backgroundColor: '#28a745', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6 }}
+                >
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>+ Add Item</Text>
+                </TouchableOpacity>
+              </View>
+
+              <FlatList
+                data={menuItems}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                      <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }}>
+                        {item.name}
+                      </Text>
+                      <Text style={{ color: theme.textSecondary, fontSize: 14, marginTop: 2 }}>
+                        {item.category} • ₱{item.price.toFixed(2)}
+                      </Text>
+                      {item.description && (
+                        <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2, fontStyle: 'italic' }} numberOfLines={1}>
+                          {item.description}
+                        </Text>
+                      )}
+                      <Text style={{ color: item.isAvailable ? '#28a745' : '#dc3545', fontSize: 12, marginTop: 2 }}>
+                        {item.isAvailable ? 'Available' : 'Unavailable'}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        onPress={() => handleMenuEdit(item)}
+                        style={{ backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4 }}
+                      >
+                        <Text style={{ color: theme.background, fontSize: 12, fontWeight: 'bold' }}>Edit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteMenuItem(item.id)}
+                        style={{ backgroundColor: '#dc3545', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4 }}
+                      >
+                        <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+                style={{ backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}
+                ListEmptyComponent={
+                  <View style={{ alignItems: 'center', padding: 20 }}>
+                    <Text style={{ color: theme.textSecondary, fontSize: 16 }}>
+                      No menu items for this restaurant
+                    </Text>
+                    <TouchableOpacity
+                      onPress={handleAddMenuItem}
+                      style={{ backgroundColor: theme.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, marginTop: 10 }}
+                    >
+                      <Text style={{ color: theme.background, fontWeight: 'bold' }}>Add First Item</Text>
+                    </TouchableOpacity>
+                  </View>
+                }
+              />
+            </>
+          )}
+
+          {!selectedRestaurantForMenu && (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}>
+              <Text style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 10 }}>🍽️</Text>
+              <Text style={{ fontSize: 18, color: theme.text, marginBottom: 10 }}>Select a Restaurant</Text>
+              <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center' }}>
+                Choose a restaurant above to manage its menu items
+              </Text>
+            </View>
+          )}
         </>
       )}
 
@@ -715,6 +962,155 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 style={{ backgroundColor: theme.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5, flex: 1, marginLeft: 10 }}
               >
                 <Text style={{ color: theme.background, textAlign: 'center', fontWeight: 'bold' }}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Menu Item Edit Modal */}
+      <Modal
+        visible={showMenuEditModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowMenuEditModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: theme.surface, borderRadius: 10, padding: 20, width: '90%', maxWidth: 400, maxHeight: '80%' }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: theme.text }}>
+              {editingMenuItem ? 'Edit Menu Item' : 'Add Menu Item'}
+            </Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Name:</Text>
+              <TextInput
+                value={menuEditForm.name}
+                onChangeText={(text) => setMenuEditForm(prev => ({ ...prev, name: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="Menu item name"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Price:</Text>
+              <TextInput
+                value={menuEditForm.price}
+                onChangeText={(text) => setMenuEditForm(prev => ({ ...prev, price: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="0.00"
+                keyboardType="decimal-pad"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Category:</Text>
+              <TextInput
+                value={menuEditForm.category}
+                onChangeText={(text) => setMenuEditForm(prev => ({ ...prev, category: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="e.g., Appetizers, Main Course, Desserts"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Description:</Text>
+              <TextInput
+                value={menuEditForm.description}
+                onChangeText={(text) => setMenuEditForm(prev => ({ ...prev, description: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background,
+                  minHeight: 80,
+                  textAlignVertical: 'top'
+                }}
+                placeholder="Optional description"
+                multiline
+                numberOfLines={3}
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Image URL:</Text>
+              <TextInput
+                value={menuEditForm.image}
+                onChangeText={(text) => setMenuEditForm(prev => ({ ...prev, image: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="Optional image URL"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                <TouchableOpacity
+                  onPress={() => setMenuEditForm(prev => ({ ...prev, isAvailable: !prev.isAvailable }))}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderWidth: 2,
+                    borderColor: theme.primary,
+                    borderRadius: 4,
+                    marginRight: 10,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: menuEditForm.isAvailable ? theme.primary : 'transparent'
+                  }}
+                >
+                  {menuEditForm.isAvailable && <Text style={{ color: theme.background, fontSize: 16 }}>✓</Text>}
+                </TouchableOpacity>
+                <Text style={{ color: theme.text, fontSize: 16 }}>Available</Text>
+              </View>
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowMenuEditModal(false);
+                  setEditingMenuItem(null);
+                }}
+                style={{ backgroundColor: theme.border, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5, flex: 1, marginRight: 10 }}
+              >
+                <Text style={{ color: theme.text, textAlign: 'center', fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSaveMenuItem}
+                style={{ backgroundColor: theme.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5, flex: 1, marginLeft: 10 }}
+              >
+                <Text style={{ color: theme.background, textAlign: 'center', fontWeight: 'bold' }}>
+                  {editingMenuItem ? 'Update' : 'Create'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -1,16 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Modal, FlatList, ScrollView, StyleSheet, Image, Alert } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  FlatList,
+  Alert,
+} from 'react-native';
+import { Image } from 'expo-image';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
-import { getRestaurants } from '../services/restaurants';
+import { restaurantService } from '../src/services/restaurantService';
 import { reverseGeocode } from '../src/services/geocodingService';
 
-interface Restaurant {
-  id: string;
-  name: string;
-  location: { latitude: number; longitude: number };
-  image?: string;
+import { Restaurant } from '../types';
+
+interface CategorizedRestaurant extends Restaurant {
+  category: string; // Override to make category required
 }
 
 // Placeholder image URLs based on category (using unsplash for consistent placeholders)
@@ -55,6 +65,17 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   // Get address for restaurant - try name parsing first, then geocoding
   const getRestaurantAddress = async (restaurant: Restaurant): Promise<string> => {
+    // Check if restaurant has valid location data
+    if (!restaurant.location || typeof restaurant.location.latitude !== 'number' || typeof restaurant.location.longitude !== 'number') {
+      console.warn('⚠️ Restaurant missing location data:', restaurant.name, restaurant.location);
+      // Try parsing address from name
+      const parsedAddress = parseAddressFromName(restaurant.name);
+      if (parsedAddress !== restaurant.name && parsedAddress.length > 10) {
+        return `📍 ${parsedAddress}`;
+      }
+      return '📍 Location not available';
+    }
+
     const cacheKey = restaurant.id;
 
     // Check if already cached
@@ -124,7 +145,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     const fetchRestaurants = async () => {
       try {
         console.log('🏠 HomeScreen: Fetching restaurants...');
-        const data = await getRestaurants();
+        const data = await restaurantService.getAllRestaurants();
         console.log('🏠 HomeScreen: Fetched restaurants:', data.length);
         setRestaurants(data);
 
@@ -132,7 +153,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         clearAddressCache();
 
         // Pre-fetch addresses for all restaurants
-        const addressPromises = data.map(async (restaurant) => {
+        const addressPromises = data.map(async (restaurant: Restaurant) => {
           try {
             const address = await getRestaurantAddress(restaurant);
             console.log(`🏠 Got address for ${restaurant.name}: ${address}`);
@@ -161,7 +182,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   }, [restaurants]);
 
   // Categorize restaurants by type (same logic as MapBoxWebView)
-  const categorizedRestaurants = restaurants.map((restaurant) => {
+  const categorizedRestaurants: CategorizedRestaurant[] = useMemo(() => restaurants.map((restaurant) => {
     const name = restaurant.name.toLowerCase();
     let category = 'casual';
 
@@ -205,7 +226,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       ...restaurant,
       category
     };
-  });
+  }), [restaurants]);
 
   const parseAddressFromName = (fullName: string): string => {
     const parts = fullName.split(', ');
@@ -217,7 +238,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     return fullName; // Fallback to full name if parsing fails
   };
 
-  const filteredRestaurants = categorizedRestaurants.filter((restaurant) => {
+  const filteredRestaurants = useMemo(() => categorizedRestaurants.filter((restaurant) => {
     // Text search filter
     const matchesSearch = restaurant.name.toLowerCase().includes(searchText.toLowerCase());
 
@@ -225,19 +246,24 @@ function HomeScreen({ navigation }: { navigation: any }) {
     const matchesCategory = selectedCategory === 'all' || restaurant.category === selectedCategory;
 
     return matchesSearch && matchesCategory;
-  });
+  }), [categorizedRestaurants, searchText, selectedCategory]);
+
+  // Load addresses for filtered restaurants
+  useEffect(() => {
+    filteredRestaurants.forEach((restaurant) => {
+      const cacheKey = restaurant.id;
+      if (!addressCache[cacheKey] && !geocodingInProgress.has(cacheKey)) {
+        // Trigger address loading
+        getRestaurantAddress(restaurant).catch((error) => {
+          console.warn(`Failed to get address for ${restaurant.name}:`, error);
+        });
+      }
+    });
+  }, [filteredRestaurants]);
 
   // RestaurantCard component that handles address display
-  const RestaurantCard = ({ restaurant }: { restaurant: Restaurant }) => {
-    const [address, setAddress] = useState<string>('');
-
-    useEffect(() => {
-      const loadAddress = async () => {
-        const addr = await getRestaurantAddress(restaurant);
-        setAddress(addr);
-      };
-      loadAddress();
-    }, [restaurant]);
+  const RestaurantCard = useCallback(({ restaurant }: { restaurant: CategorizedRestaurant }) => {
+    const address = addressCache[restaurant.id] || '📍 Loading address...';
 
     return (
       <TouchableOpacity
@@ -253,15 +279,16 @@ function HomeScreen({ navigation }: { navigation: any }) {
               uri: restaurant.image || getPlaceholderImage(restaurant.category || 'casual')
             }}
             style={styles.restaurantImage}
-            resizeMode="cover"
-            onError={(e) => {
-              console.log('Image load error for', restaurant.name, e.nativeEvent.error);
+            contentFit="cover"
+            placeholder={require('../assets/icon.png')}
+            onError={() => {
+              console.log('Image load error for', restaurant.name);
             }}
           />
           <View style={styles.cardTextContent}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>{restaurant.name.split(', ')[0]}</Text>
             <Text style={[styles.cardLocation, { color: theme.textSecondary }]}>
-              {address || '📍 Loading address...'}
+              {address}
             </Text>
             <Text style={[styles.cardCategory, { color: theme.primary }]}>
               {restaurantCategories.find(cat => cat.value === (restaurant.category || 'casual'))?.emoji || '🍽️'} {restaurant.category || 'casual'}
@@ -270,7 +297,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [addressCache, navigation, theme, restaurantCategories]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>

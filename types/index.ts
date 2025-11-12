@@ -63,3 +63,16 @@ export interface RestaurantSubmission {
   submittedAt: number;
   status: 'pending' | 'approved' | 'rejected';
 }
+
+export interface MenuItem {
+  id: string;
+  restaurantId: string;
+  name: string;
+  description?: string;
+  price: number;
+  category?: string; // e.g., 'appetizers', 'main course', 'desserts', 'beverages'
+  image?: string;
+  isAvailable: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

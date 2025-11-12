@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
+import { restaurantService } from '../src/services/restaurantService';
+import { supabase } from '../services/firebase';
 
 interface BusinessDashboardScreenProps {
   navigation: any;
@@ -9,14 +12,40 @@ interface BusinessDashboardScreenProps {
 
 function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [hasRestaurant, setHasRestaurant] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    checkRestaurantStatus();
+  }, []);
+
+  const checkRestaurantStatus = async () => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('User not authenticated');
+        return;
+      }
+
+      const restaurant = await restaurantService.getRestaurantByOwnerId(user.id);
+      setHasRestaurant(!!restaurant);
+    } catch (error) {
+      console.error('Error checking restaurant status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const quickActions = [
-    { id: 'create-restaurant', label: 'Create Restaurant', icon: '🏪' },
-    { id: 'menu-list', label: 'Menu List', icon: '📋' },
-    { id: 'add-menu', label: 'Add Menu Item', icon: '➕' },
-    { id: 'edit-menu', label: 'Edit Menu Items', icon: '✏️' },
+    ...(hasRestaurant ? [] : [{ id: 'create-restaurant', label: 'Create Restaurant', icon: '🏪' }]),
+    ...(hasRestaurant ? [
+      { id: 'menu-list', label: 'Menu List', icon: '📋' },
+      { id: 'add-menu', label: 'Add Menu Item', icon: '➕' },
+      { id: 'edit-menu', label: 'Edit Menu Items', icon: '✏️' },
+      { id: 'post-promo', label: 'Post Promo', icon: '📢' },
+    ] : []),
     { id: 'edit-profile', label: 'Edit Profile', icon: '👤' },
-    { id: 'post-promo', label: 'Post Promo', icon: '📢' },
   ];
 
   const handleActionPress = (actionId: string) => {
@@ -48,11 +77,25 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { top: insets.top + 10 }]}>
           <Text style={[styles.backButtonText, { color: theme.primary }]}>← Back</Text>
         </TouchableOpacity>
 
         <Text style={[styles.title, { color: theme.text }]}>Business Dashboard</Text>
+
+        {loading ? (
+          <View style={{ alignItems: 'center', padding: 40 }}>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+              Loading...
+            </Text>
+          </View>
+        ) : !hasRestaurant ? (
+          <View style={{ alignItems: 'center', padding: 20 }}>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary, textAlign: 'center' }]}>
+              Welcome! Create your restaurant to start managing menus and promotions.
+            </Text>
+          </View>
+        ) : null}
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
 
@@ -87,7 +130,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   backButton: {
-    marginBottom: 16,
+    position: 'absolute',
+    left: 20,
+    width: 60,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
   },
   backButtonText: {
     fontSize: 16,

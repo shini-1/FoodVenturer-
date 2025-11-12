@@ -13,6 +13,7 @@ export const TABLES = {
   BUSINESS_OWNERS: 'business_owners',
   RESTAURANTS: 'restaurants',
   RESTAURANT_SUBMISSIONS: 'restaurant_submissions',
+  MENU_ITEMS: 'menu_items',
   REVIEWS: 'reviews',
   USERS: 'users',
 };
@@ -79,19 +80,31 @@ CREATE TABLE IF NOT EXISTS business_owners (
   is_verified BOOLEAN DEFAULT FALSE
 );
 
--- Create restaurants table
-CREATE TABLE IF NOT EXISTS restaurants (
+-- Create menu_items table
+CREATE TABLE IF NOT EXISTS menu_items (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  restaurant_id UUID REFERENCES restaurants(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  location JSONB,
-  image TEXT,
-  category TEXT,
-  rating DECIMAL(2,1),
-  price_range TEXT,
   description TEXT,
-  phone TEXT,
-  hours TEXT,
-  website TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  category TEXT, -- e.g., 'appetizers', 'main course', 'desserts', 'beverages'
+  image TEXT,
+  is_available BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add owner_id to restaurants table
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+
+-- Create promos table
+CREATE TABLE IF NOT EXISTS promos (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  restaurant_id UUID REFERENCES restaurants(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  discount DECIMAL(5,2) NOT NULL CHECK (discount > 0 AND discount <= 100),
+  expiry_date DATE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -101,6 +114,12 @@ ALTER TABLE restaurant_submissions ENABLE ROW LEVEL SECURITY;
 
 -- Enable Row Level Security for business_owners table
 ALTER TABLE business_owners ENABLE ROW LEVEL SECURITY;
+
+-- Enable RLS for promos table
+ALTER TABLE promos ENABLE ROW LEVEL SECURITY;
+
+-- Enable Row Level Security for menu_items table
+ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist
 DROP POLICY IF EXISTS "Users can create submissions" ON restaurant_submissions;
@@ -159,19 +178,16 @@ CREATE POLICY "Admins can manage business owners" ON business_owners
     )
   );
 
--- Enable Row Level Security for restaurants table
-ALTER TABLE restaurants ENABLE ROW LEVEL SECURITY;
+-- Drop existing policies if they exist (menu_items table)
+DROP POLICY IF EXISTS "Anyone can read menu items" ON menu_items;
+DROP POLICY IF EXISTS "Admins can manage menu items" ON menu_items;
 
--- Drop existing policies if they exist (restaurants table)
-DROP POLICY IF EXISTS "Anyone can read restaurants" ON restaurants;
-DROP POLICY IF EXISTS "Admins can manage restaurants" ON restaurants;
-
--- Allow anyone to read restaurants (public data)
-CREATE POLICY "Anyone can read restaurants" ON restaurants
+-- Allow anyone to read menu items (public data)
+CREATE POLICY "Anyone can read menu items" ON menu_items
   FOR SELECT USING (true);
 
--- Allow admins to insert/update/delete restaurants
-CREATE POLICY "Admins can manage restaurants" ON restaurants
+-- Allow admins to manage menu items
+CREATE POLICY "Admins can manage menu items" ON menu_items
   FOR ALL USING (
     EXISTS (
       SELECT 1 FROM admins
@@ -179,6 +195,20 @@ CREATE POLICY "Admins can manage restaurants" ON restaurants
       AND admins.is_active = true
     )
   );
+
+-- Allow business owners to manage their own promos
+CREATE POLICY "Business owners can manage own promos" ON promos
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM restaurants r
+      WHERE r.id = promos.restaurant_id
+      AND r.owner_id = auth.uid()
+    )
+  );
+
+-- Allow anyone to read active promos (for restaurant details)
+CREATE POLICY "Anyone can read active promos" ON promos
+  FOR SELECT USING (expiry_date >= CURRENT_DATE);
 
 -- Enable Row Level Security for admins table
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;

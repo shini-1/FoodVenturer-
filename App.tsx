@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './theme/ThemeContext';
 import { AuthProvider } from './components/AuthContext';
 import { NetworkProvider } from './src/contexts/NetworkContext';
@@ -84,13 +85,15 @@ export default function App() {
   };
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <NetworkProvider>
-          {renderScreen()}
-          <StatusBar style="auto" />
-        </NetworkProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <NetworkProvider>
+            {renderScreen()}
+            <StatusBar style="auto" />
+          </NetworkProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

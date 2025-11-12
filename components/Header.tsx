@@ -1,31 +1,36 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 
 function Header() {
   const { isDark, toggleTheme, theme } = useTheme();
 
   return (
-    <View style={styles.header}>
-      <TouchableOpacity
-        onPress={toggleTheme}
-        accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-        accessibilityHint="Toggles between light and dark theme"
-        style={styles.toggleButton}
-      >
-        <Text style={[styles.toggleText, { color: theme.text }]}>{isDark ? '☀️' : '🌙'}</Text>
-      </TouchableOpacity>
-    </View>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={toggleTheme}
+          accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          accessibilityHint="Toggles between light and dark theme"
+          style={styles.toggleButton}
+        >
+          <Text style={[styles.toggleText, { color: theme.text }]}>{isDark ? '☀️' : '🌙'}</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
+  safeArea: {
     position: 'absolute',
     top: 0,
     right: 0,
-    padding: 10,
     zIndex: 1000,
+  },
+  header: {
+    padding: 10,
   },
   toggleButton: {
     padding: 5,

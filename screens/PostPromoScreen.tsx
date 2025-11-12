@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
+import { promoService } from '../src/services/promoService';
+import { restaurantService } from '../src/services/restaurantService';
+import { supabase } from '../services/firebase';
 
 interface PostPromoScreenProps {
   navigation: any;
@@ -9,6 +13,7 @@ interface PostPromoScreenProps {
 
 function PostPromoScreen({ navigation }: PostPromoScreenProps) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [promoTitle, setPromoTitle] = useState('');
   const [promoDescription, setPromoDescription] = useState('');
   const [discount, setDiscount] = useState('');
@@ -21,28 +26,59 @@ function PostPromoScreen({ navigation }: PostPromoScreenProps) {
       return;
     }
 
-    if (isNaN(parseFloat(discount))) {
-      Alert.alert('Validation Error', 'Please enter a valid discount percentage');
+    const discountValue = parseFloat(discount);
+    if (isNaN(discountValue) || discountValue <= 0 || discountValue > 100) {
+      Alert.alert('Validation Error', 'Please enter a valid discount percentage (1-100)');
+      return;
+    }
+
+    // Validate expiry date
+    const today = new Date().toISOString().split('T')[0];
+    if (expiryDate < today) {
+      Alert.alert('Validation Error', 'Expiry date must be in the future');
       return;
     }
 
     setIsLoading(true);
     try {
-      console.log('Posting promo:', {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get owner's restaurant
+      const restaurant = await restaurantService.getRestaurantByOwnerId(user.id);
+      if (!restaurant) {
+        Alert.alert('Error', 'You must create a restaurant first before posting promos');
+        navigation.navigate('CreateRestaurant');
+        return;
+      }
+
+      console.log('Posting promo for restaurant:', restaurant.id, {
         promoTitle,
         promoDescription,
-        discount: parseFloat(discount),
+        discount: discountValue,
         expiryDate,
       });
+
+      await promoService.createPromo({
+        restaurantId: restaurant.id,
+        title: promoTitle.trim(),
+        description: promoDescription.trim(),
+        discount: discountValue,
+        expiryDate,
+      });
+
       Alert.alert('Success', 'Promo posted successfully');
       setPromoTitle('');
       setPromoDescription('');
       setDiscount('');
       setExpiryDate('');
       navigation.navigate('BusinessDashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error posting promo:', error);
-      Alert.alert('Error', 'Failed to post promo');
+      Alert.alert('Error', error.message || 'Failed to post promo');
     } finally {
       setIsLoading(false);
     }
@@ -52,7 +88,7 @@ function PostPromoScreen({ navigation }: PostPromoScreenProps) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={() => navigation.navigate('BusinessDashboard')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.navigate('BusinessDashboard')} style={[styles.backButton, { top: insets.top + 10 }]}>
           <Text style={[styles.backButtonText, { color: theme.primary }]}>← Back</Text>
         </TouchableOpacity>
 
@@ -146,7 +182,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   backButton: {
-    marginBottom: 16,
+    position: 'absolute',
+    left: 20,
+    width: 60,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
   },
   backButtonText: {
     fontSize: 16,

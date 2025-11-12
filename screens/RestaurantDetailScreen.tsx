@@ -9,9 +9,12 @@ import {
   ActivityIndicator,
   Linking,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
-import { Restaurant } from '../types';
+import { Restaurant, MenuItem } from '../types';
 import { reverseGeocode } from '../src/services/geocodingService';
+import { menuService } from '../src/services/menuService';
+import { promoService, Promo } from '../src/services/promoService';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
 
@@ -179,6 +182,7 @@ interface RestaurantDetailScreenProps {
 
 function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenProps) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Extract restaurant data from route params
   const { restaurantId, restaurant: initialRestaurant } = route?.params || {};
@@ -187,6 +191,10 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
   const [restaurant, setRestaurant] = useState<Restaurant | null>(initialRestaurant || null);
   const [loading, setLoading] = useState(!initialRestaurant);
   const [address, setAddress] = useState<string>('');
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuLoading, setMenuLoading] = useState(false);
+  const [promos, setPromos] = useState<Promo[]>([]);
+  const [promoLoading, setPromoLoading] = useState(false);
 
   // Debug logging
   useEffect(() => {
@@ -223,6 +231,54 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
     };
     if (restaurant) {
       fetchAddress();
+    }
+  }, [restaurant]);
+
+  // Fetch menu items for the restaurant
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      if (restaurant?.id) {
+        try {
+          setMenuLoading(true);
+          console.log('🍽️ Fetching menu items for restaurant:', restaurant.id);
+          const items = await menuService.getMenuItemsByRestaurant(restaurant.id);
+          console.log('🍽️ Fetched menu items:', items.length);
+          setMenuItems(items);
+        } catch (error) {
+          console.error('❌ Error fetching menu items:', error);
+          setMenuItems([]);
+        } finally {
+          setMenuLoading(false);
+        }
+      }
+    };
+
+    if (restaurant) {
+      fetchMenuItems();
+    }
+  }, [restaurant]);
+
+  // Fetch active promos for the restaurant
+  useEffect(() => {
+    const fetchPromos = async () => {
+      if (restaurant?.id) {
+        try {
+          setPromoLoading(true);
+          console.log('📢 Fetching active promos for restaurant:', restaurant.id);
+          const activePromos = await promoService.getActivePromosByRestaurant(restaurant.id);
+          console.log('📢 Fetched active promos:', activePromos.length);
+          setPromos(activePromos);
+        } catch (error) {
+          console.error('❌ Error fetching promos:', error);
+          setPromos([]);
+        } finally {
+          setPromoLoading(false);
+        }
+      }
+    };
+
+    if (restaurant) {
+      fetchPromos();
     }
   }, [restaurant]);
 
@@ -276,7 +332,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
             style={styles.headerImage}
           />
           <TouchableOpacity
-            style={[styles.backButton, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
+            style={[styles.backButton, { backgroundColor: 'rgba(0,0,0,0.5)', top: insets.top + 10 }]}
             onPress={() => navigation.goBack()}
           >
             <Text style={{color: 'white', fontSize: 24}}>{'<'}</Text>
@@ -352,6 +408,100 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
               </Text>
             </View>
           )}
+
+          {/* Menu */}
+          <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Menu</Text>
+            {menuLoading ? (
+              <View style={{ alignItems: 'center', padding: 20 }}>
+                <ActivityIndicator size="small" color={theme.primary} />
+                <Text style={[styles.descriptionText, { color: theme.textSecondary, marginTop: 8 }]}>
+                  Loading menu...
+                </Text>
+              </View>
+            ) : menuItems.length === 0 ? (
+              <Text style={[styles.descriptionText, { color: theme.textSecondary, textAlign: 'center', paddingVertical: 20 }]}>
+                No menu items available
+              </Text>
+            ) : (
+              <View style={{ gap: 12 }}>
+                {(() => {
+                  // Group menu items by category
+                  const groupedItems: Record<string, MenuItem[]> = {};
+                  menuItems.forEach(item => {
+                    const category = item.category || 'Other';
+                    if (!groupedItems[category]) {
+                      groupedItems[category] = [];
+                    }
+                    groupedItems[category].push(item);
+                  });
+
+                  return Object.entries(groupedItems).map(([category, items]) => (
+                    <View key={category} style={{ marginBottom: 16 }}>
+                      <Text style={[styles.sectionTitle, { color: theme.primary, fontSize: 16, marginBottom: 8 }]}>
+                        {category}
+                      </Text>
+                      {items.map(item => (
+                        <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border + '30' }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.restaurantName, { color: theme.text, fontSize: 16 }]}>
+                              {item.name}
+                            </Text>
+                            {item.description && (
+                              <Text style={[styles.descriptionText, { color: theme.textSecondary, fontSize: 14, marginTop: 2 }]}>
+                                {item.description}
+                              </Text>
+                            )}
+                          </View>
+                          <Text style={[styles.restaurantName, { color: theme.primary, fontSize: 16, fontWeight: 'bold' }]}>
+                            ₱{item.price.toFixed(2)}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  ));
+                })()}
+              </View>
+            )}
+          </View>
+
+          {/* Promotions */}
+          <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Promotions</Text>
+            {promoLoading ? (
+              <View style={{ alignItems: 'center', padding: 20 }}>
+                <ActivityIndicator size="small" color={theme.primary} />
+                <Text style={[styles.descriptionText, { color: theme.textSecondary, marginTop: 8 }]}>
+                  Loading promotions...
+                </Text>
+              </View>
+            ) : promos.length === 0 ? (
+              <Text style={[styles.descriptionText, { color: theme.textSecondary, textAlign: 'center', paddingVertical: 20 }]}>
+                No active promotions
+              </Text>
+            ) : (
+              <View style={{ gap: 12 }}>
+                {promos.map(promo => (
+                  <View key={promo.id} style={{ padding: 16, backgroundColor: theme.primary + '10', borderRadius: 8, borderWidth: 1, borderColor: theme.primary + '30' }}>
+                    <Text style={[styles.restaurantName, { color: theme.primary, fontSize: 18, fontWeight: 'bold' }]}>
+                      {promo.title}
+                    </Text>
+                    <Text style={[styles.descriptionText, { color: theme.textSecondary, marginTop: 4 }]}>
+                      {promo.description}
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                      <Text style={[styles.categoryText, { color: theme.text, fontSize: 16, fontWeight: 'bold' }]}>
+                        {promo.discount}% OFF
+                      </Text>
+                      <Text style={[styles.categoryText, { color: theme.textSecondary, fontSize: 14 }]}>
+                        Expires: {new Date(promo.expiryDate).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
 
           {/* Location Details */}
           <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}>
