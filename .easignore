@@ -3,6 +3,10 @@ node_modules/
 .expo/
 .expo-shared/
 
+# Native folders (for CNG/Prebuild)
+/android
+/ios
+
 # Build artifacts
 dist/
 build/
