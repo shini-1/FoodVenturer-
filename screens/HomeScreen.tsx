@@ -176,56 +176,87 @@ function HomeScreen({ navigation }: { navigation: any }) {
     fetchRestaurants();
   }, []);
 
-  // Debug: Log when restaurants state changes
   useEffect(() => {
     console.log('🏠 HomeScreen: Restaurants state updated:', restaurants.length);
   }, [restaurants]);
 
   // Categorize restaurants by type (same logic as MapBoxWebView)
-  const categorizedRestaurants: CategorizedRestaurant[] = useMemo(() => restaurants.map((restaurant) => {
+  const categorizedRestaurants = useMemo(() => restaurants.map((restaurant) => {
     const name = restaurant.name.toLowerCase();
     let category = 'casual';
+    let color = '#4a90e2'; // Default blue
+    let emoji = '🍽️';
 
-    // Smart categorization based on restaurant name keywords
     if (name.includes('pizza') || name.includes('pizzeria')) {
       category = 'italian';
+      color = '#e74c3c';
+      emoji = '🍕';
     } else if (name.includes('cafe') || name.includes('coffee') || name.includes('starbucks')) {
       category = 'cafe';
+      color = '#8b4513';
+      emoji = '☕';
     } else if (name.includes('burger') || name.includes('mcdonald') || name.includes('wendy')) {
       category = 'fast_food';
+      color = '#ff6b35';
+      emoji = '🍔';
     } else if (name.includes('chinese') || name.includes('china') || name.includes('wok')) {
       category = 'asian';
+      color = '#e67e22';
+      emoji = '🥢';
     } else if (name.includes('sushi') || name.includes('japanese') || name.includes('tokyo')) {
       category = 'japanese';
+      color = '#9b59b6';
+      emoji = '🍱';
     } else if (name.includes('bakery') || name.includes('bread') || name.includes('pastry')) {
       category = 'bakery';
+      color = '#f39c12';
+      emoji = '🥖';
     } else if (name.includes('steak') || name.includes('grill') || name.includes('barbecue')) {
       category = 'grill';
+      color = '#e74c3c';
+      emoji = '🥩';
     } else if (name.includes('seafood') || name.includes('fish') || name.includes('lobster')) {
       category = 'seafood';
+      color = '#3498db';
+      emoji = '🦞';
     } else if (name.includes('mexican') || name.includes('taco') || name.includes('burrito')) {
       category = 'mexican';
+      color = '#e67e22';
+      emoji = '🌮';
     } else if (name.includes('thai') || name.includes('vietnam')) {
       category = 'thai';
+      color = '#27ae60';
+      emoji = '🍜';
     } else if (name.includes('buffet') || name.includes('all you can eat')) {
       category = 'buffet';
+      color = '#f1c40f';
+      emoji = '🍽️';
     } else if (name.includes('fine') || name.includes('elegant') || name.includes('upscale')) {
       category = 'fine_dining';
+      color = '#8e44ad';
+      emoji = '🍾';
     } else if (name.includes('fast') || name.includes('quick')) {
       category = 'fast_casual';
+      color = '#16a085';
+      emoji = '🏃';
     } else if (name.includes('family') || name.includes('kids')) {
       category = 'family';
+      color = '#f39c12';
+      emoji = '👨‍👩‍👧‍👦';
     } else if (name.includes('diner')) {
       category = 'diner';
-    } else {
-      // Default casual dining
-      category = 'casual';
+      color = '#95a5a6';
+      emoji = '🍳';
     }
 
-    return {
+    const categorized = {
       ...restaurant,
       category
     };
+
+    console.log('🏷️ Categorized restaurant:', restaurant.name, '->', category, 'color:', color, 'emoji:', emoji);
+
+    return categorized;
   }), [restaurants]);
 
   const parseAddressFromName = (fullName: string): string => {
@@ -380,7 +411,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
       <View style={styles.mapContainer}>
         {filteredRestaurants.length > 0 ? (
-          <MapBoxWebView restaurants={filteredRestaurants} />
+          (() => {
+            console.log('🗺️ Passing restaurants to MapBoxWebView:', filteredRestaurants.length, filteredRestaurants);
+            return <MapBoxWebView restaurants={filteredRestaurants} />;
+          })()
         ) : (
           <View style={[styles.loadingContainer, { backgroundColor: theme.surface }]}>
             <Text style={[styles.loadingText, { color: theme.text }]}>
