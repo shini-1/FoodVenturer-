@@ -16,6 +16,7 @@ interface MapBoxWebViewProps {
 function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
   const { isOnline } = useNetwork();
   console.log('🗺️ MapBoxWebView: Component rendered with', restaurants?.length || 0, 'restaurants, online:', isOnline);
+  console.log('🗺️ MapBoxWebView: Network detection details:', { isOnline });
 
   if (!restaurants || restaurants.length === 0) {
     console.warn('🗺️ MapBoxWebView: No restaurants data provided!');
@@ -25,6 +26,10 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
       </View>
     );
   }
+
+  // Force online mode for debugging - remove this after confirming the fix
+  const forceOnline = true; // Set to false to test offline behavior
+  const shouldShowMap = isOnline || forceOnline;
 
   const mapboxToken = 'pk.eyJ1Ijoic2hpbmlpaSIsImEiOiJjbWhkZGIwZzYwMXJmMmtxMTZpY294c2V6In0.zuQl6u8BJxOgimXHxMiNqQ';
 
@@ -499,7 +504,7 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
 
   return (
     <View style={{ flex: 1 }}>
-      {!isOnline && (
+      {!shouldShowMap && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineText}>⚠️ You're offline. Map may not load properly.</Text>
         </View>
