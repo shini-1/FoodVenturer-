@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { WebView } from 'react-native-webview';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useNetwork } from '../src/contexts/NetworkContext';
+import Constants from 'expo-constants';
 
 interface Restaurant {
   id: string;
@@ -13,35 +14,111 @@ interface MapBoxWebViewProps {
   restaurants: Restaurant[];
 }
 
-function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
+// WebView component with MapBox for production builds
+function MapBoxWebViewComponent({ restaurants, isOnline }: { restaurants: Restaurant[], isOnline: boolean }) {
   const webViewRef = useRef<WebView>(null);
-  const { isOnline } = useNetwork();
-  console.log('🗺️ MapBoxWebView: Component rendered with', restaurants?.length || 0, 'restaurants, online:', isOnline);
-  console.log('🗺️ MapBoxWebView: Network detection details:', { isOnline });
-
-  if (!restaurants || restaurants.length === 0) {
-    console.warn('🗺️ MapBoxWebView: No restaurants data provided!');
-    return (
-      <View style={styles.offlineBanner}>
-        <Text style={styles.offlineText}>📍 No restaurants to display on map</Text>
-      </View>
-    );
-  }
-
-  // Force online mode for debugging - remove this after confirming the fix
-  const forceOnline = true; // Set to false to test offline behavior
-  const shouldShowMap = isOnline || forceOnline;
 
   const mapboxToken = 'pk.eyJ1Ijoic2hpbmlpaSIsImEiOiJjbWhkZGIwZzYwMXJmMmtxMTZpY294c2V6In0.zuQl6u8BJxOgimXHxMiNqQ';
 
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>FoodVenturer Map</title>
+      <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+      <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+      <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+      <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .marker { background-color: #ff0000; border-radius: 50%; width: 20px; height: 20px; border: 2px solid #fff; }
+        .marker.italian { background-color: #e74c3c; }
+        .marker.fast_food { background-color: #ff8c00; }
+        .marker.cafe { background-color: #8b4513; }
+        .marker.asian { background-color: #32cd32; }
+        .popup-content { font-size: 14px; line-height: 1.4; }
+      </style>
+    </head>
+    <body>
+      <div id="map"></div>
+      <script>
+        mapboxgl.accessToken = '${mapboxToken}';
+        
+        const map = new mapboxgl.Map({
+          container: 'map',
+          style: 'mapbox://styles/mapbox/streets-v11',
+          center: [-122.4194, 37.7749], // Default to San Francisco
+          zoom: 12
+        });
+
+        // Add navigation controls
+        map.addControl(new mapboxgl.NavigationControl());
+
+        // Restaurant data
+        const restaurants = ${JSON.stringify(restaurants)};
+
+        // Add markers for each restaurant
+        restaurants.forEach(restaurant => {
+          const { location, name } = restaurant;
+          
+          // Determine category and color
+          const nameLower = name.toLowerCase();
+          let category = 'casual';
+          if (nameLower.includes('pizza') || nameLower.includes('pizzeria')) category = 'italian';
+          else if (nameLower.includes('burger') || nameLower.includes('mcdonald') || nameLower.includes('kfc')) category = 'fast_food';
+          else if (nameLower.includes('cafe') || nameLower.includes('coffee') || nameLower.includes('starbucks')) category = 'cafe';
+          else if (nameLower.includes('sushi') || nameLower.includes('ramen') || nameLower.includes('thai')) category = 'asian';
+
+          // Create marker element
+          const markerElement = document.createElement('div');
+          markerElement.className = 'marker ' + category;
+
+          // Create popup
+          const popup = new mapboxgl.Popup({ offset: 25 })
+            .setHTML('<div class="popup-content"><strong>' + name + '</strong><br>📍 ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4) + '</div>');
+
+          // Add marker to map
+          new mapboxgl.Marker(markerElement)
+            .setLngLat([location.longitude, location.latitude])
+            .setPopup(popup)
+            .addTo(map);
+        });
+
+        // Fit map to show all markers
+        if (restaurants.length > 0) {
+          const bounds = new mapboxgl.LngLatBounds();
+          restaurants.forEach(restaurant => {
+            bounds.extend([restaurant.location.longitude, restaurant.location.latitude]);
+          });
+          map.fitBounds(bounds, { padding: 50 });
+        }
+
+        console.log('🗺️ MapBox map initialized with', restaurants.length, 'restaurants');
+      </script>
+    </body>
+    </html>
+  `;
+
+  return (
+    <WebView
+      ref={webViewRef}
+      source={{ html }}
+      style={{ flex: 1 }}
+      javaScriptEnabled={true}
+      domStorageEnabled={true}
+      originWhitelist={['*']}
+      onLoadStart={() => console.log('🗺️ MapBox WebView load started')}
+      onLoadEnd={() => console.log('🗺️ MapBox WebView load completed')}
+      onError={(error) => console.error('🗺️ MapBox WebView error:', error)}
+    />
+  );
+}
+
+// Native fallback component for Expo Go
+function NativeMapFallback({ restaurants, isOnline }: { restaurants: Restaurant[], isOnline: boolean }) {
   // Categorize restaurants by type
   const categorizedRestaurants = restaurants.map((restaurant) => {
-    console.log('🏷️ MapBoxWebView: Processing restaurant:', restaurant.name, {
-      hasLocation: !!restaurant.location,
-      lat: restaurant.location?.latitude,
-      lng: restaurant.location?.longitude
-    });
-
     const name = restaurant.name.toLowerCase();
     let category = 'casual';
     let color = '#4a90e2'; // Default blue
@@ -51,33 +128,22 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
       category = 'italian';
       color = '#e74c3c';
       emoji = '🍕';
+    } else if (name.includes('burger') || name.includes('mcdonald') || name.includes('kfc')) {
+      category = 'fast_food';
+      color = '#ff8c00';
+      emoji = '🍔';
     } else if (name.includes('cafe') || name.includes('coffee') || name.includes('starbucks')) {
       category = 'cafe';
       color = '#8b4513';
       emoji = '☕';
-    } else if (name.includes('burger') || name.includes('mcdonald') || name.includes('wendy')) {
-      category = 'fast_food';
-      color = '#ff6b35';
-      emoji = '🍔';
-    } else if (name.includes('chinese') || name.includes('china') || name.includes('wok')) {
+    } else if (name.includes('sushi') || name.includes('ramen') || name.includes('thai')) {
       category = 'asian';
-      color = '#e67e22';
-      emoji = '🥢';
-    } else if (name.includes('sushi') || name.includes('japanese') || name.includes('tokyo')) {
-      category = 'japanese';
-      color = '#9b59b6';
+      color = '#32cd32';
       emoji = '🍱';
     }
 
-    return {
-      ...restaurant,
-      category,
-      color,
-      emoji
-    };
+    return { ...restaurant, category, color, emoji };
   });
-
-  console.log('🗺️ Native Map View: Created', categorizedRestaurants.length, 'categorized restaurants');
 
   return (
     <View style={styles.container}>
@@ -93,8 +159,8 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {categorizedRestaurants.map((restaurant, index) => (
-          <TouchableOpacity
-            key={restaurant.id}
+          <TouchableOpacity 
+            key={restaurant.id} 
             style={[styles.restaurantCard, { borderLeftColor: restaurant.color }]}
             onPress={() => {
               console.log('🗺️ Restaurant selected:', restaurant.name, restaurant.location);
@@ -131,15 +197,42 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          📊 Total: {categorizedRestaurants.length} restaurants
-        </Text>
+        <Text style={styles.footerText}>📊 Total: {categorizedRestaurants.length} restaurants</Text>
         <Text style={styles.footerNote}>
           Build a development APK for full interactive map features
         </Text>
       </View>
     </View>
   );
+}
+
+// Main component that conditionally renders based on environment
+function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
+  const { isOnline } = useNetwork();
+  
+  // Detect if we're in Expo Go or a production build
+  const isExpoGo = Constants.appOwnership === 'expo';
+  const isProduction = !isExpoGo && Constants.releaseChannel !== 'default';
+  
+  console.log('🗺️ MapBoxWebView: Component rendered with', restaurants?.length || 0, 'restaurants, online:', isOnline);
+  console.log('🗺️ MapBoxWebView: Environment - isExpoGo:', isExpoGo, 'isProduction:', isProduction, 'releaseChannel:', Constants.releaseChannel);
+
+  if (!restaurants || restaurants.length === 0) {
+    console.warn('🗺️ MapBoxWebView: No restaurants data provided!');
+    return (
+      <View style={styles.offlineBanner}>
+        <Text style={styles.offlineText}>📍 No restaurants to display on map</Text>
+      </View>
+    );
+  }
+
+  // In production builds, show the actual WebView with MapBox
+  if (isProduction) {
+    return <MapBoxWebViewComponent restaurants={restaurants} isOnline={isOnline} />;
+  }
+
+  // In Expo Go or development, show native fallback
+  return <NativeMapFallback restaurants={restaurants} isOnline={isOnline} />;
 }
 
 const styles = StyleSheet.create({
