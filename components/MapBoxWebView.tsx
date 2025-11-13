@@ -123,517 +123,158 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
 
   console.log('🗺️ MapBoxWebView: Created', categorizedRestaurants.length, 'categorized restaurants for map');
 
-  // Simple 2D terrain map HTML with offline caching and categorized markers
+  // Simple HTML test - remove all MapBox complexity
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Offline Terrain Map</title>
+      <title>Simple Map Test</title>
       <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
-      <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
-      <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-offline/v1.0.0/mapbox-gl-offline.js"></script>
-      <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet">
       <style>
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        #map {
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          width: 100%;
-          height: 100%;
+        body {
+          margin: 0;
+          padding: 20px;
+          font-family: Arial, sans-serif;
+          background: #f0f8ff;
         }
-
-        .restaurant-marker {
-          border-radius: 50%;
-          width: 32px;
-          height: 32px;
-          border: 3px solid white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 16px;
-          font-weight: bold;
-          color: white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          cursor: pointer;
-          text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 10px;
+          padding: 20px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-
-        .mapboxgl-popup-content {
-          padding: 12px;
-          border-radius: 8px;
-        }
-
-        .restaurant-popup {
+        h1 {
+          color: #2e7d32;
           text-align: center;
-          min-width: 200px;
+          margin-bottom: 20px;
         }
-
-        .restaurant-popup h3 {
-          margin: 0 0 8px 0;
-          font-size: 16px;
+        .status {
+          padding: 10px;
+          border-radius: 5px;
+          margin: 10px 0;
+          font-weight: bold;
+        }
+        .online { background: #e8f5e8; color: #2e7d32; border: 1px solid #4caf50; }
+        .offline { background: #ffebee; color: #c62828; border: 1px solid #f44336; }
+        .restaurant {
+          background: #f5f5f5;
+          padding: 15px;
+          margin: 10px 0;
+          border-radius: 8px;
+          border-left: 4px solid #2196f3;
+        }
+        .restaurant-name {
           font-weight: bold;
           color: #333;
+          margin-bottom: 5px;
         }
-
-        .restaurant-popup .category {
-          display: inline-block;
-          padding: 4px 10px;
-          border-radius: 15px;
-          font-size: 11px;
-          font-weight: bold;
-          text-transform: uppercase;
-          margin-bottom: 8px;
-          color: white;
-          text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-        }
-
-        .restaurant-popup .coords {
-          font-size: 12px;
+        .restaurant-coords {
           color: #666;
-          margin: 0;
+          font-size: 14px;
         }
-
-        .legend-toggle {
-          position: absolute;
-          top: 10px;
-          left: 10px;
-          background: white;
-          border: 2px solid #007cbf;
-          border-radius: 6px;
-          padding: 6px 12px;
-          font-size: 12px;
-          font-weight: bold;
-          color: #007cbf;
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-          z-index: 1000;
-        }
-
-        .legend {
-          position: absolute;
-          top: 50px;
-          left: 10px;
-          background: white;
-          padding: 12px;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          font-size: 12px;
-          z-index: 1000;
-          display: none;
-        }
-
-        .legend-item {
-          display: flex;
-          align-items: center;
-          margin-bottom: 4px;
-        }
-
-        .legend-color {
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          margin-right: 6px;
-          border: 1px solid #ccc;
-        }
-
-        .offline-status {
-          position: absolute;
-          top: 10px;
-          right: 10px;
-          background: rgba(255, 255, 255, 0.9);
-          padding: 6px 12px;
-          border-radius: 6px;
-          font-size: 12px;
-          font-weight: bold;
-          z-index: 1000;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .offline-status.online {
-          color: #27ae60;
-        }
-
-        .offline-status.offline {
-          color: #e74c3c;
+        .emoji {
+          font-size: 20px;
+          margin-right: 10px;
         }
       </style>
     </head>
     <body>
-      <div id="offline-status" class="offline-status">Checking...</div>
-      <div id="map"></div>
+      <div class="container">
+        <h1>🍽️ FoodVenturer Map Test</h1>
 
-      <button id="legend-toggle" class="legend-toggle">📋 Legend</button>
+        <div id="status" class="status">Checking connectivity...</div>
 
-      <div id="legend" class="legend">
-        <div style="font-weight: bold; margin-bottom: 8px; color: #333;">Restaurant Types:</div>
-        <div class="legend-item">
-          <div class="legend-color" style="background-color: #e74c3c;"></div>
-          <span>🍕 Italian</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background-color: #8b4513;"></div>
-          <span>☕ Cafe</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background-color: #ff6b35;"></div>
-          <span>🍔 Fast Food</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background-color: #e67e22;"></div>
-          <span>🥢 Asian</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background-color: #9b59b6;"></div>
-          <span>🍱 Japanese</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background-color: #4a90e2;"></div>
-          <span>🍽️ Casual</span>
+        <p><strong>WebView Test Results:</strong></p>
+        <ul>
+          <li>✅ HTML loaded successfully</li>
+          <li>✅ CSS styles applied</li>
+          <li id="js-test">⏳ Testing JavaScript...</li>
+          <li id="data-test">⏳ Testing data...</li>
+        </ul>
+
+        <p><strong>Connectivity:</strong></p>
+        <div id="connectivity-info">Loading...</div>
+
+        <p><strong>Restaurant Data (${restaurants.length} restaurants):</strong></p>
+        <div id="restaurants-list">
+          <div style="text-align: center; padding: 20px; color: #666;">
+            Loading restaurant data...
+          </div>
         </div>
       </div>
 
       <script>
-        console.log('🗺️ Offline Terrain Map with caching starting...');
-        console.log('🗺️ Browser online status:', navigator.onLine);
-        console.log('🗺️ User agent:', navigator.userAgent);
-        console.log('🗺️ Document readyState:', document.readyState);
+        console.log('🧪 Simple WebView test starting...');
 
-        // Check if DOM elements exist
-        setTimeout(() => {
-          const statusEl = document.getElementById('offline-status');
-          const mapEl = document.getElementById('map');
-          const legendToggleEl = document.getElementById('legend-toggle');
-          console.log('🗺️ DOM elements check:', {
-            statusEl: !!statusEl,
-            mapEl: !!mapEl,
-            legendToggleEl: !!legendToggleEl
-          });
-        }, 100);
+        // Test JavaScript execution
+        document.getElementById('js-test').innerHTML = '✅ JavaScript working';
 
+        // Test data access
         try {
-          // Check if MapBox is loaded
-          if (typeof mapboxgl === 'undefined') {
-            console.error('🗺️ MapBox GL JS library not loaded!');
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'mapError',
-              error: 'MapBox GL JS library not loaded'
-            }));
-            return;
-          }
-
-          console.log('🗺️ MapBox GL JS library loaded, version:', mapboxgl.version);
-
-          // Initialize MapBox
-          mapboxgl.accessToken = '${mapboxToken}';
-          console.log('🗺️ MapBox token set, token starts with:', '${mapboxToken}'.substring(0, 10) + '...');
-
-          // Test token by making a simple API call
-          fetch('https://api.mapbox.com/styles/v1/mapbox/outdoors-v12?access_token=' + '${mapboxToken}')
-            .then(response => {
-              console.log('🗺️ MapBox style API test:', response.status, response.statusText);
-              if (!response.ok) {
-                console.error('🗺️ MapBox API error:', response.status);
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'mapError',
-                  error: 'MapBox API access failed: ' + response.status
-                }));
-              }
-            })
-            .catch(error => {
-              console.error('🗺️ MapBox API test failed:', error);
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'mapError',
-                error: 'MapBox API test failed: ' + error.message
-              }));
-            });
-
-          // Check online status
-          function updateOnlineStatus() {
-            const isOnline = navigator.onLine;
-            const statusEl = document.getElementById('offline-status');
-            console.log('🗺️ updateOnlineStatus called:', {
-              isOnline,
-              statusEl: !!statusEl,
-              statusElContent: statusEl ? statusEl.textContent : 'N/A'
-            });
-
-            if (statusEl) {
-              const statusText = isOnline ? '🟢 Online' : '🔴 Offline';
-              statusEl.textContent = statusText;
-              statusEl.className = 'offline-status ' + (isOnline ? 'online' : 'offline');
-              console.log('🗺️ Status element updated to:', statusText);
-              return isOnline;
-            } else {
-              console.error('🗺️ Status element not found!');
-              return isOnline;
-            }
-          }
-
-          updateOnlineStatus();
-          window.addEventListener('online', updateOnlineStatus);
-          window.addEventListener('offline', updateOnlineStatus);
-
-          // Create offline region name
-          const offlineRegionName = 'foodventurer-map-region';
-
-          // Create simple 2D terrain map
-          const map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/outdoors-v12',
-            center: [122.3649, 11.7061],
-            zoom: 13,
-            // Enable offline capabilities
-            offline: true
-          });
-
-          console.log('🗺️ Offline Terrain map created, waiting for load...');
-
-          map.on('load', function() {
-            console.log('🗺️ Offline Terrain map loaded successfully');
-            console.log('🗺️ Map bounds:', map.getBounds());
-            console.log('🗺️ Map center:', map.getCenter());
-
-            // Check if offline region exists
-            if (updateOnlineStatus()) {
-              // Online: Try to download/create offline region
-              createOfflineRegion();
-            } else {
-              // Offline: Check if cached region exists
-              checkOfflineRegion();
-            }
-
-            // Add restaurant markers
-            const restaurants = ${JSON.stringify(categorizedRestaurants)};
-            console.log('🗺️ Adding categorized markers for', restaurants.length, 'restaurants');
-            console.log('🗺️ First restaurant sample:', restaurants[0]);
-
-            restaurants.forEach((restaurant, index) => {
-              // Create marker element with category-specific styling
-              const markerEl = document.createElement('div');
-              markerEl.className = 'restaurant-marker';
-              markerEl.style.backgroundColor = restaurant.color;
-              markerEl.textContent = restaurant.emoji;
-
-              // Create popup with category info
-              const popup = new mapboxgl.Popup({ offset: 25 })
-                .setHTML(\`
-                  <div class="restaurant-popup">
-                    <div class="category" style="background-color: \${restaurant.color};">\${restaurant.emoji} \${restaurant.category.replace('_', ' ').toUpperCase()}</div>
-                    <h3>\${restaurant.name}</h3>
-                    <p class="coords">📍 \${restaurant.location.latitude.toFixed(4)}, \${restaurant.location.longitude.toFixed(4)}</p>
-                  </div>
-                \`);
-
-              // Create and add marker
-              new mapboxgl.Marker(markerEl)
-                .setLngLat([restaurant.location.longitude, restaurant.location.latitude])
-                .setPopup(popup)
-                .addTo(map);
-
-              console.log('🗺️ Added', restaurant.category, 'marker for:', restaurant.name, 'at', restaurant.location.latitude, restaurant.location.longitude);
-              if (index < 5) {
-                console.log('🗺️ Marker', index + 1, 'details:', restaurant);
-              }
-            });
-
-            // Fit map to show all markers with different behavior for single restaurant
-            if (restaurants.length > 0) {
-              if (restaurants.length === 1) {
-                // For single restaurant (detail screen), center on it with appropriate zoom
-                const restaurant = restaurants[0];
-                map.setCenter([restaurant.location.longitude, restaurant.location.latitude]);
-                map.setZoom(13); // Better zoom level for single restaurant detail view with more context
-                console.log('🗺️ Centered map on single restaurant:', restaurant.name, 'at zoom 13');
-              } else {
-                // For multiple restaurants, fit bounds to show all
-                const bounds = new mapboxgl.LngLatBounds();
-                restaurants.forEach(r => {
-                  bounds.extend([r.location.longitude, r.location.latitude]);
-                });
-                map.fitBounds(bounds, { padding: 50 });
-                console.log('🗺️ Fit bounds for', restaurants.length, 'restaurants');
-              }
-            }
-
-          // Notify React Native
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'mapReady',
-            restaurantCount: restaurants.length
-          }));
-
-          console.log('🗺️ Offline Terrain map ready with categorized markers');
-
-          // Add legend toggle functionality
-          const legendToggle = document.getElementById('legend-toggle');
-          const legend = document.getElementById('legend');
-
-          if (legendToggle && legend) {
-            legendToggle.addEventListener('click', function() {
-              const isVisible = legend.style.display !== 'none';
-              legend.style.display = isVisible ? 'none' : 'block';
-              legendToggle.textContent = isVisible ? '📋 Legend' : '❌ Hide';
-              console.log('🗺️ Legend toggled:', isVisible ? 'hidden' : 'shown');
-            });
-          }
-
-          // Notify that map is fully loaded
-          setTimeout(() => {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'mapFullyLoaded',
-              restaurantCount: restaurants.length,
-              bounds: map.getBounds(),
-              center: map.getCenter()
-            }));
-          }, 1000);
-
-        } catch (mapError) {
-          console.error('🗺️ Map load error:', mapError);
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'mapError',
-            error: mapError.message,
-            stack: mapError.stack
-          }));
-        }
-
-          // Function to create offline region
-          function createOfflineRegion() {
-            console.log('🗺️ Creating offline region...');
-
-            // Define the offline region bounds (expand current view)
-            const bounds = map.getBounds();
-            const expandedBounds = [
-              [bounds.getWest() - 0.01, bounds.getSouth() - 0.01], // Southwest
-              [bounds.getEast() + 0.01, bounds.getNorth() + 0.01]  // Northeast
-            ];
-
-            const offlineRegion = new mapboxgl.OfflineRegion({
-              name: offlineRegionName,
-              bounds: expandedBounds,
-              zoom: {
-                min: 10,
-                max: 16
-              },
-              style: map.getStyle()
-            });
-
-            // Download the offline region
-            offlineRegion.download(function(progress) {
-              console.log('🗺️ Offline download progress:', Math.round(progress * 100) + '%');
-
-              // Update status
-              const statusEl = document.getElementById('offline-status');
-              if (statusEl) {
-                statusEl.textContent = '🟡 Downloading: ' + Math.round(progress * 100) + '%';
-              }
-
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'downloadProgress',
-                progress: progress
-              }));
-            }, function(error) {
-              console.error('🗺️ Offline download error:', error);
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'downloadError',
-                error: error.message
-              }));
-            }, function() {
-              console.log('🗺️ Offline region downloaded successfully');
-              updateOnlineStatus();
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'downloadComplete'
-              }));
-            });
-          }
-
-          // Function to check if offline region exists
-          function checkOfflineRegion() {
-            console.log('🗺️ Checking for existing offline region...');
-
-            // List offline regions
-            mapboxgl.offline.listOfflineRegions(function(regions) {
-              const existingRegion = regions.find(r => r.name === offlineRegionName);
-              if (existingRegion) {
-                console.log('🗺️ Found existing offline region, using cached tiles');
-                // Use the cached region
-                map.setOfflineRegion(existingRegion);
-              } else {
-                console.log('🗺️ No offline region found, map may not work offline');
-              }
-            });
-          }
-
-        } catch (error) {
-          console.error('🗺️ Map initialization error:', error);
-          console.error('🗺️ Error details:', {
-            message: error.message,
-            stack: error.stack,
-            name: error.name
-          });
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'mapError',
-            error: error.message,
-            stack: error.stack
-          }));
-        }
-
-        // Global error handler for WebView
-        window.addEventListener('error', function(e) {
-          console.error('🗺️ Global WebView error:', e.error);
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'webviewError',
-            error: e.error.message,
-            filename: e.filename,
-            lineno: e.lineno
-          }));
-        });
-
-        window.addEventListener('unhandledrejection', function(e) {
-          console.error('🗺️ Unhandled promise rejection:', e.reason);
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'promiseRejection',
-            reason: e.reason
-          }));
-        });
-
-        // Fallback: If MapBox fails after 10 seconds, show a simple HTML map
-        setTimeout(() => {
-          const statusEl = document.getElementById('offline-status');
-          if (statusEl && statusEl.textContent === 'Checking...') {
-            console.log('🗺️ MapBox loading timeout, showing fallback map');
-            showFallbackMap();
-          }
-        }, 10000);
-
-        function showFallbackMap() {
-          const mapEl = document.getElementById('map');
-          if (!mapEl) return;
-
           const restaurants = ${JSON.stringify(categorizedRestaurants)};
-          mapEl.innerHTML = \`
-            <div style="padding: 20px; text-align: center; background: #f5f5f5; height: 100%; overflow-y: auto;">
-              <h3 style="color: #333; margin-bottom: 20px;">🍽️ Restaurant Map</h3>
-              <p style="color: #666; margin-bottom: 20px;">MapBox failed to load. Here are your restaurants:</p>
-              <div style="text-align: left;">
-                \${restaurants.map(r => \`<div style="margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border: 1px solid #ddd;">
-                  <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                    <span style="font-size: 20px; margin-right: 10px;">\${r.emoji}</span>
-                    <strong style="color: #333;">\${r.name}</strong>
-                  </div>
-                  <div style="color: #666; font-size: 14px;">
-                    📍 \${r.location.latitude.toFixed(4)}, \${r.location.longitude.toFixed(4)}
-                  </div>
-                </div>\`).join('')}
-              </div>
-            </div>
-          \`;
+          document.getElementById('data-test').innerHTML = '✅ Data loaded (' + restaurants.length + ' items)';
 
+          // Display restaurants
+          const listDiv = document.getElementById('restaurants-list');
+          if (restaurants.length > 0) {
+            listDiv.innerHTML = restaurants.slice(0, 10).map(r =>
+              '<div class="restaurant">' +
+                '<div class="restaurant-name">' +
+                  '<span class="emoji">' + r.emoji + '</span>' + r.name +
+                '</div>' +
+                '<div class="restaurant-coords">📍 ' + r.location.latitude.toFixed(4) + ', ' + r.location.longitude.toFixed(4) + '</div>' +
+              '</div>'
+            ).join('') +
+            (restaurants.length > 10 ? '<p style="text-align: center; color: #666; margin: 10px;">... and ' + (restaurants.length - 10) + ' more restaurants</p>' : '');
+          } else {
+            listDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No restaurants found</div>';
+          }
+
+          console.log('🧪 Restaurants displayed:', restaurants.length);
+        } catch (error) {
+          document.getElementById('data-test').innerHTML = '❌ Data error: ' + error.message;
+          console.error('🧪 Data error:', error);
+        }
+
+        // Test connectivity
+        function updateConnectivity() {
+          const isOnline = navigator.onLine;
+          const statusDiv = document.getElementById('status');
+          const infoDiv = document.getElementById('connectivity-info');
+
+          if (isOnline) {
+            statusDiv.className = 'status online';
+            statusDiv.textContent = '🟢 Online - Map should work';
+          } else {
+            statusDiv.className = 'status offline';
+            statusDiv.textContent = '🔴 Offline - Map unavailable';
+          }
+
+          infoDiv.innerHTML = '<strong>Navigator.onLine:</strong> ' + isOnline + '<br>' +
+                             '<strong>User Agent:</strong> ' + navigator.userAgent.substring(0, 50) + '...';
+
+          console.log('🧪 Connectivity check:', { isOnline, userAgent: navigator.userAgent });
+
+          // Send message to React Native
           window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'fallbackMapShown',
-            restaurantCount: restaurants.length
+            type: 'webviewTest',
+            isOnline: isOnline,
+            restaurantCount: ${JSON.stringify(categorizedRestaurants)}.length,
+            timestamp: Date.now()
           }));
         }
+
+        // Initial check
+        updateConnectivity();
+
+        // Listen for connectivity changes
+        window.addEventListener('online', updateConnectivity);
+        window.addEventListener('offline', updateConnectivity);
+
+        console.log('🧪 WebView test completed successfully');
       </script>
     </body>
     </html>
@@ -665,8 +306,12 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
             console.log('🗺️ Offline WebView message:', data);
 
             switch (data.type) {
-              case 'mapReady':
-                console.log('🗺️ Map ready with', data.restaurantCount, 'restaurants');
+              case 'webviewTest':
+                console.log('🧪 WebView test result:', {
+                  isOnline: data.isOnline,
+                  restaurantCount: data.restaurantCount,
+                  timestamp: new Date(data.timestamp).toLocaleTimeString()
+                });
                 break;
               case 'mapFullyLoaded':
                 console.log('🗺️ Map fully loaded with', data.restaurantCount, 'restaurants, bounds:', data.bounds, 'center:', data.center);
