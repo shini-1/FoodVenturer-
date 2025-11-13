@@ -298,21 +298,77 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
         console.log('🗺️ Offline Terrain Map with caching starting...');
         console.log('🗺️ Browser online status:', navigator.onLine);
         console.log('🗺️ User agent:', navigator.userAgent);
+        console.log('🗺️ Document readyState:', document.readyState);
+
+        // Check if DOM elements exist
+        setTimeout(() => {
+          const statusEl = document.getElementById('offline-status');
+          const mapEl = document.getElementById('map');
+          const legendToggleEl = document.getElementById('legend-toggle');
+          console.log('🗺️ DOM elements check:', {
+            statusEl: !!statusEl,
+            mapEl: !!mapEl,
+            legendToggleEl: !!legendToggleEl
+          });
+        }, 100);
 
         try {
+          // Check if MapBox is loaded
+          if (typeof mapboxgl === 'undefined') {
+            console.error('🗺️ MapBox GL JS library not loaded!');
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'mapError',
+              error: 'MapBox GL JS library not loaded'
+            }));
+            return;
+          }
+
+          console.log('🗺️ MapBox GL JS library loaded, version:', mapboxgl.version);
+
           // Initialize MapBox
           mapboxgl.accessToken = '${mapboxToken}';
-          console.log('🗺️ MapBox token set');
+          console.log('🗺️ MapBox token set, token starts with:', '${mapboxToken}'.substring(0, 10) + '...');
+
+          // Test token by making a simple API call
+          fetch('https://api.mapbox.com/styles/v1/mapbox/outdoors-v12?access_token=' + '${mapboxToken}')
+            .then(response => {
+              console.log('🗺️ MapBox style API test:', response.status, response.statusText);
+              if (!response.ok) {
+                console.error('🗺️ MapBox API error:', response.status);
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'mapError',
+                  error: 'MapBox API access failed: ' + response.status
+                }));
+              }
+            })
+            .catch(error => {
+              console.error('🗺️ MapBox API test failed:', error);
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'mapError',
+                error: 'MapBox API test failed: ' + error.message
+              }));
+            });
 
           // Check online status
           function updateOnlineStatus() {
             const isOnline = navigator.onLine;
             const statusEl = document.getElementById('offline-status');
+            console.log('🗺️ updateOnlineStatus called:', {
+              isOnline,
+              statusEl: !!statusEl,
+              statusElContent: statusEl ? statusEl.textContent : 'N/A'
+            });
+
             if (statusEl) {
-              statusEl.textContent = isOnline ? '🟢 Online' : '🔴 Offline';
+              const statusText = isOnline ? '🟢 Online' : '🔴 Offline';
+              statusEl.textContent = statusText;
               statusEl.className = 'offline-status ' + (isOnline ? 'online' : 'offline');
+              console.log('🗺️ Status element updated to:', statusText);
+              return isOnline;
+            } else {
+              console.error('🗺️ Status element not found!');
+              return isOnline;
             }
-            return isOnline;
           }
 
           updateOnlineStatus();
@@ -540,6 +596,44 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
             reason: e.reason
           }));
         });
+
+        // Fallback: If MapBox fails after 10 seconds, show a simple HTML map
+        setTimeout(() => {
+          const statusEl = document.getElementById('offline-status');
+          if (statusEl && statusEl.textContent === 'Checking...') {
+            console.log('🗺️ MapBox loading timeout, showing fallback map');
+            showFallbackMap();
+          }
+        }, 10000);
+
+        function showFallbackMap() {
+          const mapEl = document.getElementById('map');
+          if (!mapEl) return;
+
+          const restaurants = ${JSON.stringify(categorizedRestaurants)};
+          mapEl.innerHTML = \`
+            <div style="padding: 20px; text-align: center; background: #f5f5f5; height: 100%; overflow-y: auto;">
+              <h3 style="color: #333; margin-bottom: 20px;">🍽️ Restaurant Map</h3>
+              <p style="color: #666; margin-bottom: 20px;">MapBox failed to load. Here are your restaurants:</p>
+              <div style="text-align: left;">
+                \${restaurants.map(r => \`<div style="margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border: 1px solid #ddd;">
+                  <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <span style="font-size: 20px; margin-right: 10px;">\${r.emoji}</span>
+                    <strong style="color: #333;">\${r.name}</strong>
+                  </div>
+                  <div style="color: #666; font-size: 14px;">
+                    📍 \${r.location.latitude.toFixed(4)}, \${r.location.longitude.toFixed(4)}
+                  </div>
+                </div>\`).join('')}
+              </div>
+            </div>
+          \`;
+
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'fallbackMapShown',
+            restaurantCount: restaurants.length
+          }));
+        }
       </script>
     </body>
     </html>
@@ -594,6 +688,9 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
                 break;
               case 'promiseRejection':
                 console.error('🗺️ Unhandled promise rejection:', data.reason);
+                break;
+              case 'fallbackMapShown':
+                console.log('🗺️ Fallback map shown with', data.restaurantCount, 'restaurants');
                 break;
               default:
                 console.log('🗺️ Unknown message type:', data.type);
