@@ -296,6 +296,8 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
 
       <script>
         console.log('🗺️ Offline Terrain Map with caching starting...');
+        console.log('🗺️ Browser online status:', navigator.onLine);
+        console.log('🗺️ User agent:', navigator.userAgent);
 
         try {
           // Initialize MapBox
@@ -330,10 +332,12 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
             offline: true
           });
 
-          console.log('🗺️ Offline Terrain map created');
+          console.log('🗺️ Offline Terrain map created, waiting for load...');
 
           map.on('load', function() {
             console.log('🗺️ Offline Terrain map loaded successfully');
+            console.log('🗺️ Map bounds:', map.getBounds());
+            console.log('🗺️ Map center:', map.getCenter());
 
             // Check if offline region exists
             if (updateOnlineStatus()) {
@@ -347,8 +351,9 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
             // Add restaurant markers
             const restaurants = ${JSON.stringify(categorizedRestaurants)};
             console.log('🗺️ Adding categorized markers for', restaurants.length, 'restaurants');
+            console.log('🗺️ First restaurant sample:', restaurants[0]);
 
-            restaurants.forEach((restaurant) => {
+            restaurants.forEach((restaurant, index) => {
               // Create marker element with category-specific styling
               const markerEl = document.createElement('div');
               markerEl.className = 'restaurant-marker';
@@ -371,7 +376,10 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
                 .setPopup(popup)
                 .addTo(map);
 
-              console.log('🗺️ Added', restaurant.category, 'marker for:', restaurant.name);
+              console.log('🗺️ Added', restaurant.category, 'marker for:', restaurant.name, 'at', restaurant.location.latitude, restaurant.location.longitude);
+              if (index < 5) {
+                console.log('🗺️ Marker', index + 1, 'details:', restaurant);
+              }
             });
 
             // Fit map to show all markers with different behavior for single restaurant
@@ -393,27 +401,45 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
               }
             }
 
-            console.log('🗺️ Offline Terrain map ready with categorized markers');
+          // Notify React Native
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'mapReady',
+            restaurantCount: restaurants.length
+          }));
 
-            // Add legend toggle functionality
-            const legendToggle = document.getElementById('legend-toggle');
-            const legend = document.getElementById('legend');
+          console.log('🗺️ Offline Terrain map ready with categorized markers');
 
-            if (legendToggle && legend) {
-              legendToggle.addEventListener('click', function() {
-                const isVisible = legend.style.display !== 'none';
-                legend.style.display = isVisible ? 'none' : 'block';
-                legendToggle.textContent = isVisible ? '📋 Legend' : '❌ Hide';
-              });
-            }
+          // Add legend toggle functionality
+          const legendToggle = document.getElementById('legend-toggle');
+          const legend = document.getElementById('legend');
 
-            // Notify React Native
+          if (legendToggle && legend) {
+            legendToggle.addEventListener('click', function() {
+              const isVisible = legend.style.display !== 'none';
+              legend.style.display = isVisible ? 'none' : 'block';
+              legendToggle.textContent = isVisible ? '📋 Legend' : '❌ Hide';
+              console.log('🗺️ Legend toggled:', isVisible ? 'hidden' : 'shown');
+            });
+          }
+
+          // Notify that map is fully loaded
+          setTimeout(() => {
             window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'mapReady',
-              restaurantCount: restaurants.length
+              type: 'mapFullyLoaded',
+              restaurantCount: restaurants.length,
+              bounds: map.getBounds(),
+              center: map.getCenter()
             }));
+          }, 1000);
 
-          });
+        } catch (mapError) {
+          console.error('🗺️ Map load error:', mapError);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'mapError',
+            error: mapError.message,
+            stack: mapError.stack
+          }));
+        }
 
           // Function to create offline region
           function createOfflineRegion() {
@@ -482,21 +508,38 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
             });
           }
 
-          map.on('error', function(e) {
-            console.error('🗺️ Map error:', e);
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'mapError',
-              error: e.error.message
-            }));
-          });
-
         } catch (error) {
           console.error('🗺️ Map initialization error:', error);
+          console.error('🗺️ Error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+          });
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'mapError',
-            error: error.message
+            error: error.message,
+            stack: error.stack
           }));
         }
+
+        // Global error handler for WebView
+        window.addEventListener('error', function(e) {
+          console.error('🗺️ Global WebView error:', e.error);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'webviewError',
+            error: e.error.message,
+            filename: e.filename,
+            lineno: e.lineno
+          }));
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+          console.error('🗺️ Unhandled promise rejection:', e.reason);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'promiseRejection',
+            reason: e.reason
+          }));
+        });
       </script>
     </body>
     </html>
@@ -531,6 +574,9 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
               case 'mapReady':
                 console.log('🗺️ Map ready with', data.restaurantCount, 'restaurants');
                 break;
+              case 'mapFullyLoaded':
+                console.log('🗺️ Map fully loaded with', data.restaurantCount, 'restaurants, bounds:', data.bounds, 'center:', data.center);
+                break;
               case 'downloadProgress':
                 console.log('🗺️ Download progress:', Math.round(data.progress * 100) + '%');
                 break;
@@ -541,13 +587,20 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
                 console.error('🗺️ Download error:', data.error);
                 break;
               case 'mapError':
-                console.error('🗺️ Map error:', data.error);
+                console.error('🗺️ Map error:', data.error, 'Stack:', data.stack);
+                break;
+              case 'webviewError':
+                console.error('🗺️ WebView JavaScript error:', data.error, 'File:', data.filename, 'Line:', data.lineno);
+                break;
+              case 'promiseRejection':
+                console.error('🗺️ Unhandled promise rejection:', data.reason);
                 break;
               default:
                 console.log('🗺️ Unknown message type:', data.type);
             }
           } catch (error) {
             console.error('🗺️ Error parsing WebView message:', error);
+            console.error('🗺️ Raw message:', event.nativeEvent.data);
           }
         }}
         onError={(error) => {
