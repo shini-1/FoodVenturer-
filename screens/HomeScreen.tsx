@@ -144,31 +144,24 @@ function HomeScreen({ navigation }: { navigation: any }) {
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
-        console.log('🏠 HomeScreen: Fetching restaurants...');
-        const data = await restaurantService.getAllRestaurants();
-        console.log('🏠 HomeScreen: Fetched restaurants:', data.length);
-        setRestaurants(data);
+        console.log('🏠 HomeScreen: Component mounted, about to fetch restaurants...');
+        console.log('🍽️ HomeScreen: Starting restaurant fetch...');
+        const fetchedRestaurants = await restaurantService.getAllRestaurants();
+        console.log('✅ HomeScreen: Successfully fetched restaurants:', fetchedRestaurants.length);
+        console.log('📋 HomeScreen: Restaurant details:', fetchedRestaurants.map(r => ({
+          id: r.id,
+          name: r.name,
+          location: r.location,
+          hasCoords: !!(r.location?.latitude && r.location?.longitude)
+        })));
 
-        // Clear address cache to refresh with new OSM-first geocoding logic
-        clearAddressCache();
+        if (fetchedRestaurants.length === 0) {
+          console.warn('⚠️ HomeScreen: No restaurants found in database!');
+        }
 
-        // Pre-fetch addresses for all restaurants
-        const addressPromises = data.map(async (restaurant: Restaurant) => {
-          try {
-            const address = await getRestaurantAddress(restaurant);
-            console.log(`🏠 Got address for ${restaurant.name}: ${address}`);
-          } catch (error) {
-            console.warn(`Failed to get address for ${restaurant.name}:`, error);
-          }
-        });
-
-        // Don't block UI on address fetching
-        Promise.allSettled(addressPromises).then(() => {
-          console.log('🏠 Address fetching completed');
-        });
-
+        setRestaurants(fetchedRestaurants);
       } catch (error) {
-        console.error('Failed to fetch restaurants:', error);
+        console.error('❌ HomeScreen: Failed to fetch restaurants:', error);
         Alert.alert('Error', 'Failed to load restaurants');
       }
     };
@@ -178,6 +171,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   useEffect(() => {
     console.log('🏠 HomeScreen: Restaurants state updated:', restaurants.length);
+    console.log('📍 HomeScreen: Restaurant locations:', restaurants.map(r => ({
+      name: r.name,
+      lat: r.location?.latitude,
+      lng: r.location?.longitude,
+      valid: !!(r.location?.latitude && r.location?.longitude)
+    })));
   }, [restaurants]);
 
   // Categorize restaurants by type (same logic as MapBoxWebView)

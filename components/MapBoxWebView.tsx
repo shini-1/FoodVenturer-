@@ -15,12 +15,27 @@ interface MapBoxWebViewProps {
 
 function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
   const { isOnline } = useNetwork();
-  console.log('🗺️ MapBoxWebView: Rendering with', restaurants.length, 'restaurants, online:', isOnline);
+  console.log('🗺️ MapBoxWebView: Component rendered with', restaurants?.length || 0, 'restaurants, online:', isOnline);
+
+  if (!restaurants || restaurants.length === 0) {
+    console.warn('🗺️ MapBoxWebView: No restaurants data provided!');
+    return (
+      <View style={styles.offlineBanner}>
+        <Text style={styles.offlineText}>📍 No restaurants to display on map</Text>
+      </View>
+    );
+  }
 
   const mapboxToken = 'pk.eyJ1Ijoic2hpbmlpaSIsImEiOiJjbWhkZGIwZzYwMXJmMmtxMTZpY294c2V6In0.zuQl6u8BJxOgimXHxMiNqQ';
 
   // Categorize restaurants by type
   const categorizedRestaurants = restaurants.map((restaurant) => {
+    console.log('🏷️ MapBoxWebView: Processing restaurant:', restaurant.name, {
+      hasLocation: !!restaurant.location,
+      lat: restaurant.location?.latitude,
+      lng: restaurant.location?.longitude
+    });
+
     const name = restaurant.name.toLowerCase();
     let category = 'casual';
     let color = '#4a90e2'; // Default blue
@@ -88,14 +103,20 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
       emoji = '🍳';
     }
 
-    return {
+    const categorized = {
       ...restaurant,
       category,
       color,
       emoji,
       markerNumber: 1
     };
+
+    console.log('✅ MapBoxWebView: Categorized', restaurant.name, 'as', category, 'with color', color);
+
+    return categorized;
   });
+
+  console.log('🗺️ MapBoxWebView: Created', categorizedRestaurants.length, 'categorized restaurants for map');
 
   // Simple 2D terrain map HTML with offline caching and categorized markers
   const html = `
