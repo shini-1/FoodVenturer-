@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { WebView } from 'react-native-webview';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useNetwork } from '../src/contexts/NetworkContext';
@@ -14,6 +14,7 @@ interface MapBoxWebViewProps {
 }
 
 function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
+  const webViewRef = useRef<WebView>(null);
   const { isOnline } = useNetwork();
   console.log('🗺️ MapBoxWebView: Component rendered with', restaurants?.length || 0, 'restaurants, online:', isOnline);
   console.log('🗺️ MapBoxWebView: Network detection details:', { isOnline });
@@ -288,6 +289,7 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
         </View>
       )}
       <WebView
+        ref={webViewRef}
         source={{ html }}
         style={{ flex: 1 }}
         javaScriptEnabled={true}
@@ -298,8 +300,32 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
         allowUniversalAccessFromFileURLs={true}
         allowFileAccessFromFileURLs={true}
         originWhitelist={['*']}
-        onLoadStart={() => console.log('🗺️ Offline WebView load started')}
-        onLoadEnd={() => console.log('🗺️ Offline WebView load completed')}
+        onLoadStart={() => {
+          console.log('🗺️ Offline WebView load started');
+          console.log('🗺️ WebView ref exists:', !!webViewRef.current);
+        }}
+        onLoadEnd={() => {
+          console.log('🗺️ Offline WebView load completed');
+          console.log('🗺️ WebView ref exists:', !!webViewRef.current);
+
+          // Test JavaScript injection
+          setTimeout(() => {
+            if (webViewRef.current) {
+              console.log('🗺️ Testing JavaScript injection...');
+              webViewRef.current.injectJavaScript(`
+                console.log('🧪 JavaScript injection test: WebView JS is working!');
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'jsInjectionTest',
+                  message: 'JavaScript injection successful',
+                  timestamp: Date.now()
+                }));
+                true;
+              `);
+            } else {
+              console.error('🗺️ WebView ref is null, cannot inject JavaScript');
+            }
+          }, 1000);
+        }}
         onMessage={(event) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);
@@ -334,8 +360,11 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
               case 'promiseRejection':
                 console.error('🗺️ Unhandled promise rejection:', data.reason);
                 break;
-              case 'fallbackMapShown':
-                console.log('🗺️ Fallback map shown with', data.restaurantCount, 'restaurants');
+              case 'jsInjectionTest':
+                console.log('🧪 JavaScript injection test successful:', {
+                  message: data.message,
+                  timestamp: new Date(data.timestamp).toLocaleTimeString()
+                });
                 break;
               default:
                 console.log('🗺️ Unknown message type:', data.type);
