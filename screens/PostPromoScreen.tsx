@@ -88,8 +88,8 @@ function PostPromoScreen({ navigation }: PostPromoScreenProps) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={() => navigation.navigate('BusinessDashboard')} style={[styles.backButton, { top: insets.top + 10 }]}>
-          <Text style={[styles.backButtonText, { color: theme.primary }]}>← Back</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { top: insets.top + 10 }]}>
+          <Text style={[styles.backButtonText, { color: theme.primary }]}>✕</Text>
         </TouchableOpacity>
 
         <Text style={[styles.title, { color: theme.text }]}>Post Promo</Text>

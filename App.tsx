@@ -29,6 +29,7 @@ interface NavigationParams {
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('RoleSelection');
   const [screenParams, setScreenParams] = useState<NavigationParams>({});
+  const [navigationHistory, setNavigationHistory] = useState<Screen[]>(['RoleSelection']);
 
   const navigate = (screen: Screen, params?: NavigationParams) => {
     setCurrentScreen(screen);
@@ -37,13 +38,26 @@ export default function App() {
     } else {
       setScreenParams({});
     }
+    // Add to navigation history
+    setNavigationHistory(prev => [...prev, screen]);
   };
 
   const goBack = () => {
-    // For now, go back to RoleSelection as the main entry point
-    // In a real app, you'd have a navigation stack
-    setCurrentScreen('RoleSelection');
-    setScreenParams({});
+    // If we have more than one screen in history, go back one screen
+    if (navigationHistory.length > 1) {
+      const newHistory = [...navigationHistory];
+      newHistory.pop(); // Remove current screen
+      const previousScreen = newHistory[newHistory.length - 1];
+      
+      setCurrentScreen(previousScreen);
+      setNavigationHistory(newHistory);
+      setScreenParams({}); // Clear params when going back
+    } else {
+      // If we're at the root, go to RoleSelection
+      setCurrentScreen('RoleSelection');
+      setNavigationHistory(['RoleSelection']);
+      setScreenParams({});
+    }
   };
 
   const navigation = {

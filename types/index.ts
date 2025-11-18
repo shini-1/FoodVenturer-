@@ -76,3 +76,11 @@ export interface MenuItem {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Category {
+  id: string;
+  name: string;
+  icon_url: string;
+  color: string; // Hex color code
+  emoji: string;
+}

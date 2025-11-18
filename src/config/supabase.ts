@@ -11,6 +11,7 @@ export const SUPABASE_CONFIG = {
 export const TABLES = {
   ADMINS: 'admins',
   BUSINESS_OWNERS: 'business_owners',
+  CATEGORIES: 'categories',
   RESTAURANTS: 'restaurants',
   RESTAURANT_SUBMISSIONS: 'restaurant_submissions',
   MENU_ITEMS: 'menu_items',

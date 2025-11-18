@@ -78,7 +78,7 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { top: insets.top + 10 }]}>
-          <Text style={[styles.backButtonText, { color: theme.primary }]}>← Back</Text>
+          <Text style={[styles.backButtonText, { color: theme.primary }]}>✕</Text>
         </TouchableOpacity>
 
         <Text style={[styles.title, { color: theme.text }]}>Business Dashboard</Text>

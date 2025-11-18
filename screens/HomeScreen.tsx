@@ -16,6 +16,7 @@ import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
 import { restaurantService } from '../src/services/restaurantService';
 import { reverseGeocode } from '../src/services/geocodingService';
+import { OfflineService } from '../src/services/offlineService';
 
 import { Restaurant } from '../types';
 
@@ -144,25 +145,40 @@ function HomeScreen({ navigation }: { navigation: any }) {
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
-        console.log('🏠 HomeScreen: Component mounted, about to fetch restaurants...');
-        console.log('🍽️ HomeScreen: Starting restaurant fetch...');
-        const fetchedRestaurants = await restaurantService.getAllRestaurants();
-        console.log('✅ HomeScreen: Successfully fetched restaurants:', fetchedRestaurants.length);
-        console.log('📋 HomeScreen: Restaurant details:', fetchedRestaurants.map(r => ({
+        console.log('🏠 HomeScreen: Starting restaurant fetch with offline support...');
+
+        // Try to get data with offline fallback
+        const data = await OfflineService.getDataWithOfflineFallback();
+        console.log('✅ HomeScreen: Successfully loaded restaurants:', data.restaurants.length, data.isOffline ? '(offline)' : '(online)');
+
+        console.log('📋 HomeScreen: Restaurant details:', data.restaurants.map(r => ({
           id: r.id,
           name: r.name,
           location: r.location,
           hasCoords: !!(r.location?.latitude && r.location?.longitude)
         })));
 
-        if (fetchedRestaurants.length === 0) {
-          console.warn('⚠️ HomeScreen: No restaurants found in database!');
+        if (data.restaurants.length === 0) {
+          console.warn('⚠️ HomeScreen: No restaurants found!');
         }
 
-        setRestaurants(fetchedRestaurants);
+        setRestaurants(data.restaurants);
+
+        // Show offline indicator if using cached data
+        if (data.isOffline) {
+          Alert.alert(
+            'Offline Mode',
+            'Using cached restaurant data. Some features may be limited.',
+            [{ text: 'OK' }]
+          );
+        }
       } catch (error) {
-        console.error('❌ HomeScreen: Failed to fetch restaurants:', error);
-        Alert.alert('Error', 'Failed to load restaurants');
+        console.error('❌ HomeScreen: Failed to load restaurants:', error);
+        Alert.alert(
+          'Connection Error',
+          'Unable to load restaurant data. Please check your internet connection and try again.',
+          [{ text: 'Retry', onPress: fetchRestaurants }]
+        );
       }
     };
 
@@ -333,10 +349,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header />
       <TouchableOpacity
-        onPress={() => navigation.navigate('RoleSelection')}
+        onPress={() => navigation.goBack()}
         style={styles.backButton}
       >
-        <Text style={[styles.backText, { color: '#E81CFF' }]}>←</Text>
+        <Text style={[styles.backText, { color: '#E81CFF' }]}>✕</Text>
       </TouchableOpacity>
       <TextInput
         placeholder="Search restaurants"

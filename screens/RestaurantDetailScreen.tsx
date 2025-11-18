@@ -335,7 +335,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
             style={[styles.backButton, { backgroundColor: 'rgba(0,0,0,0.5)', top: insets.top + 10 }]}
             onPress={() => navigation.goBack()}
           >
-            <Text style={{color: 'white', fontSize: 24}}>{'<'}</Text>
+            <Text style={{color: 'white', fontSize: 24}}>✕</Text>
           </TouchableOpacity>
         </View>
 

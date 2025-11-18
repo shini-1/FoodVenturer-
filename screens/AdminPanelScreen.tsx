@@ -2,25 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Button, FlatList, Alert, TouchableOpacity, Modal, TextInput, ScrollView, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
-import { getRestaurants, deleteRestaurant, getApprovedRestaurants, getPendingRestaurants, approveRestaurant, rejectRestaurant, deleteRestaurantOwner, updateRestaurantOwner, getRestaurantStats, updateRestaurant } from '../services/restaurants';
+import { getRestaurants, deleteRestaurant, getApprovedRestaurants, getPendingRestaurants, approveRestaurant, rejectRestaurant, deleteRestaurantOwner, updateRestaurantOwner, getRestaurantStats, updateRestaurant, addRestaurant } from '../services/restaurants';
 import { menuService } from '../src/services/menuService';
 import { uploadAndUpdateRestaurantImage } from '../services/imageService';
 import { Restaurant, RestaurantOwner, RestaurantSubmission, MenuItem } from '../types';
-import { useWebLocation } from '../src/hooks/useWebLocation';
 import * as ImagePicker from 'expo-image-picker';
 import { reverseGeocode } from '../src/services/geocodingService';
+import { LocationService } from '../services/expoLocationService';
 
 function AdminPanelScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
-  const { location: webLocation, loading: locationLoading, error: locationError, getCurrentLocation, isAvailable } = useWebLocation();
 
-  // Debug logging
-  console.log('🔧 AdminPanel Debug:');
-  console.log('📍 Location available:', isAvailable);
-  console.log('📍 Location loading:', locationLoading);
-
-  // Force availability for testing
-  const locationAvailable = true; // isAvailable;
+  // Location state management
+  const [locationAvailable, setLocationAvailable] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
   const imageAvailable = true; // imagePickerAvailable;
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [pendingBusinesses, setPendingBusinesses] = useState<RestaurantSubmission[]>([]);
@@ -52,6 +47,21 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     isAvailable: true
   });
 
+  // Add Restaurant state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({
+    name: '',
+    latitude: '',
+    longitude: '',
+    image: '',
+    description: '',
+    category: 'casual',
+    phone: '',
+    hours: '',
+    website: ''
+  });
+  const [addLoading, setAddLoading] = useState(false);
+
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
@@ -63,6 +73,24 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       }
     };
     fetchRestaurants();
+  }, []);
+
+  // Check location availability on mount
+  useEffect(() => {
+    const checkLocationAvailability = async () => {
+      try {
+        console.log('📍 Admin: Checking location availability...');
+        const locationService = await import('../services/expoLocationService');
+        // Just try to get location to see if it's available
+        const location = await locationService.locationService.getCurrentLocation();
+        setLocationAvailable(!!location);
+        console.log('📍 Admin: Location available:', !!location);
+      } catch (error) {
+        console.warn('📍 Admin: Location not available:', error);
+        setLocationAvailable(false);
+      }
+    };
+    checkLocationAvailability();
   }, []);
 
   useEffect(() => {
@@ -120,23 +148,37 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
   const handleGetCurrentLocation = async () => {
     try {
-      await getCurrentLocation();
-      if (webLocation) {
-        // Update the appropriate form based on which modal is open
-        if (editingRestaurant) {
-          setEditForm(prev => ({
-            ...prev,
-            latitude: webLocation.latitude.toString(),
-            longitude: webLocation.longitude.toString()
-          }));
-        }
+      setLocationLoading(true);
+      console.log('📍 Admin: Getting current location...');
 
-        // Try to reverse geocode
-        const address = await reverseGeocode(webLocation.latitude, webLocation.longitude);
-        Alert.alert('Success', `Location updated!\n${address}`);
+      const locationService = await import('../services/expoLocationService');
+      const location = await locationService.locationService.getCurrentLocation();
+      if (location) {
+        setEditForm(prev => ({
+          ...prev,
+          latitude: location.latitude.toString(),
+          longitude: location.longitude.toString()
+        }));
+        console.log('📍 Admin: Location obtained:', location);
+
+        // Try to reverse geocode for user feedback
+        try {
+          const { reverseGeocode } = await import('../src/services/geocodingService');
+          const address = await reverseGeocode(location.latitude, location.longitude);
+          Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4)}`);
+        } catch (geocodeError) {
+          console.warn('📍 Admin: Reverse geocoding failed:', geocodeError);
+          Alert.alert('Success', `Location updated!\nCoordinates: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+        }
+      } else {
+        console.warn('📍 Admin: Failed to get location');
+        Alert.alert('Location Error', 'Unable to get your current location. Please check location permissions and try again.');
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to get current location');
+    } catch (error: any) {
+      console.error('📍 Admin: Location error:', error);
+      Alert.alert('Location Error', `Failed to access location services: ${error.message}`);
+    } finally {
+      setLocationLoading(false);
     }
   };
 
@@ -271,6 +313,69 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
     } catch (error: any) {
       Alert.alert('Error', `Update failed: ${error.message}`);
+    }
+  };
+
+  const handleSaveAdd = async () => {
+    try {
+      setAddLoading(true);
+
+      // Validate form
+      const name = addForm.name.trim();
+      const latitude = parseFloat(addForm.latitude);
+      const longitude = parseFloat(addForm.longitude);
+
+      if (!name) {
+        Alert.alert('Error', 'Restaurant name is required');
+        return;
+      }
+
+      if (isNaN(latitude) || isNaN(longitude)) {
+        Alert.alert('Error', 'Valid latitude and longitude are required');
+        return;
+      }
+
+      // Create the restaurant data
+      const restaurantData = {
+        name,
+        location: { latitude, longitude },
+        category: addForm.category,
+        image: addForm.image.trim() || undefined,
+        description: addForm.description.trim() || undefined,
+        phone: addForm.phone.trim() || undefined,
+        hours: addForm.hours.trim() || undefined,
+        website: addForm.website.trim() || undefined,
+        rating: undefined, // Will be set later by users
+        priceRange: undefined // Will be set later by users
+      };
+
+      // Add the restaurant to the database
+      await addRestaurant(restaurantData);
+
+      // Refresh the restaurants list
+      const updatedRestaurants = await getRestaurants();
+      setRestaurants(updatedRestaurants);
+
+      // Reset form and close modal
+      setAddForm({
+        name: '',
+        latitude: '',
+        longitude: '',
+        image: '',
+        description: '',
+        category: 'casual',
+        phone: '',
+        hours: '',
+        website: ''
+      });
+      setShowAddModal(false);
+
+      Alert.alert('Success', 'Restaurant added successfully!');
+
+    } catch (error: any) {
+      Alert.alert('Error', `Failed to add restaurant: ${error.message}`);
+    } finally {
+      setAddLoading(false);
     }
   };
 
@@ -551,6 +656,13 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       {/* Icon Toolbar */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20, gap: 10 }}>
         <TouchableOpacity
+          onPress={() => setShowAddModal(true)}
+          style={[styles.iconButton, { backgroundColor: '#28a745' }]}
+        >
+          <Text style={styles.iconText}>➕</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           onPress={async () => {
             const { importAllRestaurants } = await import('../src/utils/bulkImport');
             try {
@@ -820,154 +932,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         </>
       )}
 
-      {/* Edit Restaurant Modal */}
-      <Modal
-        visible={showEditModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowEditModal(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ backgroundColor: theme.surface, borderRadius: 10, padding: 20, width: '90%', maxWidth: 400, maxHeight: '80%' }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: theme.text }}>
-              Edit Restaurant
-            </Text>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Name:</Text>
-              <TextInput
-                value={editForm.name}
-                onChangeText={(text) => setEditForm(prev => ({ ...prev, name: text }))}
-                style={{
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: 5,
-                  padding: 10,
-                  marginBottom: 15,
-                  color: theme.text,
-                  backgroundColor: theme.background
-                }}
-                placeholder="Restaurant name"
-                placeholderTextColor={theme.textSecondary}
-              />
-
-              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Latitude:</Text>
-              <TextInput
-                value={editForm.latitude}
-                onChangeText={(text) => setEditForm(prev => ({ ...prev, latitude: text }))}
-                style={{
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: 5,
-                  padding: 10,
-                  marginBottom: 15,
-                  color: theme.text,
-                  backgroundColor: theme.background
-                }}
-                placeholder="e.g. 11.7061"
-                keyboardType="numeric"
-                placeholderTextColor={theme.textSecondary}
-              />
-
-              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Longitude:</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
-                <TextInput
-                  value={editForm.longitude}
-                  onChangeText={(text) => setEditForm(prev => ({ ...prev, longitude: text }))}
-                  style={{
-                    flex: 1,
-                    borderWidth: 1,
-                    borderColor: theme.border,
-                    borderRadius: 5,
-                    padding: 10,
-                    color: theme.text,
-                    backgroundColor: theme.background
-                  }}
-                  placeholder="e.g. 122.3649"
-                  keyboardType="numeric"
-                  placeholderTextColor={theme.textSecondary}
-                />
-                <TouchableOpacity
-                  onPress={handleGetCurrentLocation}
-                  disabled={locationLoading}
-                  style={{
-                    marginLeft: 10,
-                    backgroundColor: locationLoading ? theme.border : '#28a745',
-                    paddingHorizontal: 15,
-                    paddingVertical: 10,
-                    borderRadius: 5
-                  }}
-                >
-                  {locationLoading ? (
-                    <ActivityIndicator size="small" color={theme.text} />
-                  ) : (
-                    <Text style={{
-                      color: !isAvailable ? theme.textSecondary : 'white',
-                      fontSize: 12,
-                      fontWeight: 'bold'
-                    }}>
-                      {!isAvailable ? '📍 Location Unavailable' : '📍 Get Location'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Restaurant Image:</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-                <TouchableOpacity
-                  onPress={pickImage}
-                  disabled={imageUploading}
-                  style={{
-                    backgroundColor: imageUploading ? theme.border :
-                                       theme.primary,
-                    paddingHorizontal: 15,
-                    paddingVertical: 10,
-                    borderRadius: 5,
-                    marginRight: 10
-                  }}
-                >
-                  {imageUploading ? (
-                    <ActivityIndicator size="small" color={theme.text} />
-                  ) : (
-                    <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
-                      📷 Select Image
-                    </Text>
-                  )}
-                </TouchableOpacity>
-                {editForm.image ? (
-                  <Image
-                    source={{ uri: editForm.image }}
-                    style={{ width: 50, height: 50, borderRadius: 5 }}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <Text style={{ color: theme.textSecondary, fontSize: 12 }}>No image selected</Text>
-                )}
-              </View>
-            </ScrollView>
-
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowEditModal(false);
-                  setEditingRestaurant(null);
-                }}
-                style={{ backgroundColor: theme.border, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5, flex: 1, marginRight: 10 }}
-              >
-                <Text style={{ color: theme.text, textAlign: 'center', fontWeight: 'bold' }}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleSaveEdit}
-                style={{ backgroundColor: theme.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5, flex: 1, marginLeft: 10 }}
-              >
-                <Text style={{ color: theme.background, textAlign: 'center', fontWeight: 'bold' }}>Save Changes</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       {/* Menu Item Edit Modal */}
       <Modal
         visible={showMenuEditModal}
@@ -1055,22 +1019,80 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 placeholderTextColor={theme.textSecondary}
               />
 
-              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Image URL:</Text>
-              <TextInput
-                value={menuEditForm.image}
-                onChangeText={(text) => setMenuEditForm(prev => ({ ...prev, image: text }))}
-                style={{
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: 5,
-                  padding: 10,
-                  marginBottom: 15,
-                  color: theme.text,
-                  backgroundColor: theme.background
-                }}
-                placeholder="Optional image URL"
-                placeholderTextColor={theme.textSecondary}
-              />
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Menu Item Image:</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    try {
+                      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                      if (status !== 'granted') {
+                        Alert.alert('Permission needed', 'Please grant permission to access your photos');
+                        return;
+                      }
+
+                      const result = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: ['images'],
+                        allowsEditing: true,
+                        aspect: [1, 1],
+                        quality: 0.8,
+                      });
+
+                      if (!result.canceled && result.assets && result.assets.length > 0) {
+                        const imageUri = result.assets[0].uri;
+                        console.log('📷 Selected menu item image URI:', imageUri);
+                        setImageUploading(true);
+
+                        try {
+                          const { uploadRestaurantImage } = await import('../services/imageService');
+                          const tempMenuItemId = `menu_${Date.now()}`;
+                          const uploadedImageUrl = await uploadRestaurantImage(imageUri, tempMenuItemId, 'gallery');
+                          
+                          setMenuEditForm(prev => ({
+                            ...prev,
+                            image: uploadedImageUrl
+                          }));
+
+                          Alert.alert('Success', 'Image uploaded successfully!');
+
+                        } catch (uploadError: any) {
+                          console.error('Image upload error:', uploadError);
+                          Alert.alert('Error', `Failed to upload image: ${uploadError?.message || 'Unknown error'}`);
+                        } finally {
+                          setImageUploading(false);
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Image picker error:', error);
+                      Alert.alert('Error', 'Failed to select image');
+                    }
+                  }}
+                  disabled={imageUploading}
+                  style={{
+                    backgroundColor: imageUploading ? theme.border : theme.primary,
+                    paddingHorizontal: 15,
+                    paddingVertical: 10,
+                    borderRadius: 5,
+                    marginRight: 10
+                  }}
+                >
+                  {imageUploading ? (
+                    <ActivityIndicator size="small" color={theme.text} />
+                  ) : (
+                    <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                      📷 Select Image
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                {menuEditForm.image ? (
+                  <Image
+                    source={{ uri: menuEditForm.image }}
+                    style={{ width: 50, height: 50, borderRadius: 5 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={{ color: theme.textSecondary, fontSize: 12 }}>No image selected</Text>
+                )}
+              </View>
 
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
                 <TouchableOpacity
@@ -1111,6 +1133,340 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 <Text style={{ color: theme.background, textAlign: 'center', fontWeight: 'bold' }}>
                   {editingMenuItem ? 'Update' : 'Create'}
                 </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Restaurant Modal */}
+      <Modal
+        visible={showAddModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: theme.surface, borderRadius: 10, padding: 20, width: '90%', maxWidth: 400, maxHeight: '90%' }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: theme.text }}>
+              Add Restaurant
+            </Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Name:</Text>
+              <TextInput
+                value={addForm.name}
+                onChangeText={(text) => setAddForm(prev => ({ ...prev, name: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="Restaurant name"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Latitude:</Text>
+              <TextInput
+                value={addForm.latitude}
+                onChangeText={(text) => setAddForm(prev => ({ ...prev, latitude: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="e.g. 11.7061"
+                keyboardType="numeric"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Longitude:</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                <TextInput
+                  value={addForm.longitude}
+                  onChangeText={(text) => setAddForm(prev => ({ ...prev, longitude: text }))}
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    borderRadius: 5,
+                    padding: 10,
+                    color: theme.text,
+                    backgroundColor: theme.background
+                  }}
+                  placeholder="e.g. 122.3649"
+                  keyboardType="numeric"
+                  placeholderTextColor={theme.textSecondary}
+                />
+                <TouchableOpacity
+                  onPress={async () => {
+                    try {
+                      setLocationLoading(true);
+                      console.log('📍 Admin: Getting current location for add...');
+
+                      const locationService = await import('../services/expoLocationService');
+                      const location = await locationService.locationService.getCurrentLocation();
+                      if (location) {
+                        setAddForm(prev => ({
+                          ...prev,
+                          latitude: location.latitude.toString(),
+                          longitude: location.longitude.toString()
+                        }));
+                        console.log('📍 Admin: Location obtained for add:', location);
+
+                        // Try to reverse geocode for user feedback
+                        try {
+                          const { reverseGeocode } = await import('../src/services/geocodingService');
+                          const address = await reverseGeocode(location.latitude, location.longitude);
+                          Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4)}`);
+                        } catch (geocodeError) {
+                          console.warn('📍 Admin: Reverse geocoding failed:', geocodeError);
+                          Alert.alert('Success', `Location updated!\nCoordinates: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+                        }
+                      } else {
+                        console.warn('📍 Admin: Failed to get location for add');
+                        Alert.alert('Location Error', 'Unable to get your current location. Please check location permissions and try again.');
+                      }
+                    } catch (error: any) {
+                      console.error('📍 Admin: Location error for add:', error);
+                      Alert.alert('Location Error', `Failed to access location services: ${error.message}`);
+                    } finally {
+                      setLocationLoading(false);
+                    }
+                  }}
+                  disabled={locationLoading}
+                  style={{
+                    marginLeft: 10,
+                    backgroundColor: locationLoading ? theme.border : '#28a745',
+                    paddingHorizontal: 15,
+                    paddingVertical: 10,
+                    borderRadius: 5
+                  }}
+                >
+                  {locationLoading ? (
+                    <ActivityIndicator size="small" color={theme.text} />
+                  ) : (
+                    <Text style={{
+                      color: !locationAvailable ? theme.textSecondary : 'white',
+                      fontSize: 12,
+                      fontWeight: 'bold'
+                    }}>
+                      {!locationAvailable ? '📍 Location Unavailable' : '📍 Get Location'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Category:</Text>
+              <TextInput
+                value={addForm.category}
+                onChangeText={(text) => setAddForm(prev => ({ ...prev, category: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="e.g. italian, cafe, fast_food, casual"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Description:</Text>
+              <TextInput
+                value={addForm.description}
+                onChangeText={(text) => setAddForm(prev => ({ ...prev, description: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background,
+                  minHeight: 80,
+                  textAlignVertical: 'top'
+                }}
+                placeholder="Optional restaurant description"
+                multiline
+                numberOfLines={3}
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Phone:</Text>
+              <TextInput
+                value={addForm.phone}
+                onChangeText={(text) => setAddForm(prev => ({ ...prev, phone: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="Optional phone number"
+                keyboardType="phone-pad"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Hours:</Text>
+              <TextInput
+                value={addForm.hours}
+                onChangeText={(text) => setAddForm(prev => ({ ...prev, hours: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="Optional business hours (e.g. Mon-Fri 9AM-10PM)"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Website:</Text>
+              <TextInput
+                value={addForm.website}
+                onChangeText={(text) => setAddForm(prev => ({ ...prev, website: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="Optional website URL"
+                keyboardType="url"
+                autoCapitalize="none"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Restaurant Image:</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    try {
+                      // Request permissions
+                      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                      if (status !== 'granted') {
+                        Alert.alert('Permission needed', 'Please grant permission to access your photos');
+                        return;
+                      }
+
+                      const result = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: ['images'],
+                        allowsEditing: true,
+                        aspect: [4, 3],
+                        quality: 0.8,
+                      });
+
+                      if (!result.canceled && result.assets && result.assets.length > 0) {
+                        const imageUri = result.assets[0].uri;
+                        console.log('📷 Selected image URI for add:', imageUri);
+                        setImageUploading(true);
+
+                        try {
+                          // Upload to Supabase Storage
+                          const { uploadRestaurantImage } = await import('../services/imageService');
+                          const tempRestaurantId = `temp_${Date.now()}`;
+                          const uploadedImageUrl = await uploadRestaurantImage(imageUri, tempRestaurantId, 'logo');
+                          
+                          setAddForm(prev => ({
+                            ...prev,
+                            image: uploadedImageUrl
+                          }));
+
+                          Alert.alert('Success', 'Image uploaded successfully!');
+
+                        } catch (uploadError: any) {
+                          console.error('Image upload error:', uploadError);
+                          Alert.alert('Error', `Failed to upload image: ${uploadError?.message || 'Unknown error'}`);
+                        } finally {
+                          setImageUploading(false);
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Image picker error:', error);
+                      Alert.alert('Error', 'Failed to select image');
+                    }
+                  }}
+                  disabled={imageUploading}
+                  style={{
+                    backgroundColor: imageUploading ? theme.border :
+                                       theme.primary,
+                    paddingHorizontal: 15,
+                    paddingVertical: 10,
+                    borderRadius: 5,
+                    marginRight: 10
+                  }}
+                >
+                  {imageUploading ? (
+                    <ActivityIndicator size="small" color={theme.text} />
+                  ) : (
+                    <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                      📷 Select Image
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                {addForm.image ? (
+                  <Image
+                    source={{ uri: addForm.image }}
+                    style={{ width: 50, height: 50, borderRadius: 5 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={{ color: theme.textSecondary, fontSize: 12 }}>No image selected</Text>
+                )}
+              </View>
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowAddModal(false);
+                  setAddForm({
+                    name: '',
+                    latitude: '',
+                    longitude: '',
+                    image: '',
+                    description: '',
+                    category: 'casual',
+                    phone: '',
+                    hours: '',
+                    website: ''
+                  });
+                }}
+                style={{ backgroundColor: theme.border, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5, flex: 1, marginRight: 10 }}
+              >
+                <Text style={{ color: theme.text, textAlign: 'center', fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSaveAdd}
+                disabled={addLoading}
+                style={{ backgroundColor: theme.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5, flex: 1, marginLeft: 10 }}
+              >
+                {addLoading ? (
+                  <ActivityIndicator size="small" color={theme.background} />
+                ) : (
+                  <Text style={{ color: theme.background, textAlign: 'center', fontWeight: 'bold' }}>Create Restaurant</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -1209,11 +1565,11 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
             </View>
           </View>
         </View>
-      </Modal>
+    </Modal>
 
-      {/* TODO: User management */}
-    </View>
-  );
+    {/* TODO: User management */}
+  </View>
+);
 }
 
 const styles = StyleSheet.create({

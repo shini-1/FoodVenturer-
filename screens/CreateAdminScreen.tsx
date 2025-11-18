@@ -58,9 +58,9 @@ export default function CreateAdminScreen({ navigation }: { navigation: any }) {
           <Text style={styles.successText}>✅ Admin Account Created</Text>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.navigate('RoleSelection')}
+            onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backButtonText}>Back to Role Selection</Text>
+            <Text style={styles.backButtonText}>✕</Text>
           </TouchableOpacity>
         </View>
       )}

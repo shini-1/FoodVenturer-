@@ -90,8 +90,8 @@ function EditMenuItemsScreen({ navigation }: EditMenuItemsScreenProps) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header />
       <View style={styles.content}>
-        <TouchableOpacity onPress={() => navigation.navigate('BusinessDashboard')} style={styles.backButton}>
-          <Text style={[styles.backButtonText, { color: theme.primary }]}>← Back</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={[styles.backButtonText, { color: theme.primary }]}>✕</Text>
         </TouchableOpacity>
 
         <Text style={[styles.title, { color: theme.text }]}>Edit Menu Items</Text>
