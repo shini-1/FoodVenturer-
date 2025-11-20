@@ -25,6 +25,11 @@ jobs:
     - name: Install Expo CLI
       run: npm install -g expo-cli
 
+    - name: Clear Existing Expo Login
+      run: expo logout
+      working-directory: ./FoodVenturer-Expo
+      continue-on-error: true
+
     - name: Login to Expo
       env:
         EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
