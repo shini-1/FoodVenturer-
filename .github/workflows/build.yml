@@ -20,25 +20,25 @@ jobs:
 
     - name: Install dependencies
       run: npm install
-      working-directory: ./FoodVenturer-Expo/FoodVenturer-Expo
+      working-directory: FoodVenturer-Expo
 
     - name: Verify React Native Installation
       run: npm list react-native || npm install react-native
-      working-directory: ./FoodVenturer-Expo/FoodVenturer-Expo
+      working-directory: FoodVenturer-Expo
 
     - name: Install Expo CLI
       run: npm install -g expo-cli
 
     - name: Clear Existing Expo Login
       run: expo logout
-      working-directory: ./FoodVenturer-Expo
+      working-directory: FoodVenturer-Expo
       continue-on-error: true
 
     - name: Build APK
       env:
         EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       run: expo build:android -t apk
-      working-directory: ./FoodVenturer-Expo/FoodVenturer-Expo
+      working-directory: FoodVenturer-Expo
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
