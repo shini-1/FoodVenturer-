@@ -27,8 +27,8 @@ jobs:
 
     - name: Login to Expo
       env:
-        EXPO_CLI_USERNAME: ${{ secrets.EXPO_USERNAME }}
-        EXPO_CLI_PASSWORD: ${{ secrets.EXPO_PASSWORD }}
+        EXPO_USERNAME: ${{ secrets.EXPO_USERNAME }}
+        EXPO_PASSWORD: ${{ secrets.EXPO_PASSWORD }}
       run: expo login --non-interactive
       working-directory: ./FoodVenturer-Expo
 
