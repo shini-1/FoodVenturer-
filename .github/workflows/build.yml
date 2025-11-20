@@ -26,10 +26,7 @@ jobs:
       run: npm install -g expo-cli
 
     - name: Login to Expo
-      env:
-        EXPO_USERNAME: ${{ secrets.EXPO_USERNAME }}
-        EXPO_PASSWORD: ${{ secrets.EXPO_PASSWORD }}
-      run: expo login --non-interactive
+      run: echo -e "${{ secrets.EXPO_USERNAME }}\n${{ secrets.EXPO_PASSWORD }}" | expo login
       working-directory: ./FoodVenturer-Expo
 
     - name: Build APK
