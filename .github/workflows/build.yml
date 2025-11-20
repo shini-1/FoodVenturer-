@@ -17,8 +17,13 @@ jobs:
         cache: 'npm'
     - name: Debug Directory Structure
       run: ls -R
+    - name: Debug Current Working Directory
+      run: pwd
     - name: Install dependencies
       run: npm install
+    - name: Retry Install dependencies if failed
+      run: npm install
+      if: failure()
     - name: Verify React Native Installation
       run: npm list react-native || npm install react-native
     - name: Install Expo CLI
