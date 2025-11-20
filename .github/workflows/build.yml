@@ -25,6 +25,8 @@ jobs:
       run: |
         eas build --platform android --profile production --non-interactive --wait --json > build.json
     - name: Download APK artifact
+      env:
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       run: eas build:download --latest --platform android --profile production --path app.apk
     - name: Upload APK
       uses: actions/upload-artifact@v4
