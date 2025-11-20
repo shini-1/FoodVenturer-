@@ -13,10 +13,8 @@ import { LocationService } from '../services/expoLocationService';
 function AdminPanelScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
 
-  // Location state management
   const [locationAvailable, setLocationAvailable] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
-  const imageAvailable = true; // imagePickerAvailable;
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [pendingBusinesses, setPendingBusinesses] = useState<RestaurantSubmission[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -29,7 +27,12 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     name: '',
     latitude: '',
     longitude: '',
-    image: ''
+    image: '',
+    category: 'casual',
+    description: '',
+    phone: '',
+    hours: '',
+    website: ''
   });
   const [activeTab, setActiveTab] = useState<'restaurants' | 'pending' | 'menu'>('restaurants');
   const [addressCache, setAddressCache] = useState<{[key: string]: string}>({});
@@ -47,7 +50,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     isAvailable: true
   });
 
-  // Add Restaurant state
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({
     name: '',
@@ -75,14 +77,12 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     fetchRestaurants();
   }, []);
 
-  // Check location availability on mount
   useEffect(() => {
     const checkLocationAvailability = async () => {
       try {
         console.log('📍 Admin: Checking location availability...');
-        const locationService = await import('../services/expoLocationService');
-        // Just try to get location to see if it's available
-        const location = await locationService.locationService.getCurrentLocation();
+        const locationServiceInstance = new LocationService();
+        const location = await locationServiceInstance.getCurrentLocation();
         setLocationAvailable(!!location);
         console.log('📍 Admin: Location available:', !!location);
       } catch (error) {
@@ -107,12 +107,11 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       }
     };
     fetchPendingBusinesses();
-  }, [activeTab]); // Re-fetch when tab changes
+  }, [activeTab]);
 
   const handleDeleteBusiness = async (businessId: string) => {
     try {
       await deleteRestaurantOwner(businessId);
-      // Note: This function is kept for pending submissions, but businesses are removed
     } catch (error: any) {
       Alert.alert('Error', `Delete failed: ${error.message}`);
     }
@@ -123,7 +122,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       await approveRestaurant(submissionId);
       setPendingBusinesses(prev => prev.filter(s => s.id !== submissionId));
       Alert.alert('Success', 'Restaurant approved successfully!');
-      // Refresh pending list
       const updatedPending = await getPendingRestaurants();
       setPendingBusinesses(updatedPending);
     } catch (error: any) {
@@ -151,8 +149,8 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       setLocationLoading(true);
       console.log('📍 Admin: Getting current location...');
 
-      const locationService = await import('../services/expoLocationService');
-      const location = await locationService.locationService.getCurrentLocation();
+      const locationServiceInstance = new LocationService();
+      const location = await locationServiceInstance.getCurrentLocation();
       if (location) {
         setEditForm(prev => ({
           ...prev,
@@ -161,9 +159,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         }));
         console.log('📍 Admin: Location obtained:', location);
 
-        // Try to reverse geocode for user feedback
         try {
-          const { reverseGeocode } = await import('../src/services/geocodingService');
           const address = await reverseGeocode(location.latitude, location.longitude);
           Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4)}`);
         } catch (geocodeError) {
@@ -184,7 +180,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
   const pickImage = async () => {
     try {
-      // Request permissions
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Please grant permission to access your photos');
@@ -204,28 +199,22 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         setImageUploading(true);
 
         try {
-          // Get the restaurant ID from editingRestaurant
           const restaurantId = editingRestaurant?.id;
           if (!restaurantId) {
             Alert.alert('Error', 'No restaurant selected for editing');
             return;
           }
 
-          // Upload to Supabase Storage and update database
           const uploadedImageUrl = await uploadAndUpdateRestaurantImage(imageUri, restaurantId, 'logo');
 
-          // Update the form state
-          if (editingRestaurant) {
-            setEditForm(prev => ({
-              ...prev,
-              image: uploadedImageUrl
-            }));
+          setEditForm(prev => ({
+            ...prev,
+            image: uploadedImageUrl
+          }));
 
-            // Update the restaurants list
-            setRestaurants(prev => prev.map(r =>
-              r.id === editingRestaurant.id ? { ...r, image: uploadedImageUrl } : r
-            ));
-          }
+          setRestaurants(prev => prev.map(r =>
+            r.id === editingRestaurant.id ? { ...r, image: uploadedImageUrl } : r
+          ));
 
           Alert.alert('Success', 'Image uploaded and saved successfully!');
 
@@ -253,7 +242,12 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       name: restaurant.name,
       latitude: restaurant.location.latitude.toString(),
       longitude: restaurant.location.longitude.toString(),
-      image: restaurant.image || ''
+      image: restaurant.image || '',
+      category: restaurant.category || 'casual',
+      description: restaurant.description || '',
+      phone: restaurant.phone || '',
+      hours: restaurant.hours || '',
+      website: restaurant.website || ''
     });
     setShowEditModal(true);
   };
@@ -272,7 +266,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     if (!editingRestaurant) return;
 
     try {
-      // Validate form
       const name = editForm.name.trim();
       const latitude = parseFloat(editForm.latitude);
       const longitude = parseFloat(editForm.longitude);
@@ -282,24 +275,37 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         return;
       }
 
-      if (isNaN(latitude) || isNaN(longitude)) {
-        Alert.alert('Error', 'Valid latitude and longitude are required');
+      if (isNaN(latitude) || latitude < -90 || latitude > 90) {
+        Alert.alert('Error', 'Latitude must be between -90 and 90');
         return;
       }
 
-      // Update the restaurant in the database
+      if (isNaN(longitude) || longitude < -180 || longitude > 180) {
+        Alert.alert('Error', 'Longitude must be between -180 and 180');
+        return;
+      }
+
       await updateRestaurant(editingRestaurant.id, {
         name,
         location: { latitude, longitude },
-        image: editForm.image.trim() || undefined
+        image: editForm.image.trim() || undefined,
+        category: editForm.category,
+        description: editForm.description.trim() || undefined,
+        phone: editForm.phone.trim() || undefined,
+        hours: editForm.hours.trim() || undefined,
+        website: editForm.website.trim() || undefined
       });
 
-      // Update local state to reflect changes
       const updatedRestaurant: Restaurant = {
         ...editingRestaurant,
         name,
         location: { latitude, longitude },
-        image: editForm.image.trim() || undefined
+        image: editForm.image.trim() || undefined,
+        category: editForm.category,
+        description: editForm.description.trim() || undefined,
+        phone: editForm.phone.trim() || undefined,
+        hours: editForm.hours.trim() || undefined,
+        website: editForm.website.trim() || undefined
       };
 
       setRestaurants(prev => prev.map(r =>
@@ -320,7 +326,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     try {
       setAddLoading(true);
 
-      // Validate form
       const name = addForm.name.trim();
       const latitude = parseFloat(addForm.latitude);
       const longitude = parseFloat(addForm.longitude);
@@ -330,12 +335,16 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         return;
       }
 
-      if (isNaN(latitude) || isNaN(longitude)) {
-        Alert.alert('Error', 'Valid latitude and longitude are required');
+      if (isNaN(latitude) || latitude < -90 || latitude > 90) {
+        Alert.alert('Error', 'Latitude must be between -90 and 90');
         return;
       }
 
-      // Create the restaurant data
+      if (isNaN(longitude) || longitude < -180 || longitude > 180) {
+        Alert.alert('Error', 'Longitude must be between -180 and 180');
+        return;
+      }
+
       const restaurantData = {
         name,
         location: { latitude, longitude },
@@ -345,18 +354,15 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         phone: addForm.phone.trim() || undefined,
         hours: addForm.hours.trim() || undefined,
         website: addForm.website.trim() || undefined,
-        rating: undefined, // Will be set later by users
-        priceRange: undefined // Will be set later by users
+        rating: undefined,
+        priceRange: undefined
       };
 
-      // Add the restaurant to the database
       await addRestaurant(restaurantData);
 
-      // Refresh the restaurants list
       const updatedRestaurants = await getRestaurants();
       setRestaurants(updatedRestaurants);
 
-      // Reset form and close modal
       setAddForm({
         name: '',
         latitude: '',
@@ -404,53 +410,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     }
   };
 
-  const handleVerifyDataIntegrity = async () => {
-    try {
-      const { getRestaurants } = await import('../services/restaurants');
-      const { restaurantUrls } = await import('../utils/importRestaurants');
-      const { parseGoogleMapsUrl } = await import('../utils/googleMapsParser');
-
-      const currentRestaurants = await getRestaurants();
-      const expectedRestaurants = restaurantUrls.map(url => parseGoogleMapsUrl(url)).filter(r => r !== null);
-
-      console.log('🔍 Data Integrity Check:');
-      console.log('📊 Current in DB:', currentRestaurants.length);
-      console.log('📊 Expected from URLs:', expectedRestaurants.length);
-      console.log('📊 URLs provided:', restaurantUrls.length);
-
-      // Check what restaurants are present vs expected
-      const currentNames = currentRestaurants.map(r => r.name.toLowerCase().trim());
-      const expectedNames = expectedRestaurants.map(r => r.name.toLowerCase().trim());
-
-      const missing = expectedNames.filter(name => !currentNames.includes(name));
-      const extra = currentNames.filter(name => !expectedNames.includes(name));
-
-      let message = `Data Integrity Check:\n\nCurrent: ${currentRestaurants.length} restaurants\nExpected: ${expectedRestaurants.length} restaurants\nURLs: ${restaurantUrls.length}\n\n`;
-
-      if (missing.length > 0) {
-        message += `❌ Missing restaurants: ${missing.length}\n${missing.join(', ')}\n\n`;
-      }
-
-      if (extra.length > 0) {
-        message += `⚠️ Extra restaurants: ${extra.length}\n${extra.join(', ')}\n\n`;
-      }
-
-      if (missing.length === 0 && extra.length === 0) {
-        message += '✅ Data integrity verified - all expected restaurants present!';
-      }
-
-      Alert.alert('Data Integrity Check', message);
-
-      console.log('Missing restaurants:', missing);
-      console.log('Extra restaurants:', extra);
-      console.log('Current names:', currentNames);
-      console.log('Expected names:', expectedNames);
-
-    } catch (error: any) {
-      Alert.alert('Error', `Integrity check failed: ${error.message}`);
-    }
-  };
-
   const handleClearDatabase = async () => {
     Alert.alert(
       '⚠️ Clear Database',
@@ -475,7 +434,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
   };
 
   const handleImportRestaurants = async () => {
-    // Import the URLs from the utils
     const { addRestaurantsFromGoogleMaps } = await import('../services/restaurants');
     const { restaurantUrls } = await import('../utils/importRestaurants');
 
@@ -483,15 +441,13 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       Alert.alert('Importing', 'Please wait...');
       await addRestaurantsFromGoogleMaps(restaurantUrls);
       Alert.alert('Success', 'Restaurants imported successfully!');
-      // Refresh the list
-      // const data = await getRestaurants();
-      // setRestaurants(data);
+      const data = await getRestaurants();
+      setRestaurants(data);
     } catch (error: any) {
       Alert.alert('Error', `Import failed: ${error.message}`);
     }
   };
 
-  // Menu management functions
   const loadMenuItems = async (restaurant: Restaurant) => {
     try {
       setSelectedRestaurantForMenu(restaurant);
@@ -550,16 +506,13 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       };
 
       if (editingMenuItem) {
-        // Update existing menu item
         await menuService.updateMenuItem(editingMenuItem.id, menuItemData);
         Alert.alert('Success', 'Menu item updated successfully!');
       } else {
-        // Create new menu item
         await menuService.createMenuItem(menuItemData);
         Alert.alert('Success', 'Menu item created successfully!');
       }
 
-      // Refresh menu items
       await loadMenuItems(selectedRestaurantForMenu);
       setShowMenuEditModal(false);
       setEditingMenuItem(null);
@@ -594,6 +547,72 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     );
   };
 
+  const restaurantCategories = [
+    { value: 'all', label: 'All Types', emoji: '🍽️' },
+    { value: 'italian', label: 'Italian', emoji: '🍕' },
+    { value: 'cafe', label: 'Cafe', emoji: '☕' },
+    { value: 'fast_food', label: 'Fast Food', emoji: '🍔' },
+    { value: 'asian', label: 'Asian', emoji: '🥢' },
+    { value: 'japanese', label: 'Japanese', emoji: '🍱' },
+    { value: 'bakery', label: 'Bakery', emoji: '🥖' },
+    { value: 'grill', label: 'Grill', emoji: '🥩' },
+    { value: 'seafood', label: 'Seafood', emoji: '🦞' },
+    { value: 'mexican', label: 'Mexican', emoji: '🌮' },
+    { value: 'thai', label: 'Thai', emoji: '🍜' },
+    { value: 'buffet', label: 'Buffet', emoji: '🍽️' },
+    { value: 'fine_dining', label: 'Fine Dining', emoji: '🍾' },
+    { value: 'fast_casual', label: 'Fast Casual', emoji: '🏃' },
+    { value: 'family', label: 'Family', emoji: '👨‍👩‍👧‍👦' },
+    { value: 'diner', label: 'Diner', emoji: '🍳' },
+    { value: 'casual', label: 'Casual', emoji: '🍽️' }
+  ];
+
+  const handleVerifyDataIntegrity = async () => {
+    try {
+      const { getRestaurants } = await import('../services/restaurants');
+      const { restaurantUrls } = await import('../utils/importRestaurants');
+      const { parseGoogleMapsUrl } = await import('../utils/googleMapsParser');
+
+      const currentRestaurants = await getRestaurants();
+      const expectedRestaurants = restaurantUrls.map(url => parseGoogleMapsUrl(url)).filter(r => r !== null);
+
+      console.log('🔍 Data Integrity Check:');
+      console.log('📊 Current in DB:', currentRestaurants.length);
+      console.log('📊 Expected from URLs:', expectedRestaurants.length);
+      console.log('📊 URLs provided:', restaurantUrls.length);
+
+      const currentNames = currentRestaurants.map(r => r.name.toLowerCase().trim());
+      const expectedNames = expectedRestaurants.map(r => r.name.toLowerCase().trim());
+
+      const missing = expectedNames.filter(name => !currentNames.includes(name));
+      const extra = currentNames.filter(name => !expectedNames.includes(name));
+
+      let message = `Data Integrity Check:\n\nCurrent: ${currentRestaurants.length} restaurants\nExpected: ${expectedRestaurants.length} restaurants\nURLs: ${restaurantUrls.length}\n\n`;
+
+      if (missing.length > 0) {
+        message += `❌ Missing restaurants: ${missing.length}\n${missing.join(', ')}\n\n`;
+      }
+
+      if (extra.length > 0) {
+        message += `⚠️ Extra restaurants: ${extra.length}\n${extra.join(', ')}\n\n`;
+      }
+
+      if (missing.length === 0 && extra.length === 0) {
+        message += '✅ Data integrity verified - all expected restaurants present!';
+      }
+
+      Alert.alert('Data Integrity Check', message);
+
+      console.log('Missing restaurants:', missing);
+      console.log('Extra restaurants:', extra);
+      console.log('Current names:', currentNames);
+      console.log('Expected names:', expectedNames);
+
+    } catch (error: any) {
+      Alert.alert('Error', `Integrity check failed: ${error.message}`);
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.background, padding: 20 }}>
       <Header />
@@ -605,7 +624,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       </TouchableOpacity>
       <Text style={{ fontSize: 24, marginBottom: 20, color: theme.text }}>Admin Panel</Text>
 
-      {/* Tab Navigation */}
       <View style={{ flexDirection: 'row', marginBottom: 20, backgroundColor: theme.surface, borderRadius: 10, padding: 5 }}>
         <TouchableOpacity
           onPress={() => setActiveTab('restaurants')}
@@ -653,7 +671,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         </TouchableOpacity>
       </View>
 
-      {/* Icon Toolbar */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20, gap: 10 }}>
         <TouchableOpacity
           onPress={() => setShowAddModal(true)}
@@ -669,7 +686,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
               Alert.alert('Importing', 'Please wait...');
               const result = await importAllRestaurants();
               Alert.alert('Success', `Imported ${result.count} restaurants successfully!`);
-              // Refresh the list
               const data = await getRestaurants();
               setRestaurants(data);
             } catch (error: any) {
@@ -710,7 +726,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         </TouchableOpacity>
       </View>
 
-      {/* Tab Content */}
       {activeTab === 'restaurants' && (
         <>
           <Text style={{ fontSize: 18, marginBottom: 10, color: theme.text }}>Restaurants:</Text>
@@ -752,7 +767,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         <>
           <Text style={{ fontSize: 18, marginBottom: 10, color: theme.text }}>Menu Management</Text>
 
-          {/* Restaurant Selection */}
           <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Select Restaurant:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
             {restaurants.map((restaurant) => (
@@ -782,7 +796,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
             ))}
           </ScrollView>
 
-          {/* Menu Items List */}
           {selectedRestaurantForMenu && (
             <>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -932,7 +945,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         </>
       )}
 
-      {/* Menu Item Edit Modal */}
       <Modal
         visible={showMenuEditModal}
         transparent={true}
@@ -1139,7 +1151,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         </View>
       </Modal>
 
-      {/* Add Restaurant Modal */}
       <Modal
         visible={showAddModal}
         transparent={true}
@@ -1212,8 +1223,8 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                       setLocationLoading(true);
                       console.log('📍 Admin: Getting current location for add...');
 
-                      const locationService = await import('../services/expoLocationService');
-                      const location = await locationService.locationService.getCurrentLocation();
+                      const locationServiceInstance = new LocationService();
+                      const location = await locationServiceInstance.getCurrentLocation();
                       if (location) {
                         setAddForm(prev => ({
                           ...prev,
@@ -1222,9 +1233,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         }));
                         console.log('📍 Admin: Location obtained for add:', location);
 
-                        // Try to reverse geocode for user feedback
                         try {
-                          const { reverseGeocode } = await import('../src/services/geocodingService');
                           const address = await reverseGeocode(location.latitude, location.longitude);
                           Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4)}`);
                         } catch (geocodeError) {
@@ -1266,21 +1275,26 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
               </View>
 
               <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Category:</Text>
-              <TextInput
-                value={addForm.category}
-                onChangeText={(text) => setAddForm(prev => ({ ...prev, category: text }))}
-                style={{
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: 5,
-                  padding: 10,
-                  marginBottom: 15,
-                  color: theme.text,
-                  backgroundColor: theme.background
-                }}
-                placeholder="e.g. italian, cafe, fast_food, casual"
-                placeholderTextColor={theme.textSecondary}
-              />
+              <View style={{ marginBottom: 15 }}>
+                {restaurantCategories.map((category) => (
+                  <TouchableOpacity
+                    key={category.value}
+                    onPress={() => setAddForm(prev => ({ ...prev, category: category.value }))}
+                    style={{
+                      padding: 10,
+                      backgroundColor: addForm.category === category.value ? theme.primary : theme.surface,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                      borderRadius: 5,
+                      marginBottom: 5
+                    }}
+                  >
+                    <Text style={{ color: addForm.category === category.value ? theme.background : theme.text }}>
+                      {category.emoji} {category.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
               <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Description:</Text>
               <TextInput
@@ -1362,7 +1376,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 <TouchableOpacity
                   onPress={async () => {
                     try {
-                      // Request permissions
                       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                       if (status !== 'granted') {
                         Alert.alert('Permission needed', 'Please grant permission to access your photos');
@@ -1382,7 +1395,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         setImageUploading(true);
 
                         try {
-                          // Upload to Supabase Storage
                           const { uploadRestaurantImage } = await import('../services/imageService');
                           const tempRestaurantId = `temp_${Date.now()}`;
                           const uploadedImageUrl = await uploadRestaurantImage(imageUri, tempRestaurantId, 'logo');
@@ -1473,7 +1485,249 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         </View>
       </Modal>
 
-      {/* Rejection Reason Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: theme.surface, borderRadius: 10, padding: 20, width: '90%', maxWidth: 400, maxHeight: '90%' }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: theme.text }}>
+              Edit Restaurant
+            </Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Name:</Text>
+              <TextInput
+                value={editForm.name}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, name: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="Restaurant name"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Latitude:</Text>
+              <TextInput
+                value={editForm.latitude}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, latitude: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="e.g. 11.7061"
+                keyboardType="numeric"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Longitude:</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                <TextInput
+                  value={editForm.longitude}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, longitude: text }))}
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    borderRadius: 5,
+                    padding: 10,
+                    color: theme.text,
+                    backgroundColor: theme.background
+                  }}
+                  placeholder="e.g. 122.3649"
+                  keyboardType="numeric"
+                  placeholderTextColor={theme.textSecondary}
+                />
+                <TouchableOpacity
+                  onPress={handleGetCurrentLocation}
+                  disabled={locationLoading}
+                  style={{
+                    marginLeft: 10,
+                    backgroundColor: locationLoading ? theme.border : '#28a745',
+                    paddingHorizontal: 15,
+                    paddingVertical: 10,
+                    borderRadius: 5
+                  }}
+                >
+                  {locationLoading ? (
+                    <ActivityIndicator size="small" color={theme.text} />
+                  ) : (
+                    <Text style={{
+                      color: !locationAvailable ? theme.textSecondary : 'white',
+                      fontSize: 12,
+                      fontWeight: 'bold'
+                    }}>
+                      {!locationAvailable ? '📍 Location Unavailable' : '📍 Get Location'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Category:</Text>
+              <View style={{ marginBottom: 15 }}>
+                {restaurantCategories.map((category) => (
+                  <TouchableOpacity
+                    key={category.value}
+                    onPress={() => setEditForm(prev => ({ ...prev, category: category.value }))}
+                    style={{
+                      padding: 10,
+                      backgroundColor: editForm.category === category.value ? theme.primary : theme.surface,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                      borderRadius: 5,
+                      marginBottom: 5
+                    }}
+                  >
+                    <Text style={{ color: editForm.category === category.value ? theme.background : theme.text }}>
+                      {category.emoji} {category.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Description:</Text>
+              <TextInput
+                value={editForm.description}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, description: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background,
+                  minHeight: 80,
+                  textAlignVertical: 'top'
+                }}
+                placeholder="Optional restaurant description"
+                multiline
+                numberOfLines={3}
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Phone:</Text>
+              <TextInput
+                value={editForm.phone}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, phone: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="Optional phone number"
+                keyboardType="phone-pad"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Hours:</Text>
+              <TextInput
+                value={editForm.hours}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, hours: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="Optional business hours (e.g. Mon-Fri 9AM-10PM)"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Website:</Text>
+              <TextInput
+                value={editForm.website}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, website: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="Optional website URL"
+                keyboardType="url"
+                autoCapitalize="none"
+                placeholderTextColor={theme.textSecondary}
+              />
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Restaurant Image:</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                <TouchableOpacity
+                  onPress={pickImage}
+                  disabled={imageUploading}
+                  style={{
+                    backgroundColor: imageUploading ? theme.border : theme.primary,
+                    paddingHorizontal: 15,
+                    paddingVertical: 10,
+                    borderRadius: 5,
+                    marginRight: 10
+                  }}
+                >
+                  {imageUploading ? (
+                    <ActivityIndicator size="small" color={theme.text} />
+                  ) : (
+                    <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                      📷 Select Image
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                {editForm.image ? (
+                  <Image
+                    source={{ uri: editForm.image }}
+                    style={{ width: 50, height: 50, borderRadius: 5 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={{ color: theme.textSecondary, fontSize: 12 }}>No image selected</Text>
+                )}
+              </View>
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowEditModal(false);
+                  setEditingRestaurant(null);
+                }}
+                style={{ backgroundColor: theme.border, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5, flex: 1, marginRight: 10 }}
+              >
+                <Text style={{ color: theme.text, textAlign: 'center', fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSaveEdit}
+                style={{ backgroundColor: theme.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5, flex: 1, marginLeft: 10 }}
+              >
+                <Text style={{ color: theme.background, textAlign: 'center', fontWeight: 'bold' }}>Update Restaurant</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={showRejectionModal}
         transparent={true}
@@ -1565,11 +1819,11 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
             </View>
           </View>
         </View>
-    </Modal>
+      </Modal>
 
-    {/* TODO: User management */}
-  </View>
-);
+      {/* TODO: User management */}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
