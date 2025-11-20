@@ -20,7 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: npm install
-      working-directory: ./FoodVenturer-Expo
+      working-directory: .
 
     - name: Install Expo CLI
       run: npm install -g expo-cli
@@ -34,7 +34,7 @@ jobs:
       env:
         EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       run: expo build:android -t apk
-      working-directory: ./FoodVenturer-Expo
+      working-directory: .
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
