@@ -1,12 +1,11 @@
-import { app } from '../../services/firebase';
-import { TABLES } from '../config/supabase';
+import { supabase, TABLES } from '../config/supabase';
 import { Category } from '../../types';
 
 export async function getAllCategories(): Promise<Category[]> {
   try {
     console.log('🔍 Fetching categories from Supabase...');
 
-    const { data, error } = await app
+    const { data, error } = await supabase
       .from(TABLES.CATEGORIES)
       .select('*');
 
@@ -35,7 +34,7 @@ export async function getCategoryByName(name: string): Promise<Category | null> 
   try {
     console.log(`🔍 Fetching category '${name}' from Supabase...`);
 
-    const { data, error } = await app
+    const { data, error } = await supabase
       .from(TABLES.CATEGORIES)
       .select('*')
       .eq('name', name)

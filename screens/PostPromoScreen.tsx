@@ -5,7 +5,7 @@ import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import { promoService } from '../src/services/promoService';
 import { restaurantService } from '../src/services/restaurantService';
-import { supabase } from '../services/firebase';
+import { supabase } from '../src/config/supabase';
 
 interface PostPromoScreenProps {
   navigation: any;

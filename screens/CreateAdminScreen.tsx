@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { createTestAdmin } from '../src/utils/createTestAdmin';
-import { initializeFirebase } from '../services/firebase';
 
 export default function CreateAdminScreen({ navigation }: { navigation: any }) {
   const [isCreating, setIsCreating] = useState(false);
@@ -14,8 +13,6 @@ export default function CreateAdminScreen({ navigation }: { navigation: any }) {
 
       try {
         setIsCreating(true);
-        // Ensure Firebase is initialized
-        initializeFirebase();
         await createTestAdmin();
         setIsCreated(true);
         setIsCreating(false);

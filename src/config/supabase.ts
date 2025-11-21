@@ -1,3 +1,5 @@
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
 // Supabase configuration
 // Replace these values with your actual Supabase project credentials
 export const SUPABASE_CONFIG = {
@@ -25,6 +27,12 @@ export const BUCKETS = {
   RESTAURANT_IMAGES: 'restaurant-images',
   USER_AVATARS: 'user-avatars',
 };
+
+// Centralized client (public anon)
+export const supabase: SupabaseClient = createClient(
+  SUPABASE_CONFIG.url,
+  SUPABASE_CONFIG.anonKey
+);
 
 // Temporary fix: Disable RLS for business_owners table during registration
 export const TEMP_DISABLE_RLS_SQL = `

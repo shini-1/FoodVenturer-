@@ -1,5 +1,4 @@
-import { supabase } from '../../services/firebase';
-import { TABLES } from '../config/supabase';
+import { supabase, TABLES } from '../config/supabase';
 
 export interface BusinessOwnerProfile {
   uid: string;

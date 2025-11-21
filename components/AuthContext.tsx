@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User } from '../types';
-import { supabase, initializeFirebase } from '../services/firebase';
+import { supabase } from '../src/config/supabase';
 import { businessOwnerAuthService, BusinessOwnerProfile } from '../src/services/businessOwnerAuthService';
 import { adminAuthService, AdminProfile } from '../src/services/adminAuthService';
 
@@ -28,7 +28,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      initializeFirebase();
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -89,7 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = async (email: string, password: string) => {
     try {
-      initializeFirebase();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -130,7 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      initializeFirebase();
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUser(null);

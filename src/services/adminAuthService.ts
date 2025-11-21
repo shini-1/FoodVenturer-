@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { app } from '../../services/firebase';
-import { TABLES, SUPABASE_CONFIG } from '../config/supabase';
+import { supabase, TABLES, SUPABASE_CONFIG } from '../config/supabase';
 
 export interface AdminProfile {
   uid: string;
@@ -23,7 +22,7 @@ class AdminAuthService {
   async signIn(email: string, password: string): Promise<AdminProfile> {
     try {
       // Sign in with Supabase auth
-      const { data, error } = await app.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -37,19 +36,19 @@ class AdminAuthService {
       const uid = data.user.id;
 
       // Verify this is an admin account
-      const { data: adminData, error: adminError } = await app
+      const { data: adminData, error: adminError } = await supabase
         .from(this.ADMINS_TABLE)
         .select('*')
         .eq('uid', uid)
         .single();
 
       if (adminError || !adminData) {
-        await app.auth.signOut();
+        await supabase.auth.signOut();
         throw new Error('Access denied: Not an admin account');
       }
 
       if (!adminData.is_active) {
-        await app.auth.signOut();
+        await supabase.auth.signOut();
         throw new Error('Account suspended. Contact support.');
       }
 
@@ -114,7 +113,7 @@ class AdminAuthService {
         is_active: true,
       };
 
-      const { error: insertError } = await app
+      const { error: insertError } = await supabase
         .from(this.ADMINS_TABLE)
         .insert(adminProfile);
 
@@ -146,11 +145,11 @@ class AdminAuthService {
    */
   async getCurrentUser(): Promise<AdminProfile | null> {
     try {
-      const { data: { user }, error: authError } = await app.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
       if (authError || !user) return null;
 
-      const { data: adminData, error: adminError } = await app
+      const { data: adminData, error: adminError } = await supabase
         .from(this.ADMINS_TABLE)
         .select('*')
         .eq('uid', user.id)
@@ -180,7 +179,7 @@ class AdminAuthService {
    */
   async resetPassword(email: string): Promise<void> {
     try {
-      const { error } = await app.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;
     } catch (error: any) {
       console.error('Reset admin password error:', error);
@@ -193,7 +192,7 @@ class AdminAuthService {
    */
   async signOut(): Promise<void> {
     try {
-      const { error } = await app.auth.signOut();
+      const { error } = await supabase.auth.signOut();
       if (error) throw error;
     } catch (error: any) {
       console.error('Admin sign out error:', error);
@@ -215,7 +214,7 @@ class AdminAuthService {
       if (updates.adminLevel) updateData.admin_level = updates.adminLevel;
       if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
 
-      const { error } = await app
+      const { error } = await supabase
         .from(this.ADMINS_TABLE)
         .update(updateData)
         .eq('uid', uid);
@@ -232,7 +231,7 @@ class AdminAuthService {
    */
   async deactivateAdmin(uid: string): Promise<void> {
     try {
-      const { error } = await app
+      const { error } = await supabase
         .from(this.ADMINS_TABLE)
         .update({
           is_active: false,
@@ -252,7 +251,7 @@ class AdminAuthService {
    */
   async reactivateAdmin(uid: string): Promise<void> {
     try {
-      const { error } = await app
+      const { error } = await supabase
         .from(this.ADMINS_TABLE)
         .update({
           is_active: true,

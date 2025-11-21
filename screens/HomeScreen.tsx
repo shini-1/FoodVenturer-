@@ -3,18 +3,17 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   Modal,
   FlatList,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
-import { restaurantService } from '../src/services/restaurantService';
 import { OfflineService } from '../src/services/offlineService';
 import { reverseGeocode } from '../src/services/geocodingService';
 
@@ -67,6 +66,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const [serverPage, setServerPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingPage, setIsLoadingPage] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Clear address cache to refresh with new geocoding logic
   const clearAddressCache = () => {
@@ -176,6 +176,23 @@ function HomeScreen({ navigation }: { navigation: any }) {
       setIsLoadingPage(false);
     }
   }, [isLoadingPage]);
+
+  const onRefresh = useCallback(async () => {
+    if (isLoadingPage) return;
+    try {
+      setRefreshing(true);
+      setPage(1);
+      setServerPage(1);
+      setHasMore(true);
+      clearAddressCache();
+      geocodeActiveRef.current = 0;
+      geocodeQueueRef.current = [];
+      queuedRef.current.clear();
+      await loadPage(1);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadPage, isLoadingPage]);
 
   useEffect(() => {
     setServerPage(1);
@@ -373,6 +390,49 @@ function HomeScreen({ navigation }: { navigation: any }) {
     );
   }, [addressCache, navigation, theme, restaurantCategories]);
 
+  const renderListFooter = useCallback(() => {
+    const canExtendClient = visibleRestaurants.length < filteredRestaurants.length;
+    const canFetchMore = hasMore && !isLoadingPage;
+    const disabled = isLoadingPage || (!canExtendClient && !canFetchMore);
+
+    if (!canExtendClient && !hasMore) {
+      return <View style={{ height: 16 }} />;
+    }
+
+    return (
+      <View style={[styles.footer, { backgroundColor: theme.background }]}>
+        {isLoadingPage ? (
+          <ActivityIndicator style={styles.footerSpinner} color={theme.primary} size="small" />
+        ) : null}
+        <TouchableOpacity
+          onPress={() => {
+            if (canExtendClient) {
+              setPage((p) => p + 1);
+            } else if (canFetchMore) {
+              const next = serverPage + 1;
+              setServerPage(next);
+              loadPage(next);
+            }
+          }}
+          disabled={disabled}
+          accessibilityRole="button"
+          accessibilityLabel="Load more restaurants"
+          style={[
+            styles.footerButton,
+            {
+              backgroundColor: disabled ? theme.surface : theme.primary,
+              borderColor: theme.primary,
+            },
+          ]}
+        >
+          <Text style={[styles.footerButtonText, { color: theme.background }]}>
+            {canExtendClient ? 'Load more' : hasMore ? 'Load more' : 'No more'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }, [visibleRestaurants.length, filteredRestaurants.length, hasMore, isLoadingPage, serverPage, theme, loadPage]);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header />
@@ -474,7 +534,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
         renderItem={({ item }) => (
           <RestaurantCard restaurant={item as CategorizedRestaurant} />
         )}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         onEndReached={() => {
+          if (isLoadingPage || refreshing) return;
           // First, extend client window if we have more locally filtered items
           if (visibleRestaurants.length < filteredRestaurants.length) {
             setPage((p) => p + 1);
@@ -501,13 +564,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
             </Text>
           </View>
         }
-        ListFooterComponent={
-          visibleRestaurants.length < filteredRestaurants.length ? (
-            <View style={{ padding: 16 }}>
-              <Text style={{ textAlign: 'center', color: theme.textSecondary }}>Loading more...</Text>
-            </View>
-          ) : null
-        }
+        ListFooterComponent={renderListFooter}
       />
     </View>
   );
@@ -653,6 +710,25 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     textAlign: 'center',
+  },
+  footer: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerSpinner: {
+    marginBottom: 8,
+  },
+  footerButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  footerButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

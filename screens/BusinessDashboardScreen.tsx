@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import { restaurantService } from '../src/services/restaurantService';
-import { supabase } from '../services/firebase';
+import { supabase } from '../src/config/supabase';
 
 interface BusinessDashboardScreenProps {
   navigation: any;
