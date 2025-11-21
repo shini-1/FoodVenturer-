@@ -34,23 +34,24 @@ export class OfflineService {
   // Get a single page with offline fallback and cache merge
   static async getRestaurantsPageWithOffline(page: number, pageSize: number): Promise<{
     restaurants: Restaurant[],
+    total: number,
     isOffline: boolean
   }> {
     try {
-      const pageData = await restaurantService.getRestaurantsPage(page, pageSize);
+      const { items, total } = await restaurantService.getRestaurantsPageWithCount(page, pageSize);
       // Merge page into cache (dedupe by id)
       const cached = (await this.getCachedRestaurants()) || [];
       const existing = new Set(cached.map((r: Restaurant) => r.id));
-      const merged = [...cached, ...pageData.filter(r => !existing.has(r.id))];
+      const merged = [...cached, ...items.filter(r => !existing.has(r.id))];
       await this.cacheRestaurants(merged);
-      return { restaurants: pageData, isOffline: false };
+      return { restaurants: items, total, isOffline: false };
     } catch (error) {
       console.log('📱 Page fetch failed, using offline cache if available');
       const cached = await this.getCachedRestaurants();
       if (cached && cached.length > 0) {
         const start = (page - 1) * pageSize;
         const end = start + pageSize;
-        return { restaurants: cached.slice(start, end), isOffline: true };
+        return { restaurants: cached.slice(start, end), total: cached.length, isOffline: true };
       }
       throw error;
     }

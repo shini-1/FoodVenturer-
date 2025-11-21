@@ -43,9 +43,18 @@ const getPlaceholderImage = (category: string): string => {
     diner: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=100&h=100&fit=crop&crop=center',
     casual: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=100&h=100&fit=crop&crop=center'
   };
-
   return placeholders[category] || placeholders.casual;
 };
+
+function isValidHttpUrl(value?: string): boolean {
+  if (!value) return false;
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 function HomeScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -158,7 +167,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     try {
       setIsLoadingPage(true);
       console.log(`🏠 HomeScreen: Fetching restaurants page ${targetPage} (size ${SERVER_PAGE_SIZE})`);
-      const { restaurants: pageData } = await OfflineService.getRestaurantsPageWithOffline(targetPage, SERVER_PAGE_SIZE);
+      const { restaurants: pageData, total } = await OfflineService.getRestaurantsPageWithOffline(targetPage, SERVER_PAGE_SIZE);
       if (targetPage === 1) {
         setRestaurants(pageData);
       } else if (pageData.length > 0) {
@@ -168,7 +177,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
           return merged;
         });
       }
-      setHasMore(pageData.length === SERVER_PAGE_SIZE);
+      setHasMore(targetPage * SERVER_PAGE_SIZE < total);
     } catch (error) {
       console.error('❌ HomeScreen: Failed to load restaurants page:', error);
       Alert.alert('Connection Error', 'Unable to load more restaurants. Check your internet and try again.');
@@ -367,7 +376,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         <View style={styles.cardContent}>
           <Image
             source={{
-              uri: restaurant.image || getPlaceholderImage(restaurant.category || 'casual')
+              uri: isValidHttpUrl(restaurant.image) ? (restaurant.image as string) : getPlaceholderImage(restaurant.category || 'casual')
             }}
             style={styles.restaurantImage}
             contentFit="cover"

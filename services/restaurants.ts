@@ -14,10 +14,38 @@ export const getRestaurants = async (): Promise<Restaurant[]> => {
   try {
     const { data, error } = await supabase
       .from(RESTAURANTS_TABLE)
-      .select('*');
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return data || [];
+
+    const rows = (data || []) as any[];
+    return rows.map((row) => {
+      let location: { latitude: number; longitude: number };
+      if (row.location && typeof row.location === 'object' && 'latitude' in row.location && 'longitude' in row.location) {
+        location = { latitude: Number(row.location.latitude), longitude: Number(row.location.longitude) };
+      } else if (row.latitude != null && row.longitude != null) {
+        location = { latitude: Number(row.latitude), longitude: Number(row.longitude) };
+      } else {
+        location = { latitude: 40.7128, longitude: -74.0060 };
+      }
+
+      const rating = typeof row.rating === 'number' ? row.rating : (row.rating ? Number(row.rating) : undefined);
+
+      return {
+        id: row.id,
+        name: row.name,
+        location,
+        image: row.image ?? undefined,
+        category: row.category ?? undefined,
+        rating,
+        priceRange: row.price_range ?? undefined,
+        description: row.description ?? undefined,
+        phone: row.phone ?? undefined,
+        hours: row.hours ?? undefined,
+        website: row.website ?? undefined,
+      } as Restaurant;
+    });
   } catch (error: any) {
     console.error('Error fetching restaurants:', error);
     throw new Error(error.message || 'Failed to fetch restaurants');
@@ -37,11 +65,40 @@ export const getApprovedRestaurants = async (): Promise<Restaurant[]> => {
 export const getPendingRestaurants = async (): Promise<RestaurantSubmission[]> => {
   try {
     const { data, error } = await supabase
-      .from(PENDING_RESTAURANTS_TABLE)
-      .select('*');
+      .from(SUBMISSIONS_TABLE)
+      .select('*')
+      .eq('status', 'pending');
 
     if (error) throw new Error(error.message);
-    return data || [];
+
+    const rows = (data || []) as any[];
+    const submissions = rows.map((row) => {
+      let location: { latitude: number; longitude: number };
+      if (row.location && typeof row.location === 'object' && 'latitude' in row.location && 'longitude' in row.location) {
+        location = { latitude: Number(row.location.latitude), longitude: Number(row.location.longitude) };
+      } else if (row.latitude != null && row.longitude != null) {
+        location = { latitude: Number(row.latitude), longitude: Number(row.longitude) };
+      } else {
+        location = { latitude: 40.7128, longitude: -74.0060 };
+      }
+
+      return {
+        id: row.id,
+        ownerId: row.owner_id || '',
+        businessName: row.business_name || '',
+        ownerName: row.owner_name || '',
+        email: row.email || '',
+        phone: row.phone || '',
+        location,
+        image: row.image || undefined,
+        description: row.description || '',
+        cuisineType: row.cuisine_type || '',
+        submittedAt: row.submitted_at ? new Date(row.submitted_at).getTime() : Date.now(),
+        status: (row.status as any) || 'pending',
+      } as RestaurantSubmission;
+    });
+
+    return submissions.sort((a, b) => b.submittedAt - a.submittedAt);
   } catch (error: any) {
     console.error('Error fetching pending restaurants:', error);
     throw new Error(error.message || 'Failed to fetch pending restaurants');
@@ -70,9 +127,21 @@ export const deleteRestaurant = async (id: string): Promise<void> => {
  */
 export const updateRestaurant = async (id: string, updates: Partial<Restaurant>): Promise<void> => {
   try {
+    const updateData: any = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.location) updateData.location = { latitude: updates.location.latitude, longitude: updates.location.longitude };
+    if (updates.image !== undefined) updateData.image = updates.image;
+    if (updates.category !== undefined) updateData.category = updates.category;
+    if (updates.rating !== undefined) updateData.rating = updates.rating;
+    if (updates.priceRange !== undefined) updateData.price_range = updates.priceRange;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.phone !== undefined) updateData.phone = updates.phone;
+    if (updates.hours !== undefined) updateData.hours = updates.hours;
+    if (updates.website !== undefined) updateData.website = updates.website;
+
     const { error } = await supabase
       .from(RESTAURANTS_TABLE)
-      .update(updates)
+      .update(updateData)
       .eq('id', id);
 
     if (error) throw new Error(error.message);
@@ -87,9 +156,22 @@ export const updateRestaurant = async (id: string, updates: Partial<Restaurant>)
  */
 export const addRestaurant = async (restaurantData: Omit<Restaurant, 'id'>): Promise<void> => {
   try {
+    const insertData: any = {
+      name: restaurantData.name,
+      description: restaurantData.description ?? '',
+      category: restaurantData.category ?? '',
+      price_range: restaurantData.priceRange ?? '',
+      location: restaurantData.location ? { latitude: restaurantData.location.latitude, longitude: restaurantData.location.longitude } : null,
+      image: restaurantData.image ?? '',
+      phone: restaurantData.phone ?? '',
+      website: restaurantData.website ?? '',
+      hours: restaurantData.hours ?? '',
+      rating: restaurantData.rating ?? 0,
+    };
+
     const { error } = await supabase
       .from(RESTAURANTS_TABLE)
-      .insert([restaurantData]);
+      .insert([insertData]);
 
     if (error) throw new Error(error.message);
   } catch (error: any) {
@@ -151,10 +233,9 @@ export const approveRestaurant = async (submissionId: string): Promise<void> => 
  */
 export const rejectRestaurant = async (submissionId: string, reason: string): Promise<void> => {
   try {
-    // Update the submission with rejection reason
     const { error: updateError } = await supabase
       .from(SUBMISSIONS_TABLE)
-      .update({ status: 'rejected', rejectionReason: reason, rejectedAt: new Date().toISOString() })
+      .update({ status: 'rejected', rejection_reason: reason, rejected_at: new Date().toISOString() })
       .eq('id', submissionId);
 
     if (updateError) throw new Error(updateError.message);
