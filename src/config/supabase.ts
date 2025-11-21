@@ -1,10 +1,10 @@
 // Supabase configuration
 // Replace these values with your actual Supabase project credentials
 export const SUPABASE_CONFIG = {
-  url: 'https://dvkpflctotjavgrvbgay.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2a3BmbGN0b3RqYXZncnZiZ2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0OTYwMTQsImV4cCI6MjA3ODA3MjAxNH0.MZ15GS6Ftz3mR8mKu8fhcP6fh6YWY8f_6GMy1ZVGx_Q',
+  url: process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://dvkpflctotjavgrvbgay.supabase.co',
+  anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2a3BmbGN0b3RqYXZncnZiZ2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0OTYwMTQsImV4cCI6MjA3ODA3MjAxNH0.MZ15GS6Ftz3mR8mKu8fhcP6fh6YWY8f_6GMy1ZVGx_Q',
   // Add your service role key for admin operations (keep secret!)
-  serviceRoleKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2a3BmbGN0b3RqYXZncnZiZ2F5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjQ5NjAxNCwiZXhwIjoyMDc4MDcyMDE0fQ.J6dm0Lm11pNVMvwLkwf94VKaWqymsP1SdpA8-g7khH0',
+  serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
 };
 
 // Database table names (equivalent to Firestore collections)
@@ -15,6 +15,7 @@ export const TABLES = {
   RESTAURANTS: 'restaurants',
   RESTAURANT_SUBMISSIONS: 'restaurant_submissions',
   MENU_ITEMS: 'menu_items',
+  PROMOS: 'promos',
   REVIEWS: 'reviews',
   USERS: 'users',
 };

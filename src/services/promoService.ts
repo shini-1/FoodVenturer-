@@ -21,7 +21,7 @@ export interface CreatePromoData {
 }
 
 class PromoService {
-  private readonly PROMOS_TABLE = 'promos';
+  private readonly PROMOS_TABLE = TABLES.PROMOS;
 
   async createPromo(promoData: CreatePromoData): Promise<Promo> {
     try {
