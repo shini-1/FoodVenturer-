@@ -29,6 +29,8 @@ export class OfflineService {
       console.error('❌ Failed to cache restaurants:', error);
     }
 
+  }
+
   // Get a single page with offline fallback and cache merge
   static async getRestaurantsPageWithOffline(page: number, pageSize: number): Promise<{
     restaurants: Restaurant[],
