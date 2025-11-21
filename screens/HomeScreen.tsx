@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,8 @@ import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
 import { restaurantService } from '../src/services/restaurantService';
-import { reverseGeocode } from '../src/services/geocodingService';
 import { OfflineService } from '../src/services/offlineService';
+import { reverseGeocode } from '../src/services/geocodingService';
 
 import { Restaurant } from '../types';
 
@@ -56,6 +56,17 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const [addressCache, setAddressCache] = useState<{[key: string]: string}>({});
   const [geocodingInProgress, setGeocodingInProgress] = useState<Set<string>>(new Set());
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
+  const [debouncedSearchText, setDebouncedSearchText] = useState('');
+  const GEOCODE_CONCURRENCY = 3;
+  const geocodeActiveRef = useRef(0);
+  const geocodeQueueRef = useRef<string[]>([]);
+  const queuedRef = useRef<Set<string>>(new Set());
+  const SERVER_PAGE_SIZE = 20;
+  const [serverPage, setServerPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingPage, setIsLoadingPage] = useState(false);
 
   // Clear address cache to refresh with new geocoding logic
   const clearAddressCache = () => {
@@ -142,48 +153,34 @@ function HomeScreen({ navigation }: { navigation: any }) {
     { value: 'casual', label: 'Casual', emoji: '🍽️' }
   ];
 
-  useEffect(() => {
-    const fetchRestaurants = async () => {
-      try {
-        console.log('🏠 HomeScreen: Starting restaurant fetch with offline support...');
-
-        // Try to get data with offline fallback
-        const data = await OfflineService.getDataWithOfflineFallback();
-        console.log('✅ HomeScreen: Successfully loaded restaurants:', data.restaurants.length, data.isOffline ? '(offline)' : '(online)');
-
-        console.log('📋 HomeScreen: Restaurant details:', data.restaurants.map(r => ({
-          id: r.id,
-          name: r.name,
-          location: r.location,
-          hasCoords: !!(r.location?.latitude && r.location?.longitude)
-        })));
-
-        if (data.restaurants.length === 0) {
-          console.warn('⚠️ HomeScreen: No restaurants found!');
-        }
-
-        setRestaurants(data.restaurants);
-
-        // Show offline indicator if using cached data
-        if (data.isOffline) {
-          Alert.alert(
-            'Offline Mode',
-            'Using cached restaurant data. Some features may be limited.',
-            [{ text: 'OK' }]
-          );
-        }
-      } catch (error) {
-        console.error('❌ HomeScreen: Failed to load restaurants:', error);
-        Alert.alert(
-          'Connection Error',
-          'Unable to load restaurant data. Please check your internet connection and try again.',
-          [{ text: 'Retry', onPress: fetchRestaurants }]
-        );
+  const loadPage = useCallback(async (targetPage: number) => {
+    if (isLoadingPage) return;
+    try {
+      setIsLoadingPage(true);
+      console.log(`🏠 HomeScreen: Fetching restaurants page ${targetPage} (size ${SERVER_PAGE_SIZE})`);
+      const { restaurants: pageData } = await OfflineService.getRestaurantsPageWithOffline(targetPage, SERVER_PAGE_SIZE);
+      if (targetPage === 1) {
+        setRestaurants(pageData);
+      } else if (pageData.length > 0) {
+        setRestaurants(prev => {
+          const existing = new Set(prev.map((r: Restaurant) => r.id));
+          const merged = [...prev, ...pageData.filter(r => !existing.has(r.id))];
+          return merged;
+        });
       }
-    };
+      setHasMore(pageData.length === SERVER_PAGE_SIZE);
+    } catch (error) {
+      console.error('❌ HomeScreen: Failed to load restaurants page:', error);
+      Alert.alert('Connection Error', 'Unable to load more restaurants. Check your internet and try again.');
+    } finally {
+      setIsLoadingPage(false);
+    }
+  }, [isLoadingPage]);
 
-    fetchRestaurants();
-  }, []);
+  useEffect(() => {
+    setServerPage(1);
+    loadPage(1);
+  }, [loadPage]);
 
   useEffect(() => {
     console.log('🏠 HomeScreen: Restaurants state updated:', restaurants.length);
@@ -286,26 +283,57 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   const filteredRestaurants = useMemo(() => categorizedRestaurants.filter((restaurant) => {
     // Text search filter
-    const matchesSearch = restaurant.name.toLowerCase().includes(searchText.toLowerCase());
+    const matchesSearch = restaurant.name.toLowerCase().includes(debouncedSearchText.toLowerCase());
 
     // Category filter
     const matchesCategory = selectedCategory === 'all' || restaurant.category === selectedCategory;
 
     return matchesSearch && matchesCategory;
-  }), [categorizedRestaurants, searchText, selectedCategory]);
+  }), [categorizedRestaurants, debouncedSearchText, selectedCategory]);
 
-  // Load addresses for filtered restaurants
+  const visibleRestaurants = useMemo(() => filteredRestaurants.slice(0, page * PAGE_SIZE), [filteredRestaurants, page]);
+
   useEffect(() => {
-    filteredRestaurants.forEach((restaurant) => {
-      const cacheKey = restaurant.id;
-      if (!addressCache[cacheKey] && !geocodingInProgress.has(cacheKey)) {
-        // Trigger address loading
-        getRestaurantAddress(restaurant).catch((error) => {
-          console.warn(`Failed to get address for ${restaurant.name}:`, error);
-        });
+    const h = setTimeout(() => setDebouncedSearchText(searchText), 300);
+    return () => clearTimeout(h);
+  }, [searchText]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearchText, selectedCategory]);
+
+  useEffect(() => {
+    const processQueue = () => {
+      while (geocodeActiveRef.current < GEOCODE_CONCURRENCY && geocodeQueueRef.current.length > 0) {
+        const id = geocodeQueueRef.current.shift() as string;
+        const restaurant = visibleRestaurants.find(r => r.id === id);
+        if (!restaurant) {
+          queuedRef.current.delete(id);
+          continue;
+        }
+        geocodeActiveRef.current += 1;
+        getRestaurantAddress(restaurant)
+          .catch(() => {})
+          .finally(() => {
+            geocodeActiveRef.current -= 1;
+            queuedRef.current.delete(id);
+            processQueue();
+          });
       }
-    });
-  }, [filteredRestaurants]);
+    };
+
+    const toQueue = visibleRestaurants
+      .filter(r => !addressCache[r.id] && !geocodingInProgress.has(r.id) && !queuedRef.current.has(r.id))
+      .map(r => r.id);
+
+    if (toQueue.length > 0) {
+      toQueue.forEach(id => {
+        geocodeQueueRef.current.push(id);
+        queuedRef.current.add(id);
+      });
+      processQueue();
+    }
+  }, [visibleRestaurants, addressCache, geocodingInProgress]);
 
   // RestaurantCard component that handles address display
   const RestaurantCard = useCallback(({ restaurant }: { restaurant: CategorizedRestaurant }) => {
@@ -425,10 +453,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
       </Modal>
 
       <View style={styles.mapContainer}>
-        {filteredRestaurants.length > 0 ? (
+        {visibleRestaurants.length > 0 ? (
           (() => {
-            console.log('🗺️ Passing restaurants to MapBoxWebView:', filteredRestaurants.length, filteredRestaurants);
-            return <MapBoxWebView restaurants={filteredRestaurants} />;
+            console.log('🗺️ Passing restaurants to MapBoxWebView:', visibleRestaurants.length, visibleRestaurants);
+            return <MapBoxWebView restaurants={visibleRestaurants} />;
           })()
         ) : (
           <View style={[styles.loadingContainer, { backgroundColor: theme.surface }]}>
@@ -439,19 +467,48 @@ function HomeScreen({ navigation }: { navigation: any }) {
         )}
       </View>
 
-      <ScrollView style={styles.cardsContainer}>
-        {filteredRestaurants.length === 0 ? (
+      <FlatList
+        style={styles.cardsContainer}
+        data={visibleRestaurants}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <RestaurantCard restaurant={item as CategorizedRestaurant} />
+        )}
+        onEndReached={() => {
+          // First, extend client window if we have more locally filtered items
+          if (visibleRestaurants.length < filteredRestaurants.length) {
+            setPage((p) => p + 1);
+            return;
+          }
+          // If we've shown all locally available items, fetch next server page
+          if (hasMore && !isLoadingPage) {
+            setServerPage((sp) => {
+              const next = sp + 1;
+              loadPage(next);
+              return next;
+            });
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
+        ListEmptyComponent={
           <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.primary }]}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>
               {restaurants.length === 0 ? 'No restaurants loaded yet' : 'No restaurants match your search'}
             </Text>
           </View>
-        ) : (
-          filteredRestaurants.map((restaurant) => (
-            <RestaurantCard key={restaurant.id} restaurant={restaurant} />
-          ))
-        )}
-      </ScrollView>
+        }
+        ListFooterComponent={
+          visibleRestaurants.length < filteredRestaurants.length ? (
+            <View style={{ padding: 16 }}>
+              <Text style={{ textAlign: 'center', color: theme.textSecondary }}>Loading more...</Text>
+            </View>
+          ) : null
+        }
+      />
     </View>
   );
 }

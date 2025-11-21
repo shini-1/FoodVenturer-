@@ -29,7 +29,6 @@ class RestaurantService {
       if (userError || !user) {
         throw new Error('User not authenticated');
       }
-
       // Check if user already has a restaurant
       const existingRestaurant = await this.getRestaurantByOwnerId(user.id);
       if (existingRestaurant) {
@@ -220,6 +219,54 @@ class RestaurantService {
       return restaurants;
     } catch (error: any) {
       console.error('❌ Error fetching restaurants:', error);
+      throw new Error(this.getErrorMessage(error));
+    }
+  }
+
+  async getRestaurantsPage(page: number, pageSize: number): Promise<Restaurant[]> {
+    try {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, error } = await supabase
+        .from(this.RESTAURANTS_TABLE)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+
+      const restaurants: Restaurant[] = (data || []).map((item: any) => {
+        let location: { latitude: number; longitude: number };
+        if (item.location && typeof item.location === 'object' && 'latitude' in item.location && 'longitude' in item.location) {
+          location = { latitude: item.location.latitude, longitude: item.location.longitude };
+        } else if (item.latitude && item.longitude) {
+          location = {
+            latitude: parseFloat(item.latitude),
+            longitude: parseFloat(item.longitude),
+          };
+        } else {
+          location = { latitude: 40.7128, longitude: -74.0060 };
+        }
+
+        return {
+          id: item.id,
+          name: item.name,
+          location,
+          image: item.image,
+          category: item.category,
+          rating: item.rating,
+          priceRange: item.price_range,
+          description: item.description,
+          phone: item.phone,
+          hours: item.hours,
+          website: item.website,
+        } as Restaurant;
+      });
+
+      return restaurants;
+    } catch (error: any) {
+      console.error('❌ Error fetching restaurants page:', error);
       throw new Error(this.getErrorMessage(error));
     }
   }
