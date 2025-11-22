@@ -115,7 +115,7 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
       {/* Normal role selection content */}
       {!showBusinessModal && !showAdminModal && (
         <>
-          <Header />
+          <Header showDarkModeToggle={true} />
           <Text style={[styles.title, { color: theme.text }]}>Welcome to FoodVenturer</Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Select your role to continue</Text>
 

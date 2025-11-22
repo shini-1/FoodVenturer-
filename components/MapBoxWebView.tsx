@@ -13,6 +13,7 @@ interface Restaurant {
   id: string;
   name: string;
   location: { latitude: number; longitude: number };
+  category?: string;
 }
 
 interface MapBoxWebViewProps {
@@ -271,15 +272,15 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
         .marker {
           background-color: #ff0000;
           border-radius: 50%;
-          width: 32px;
-          height: 32px;
+          width: 40px;
+          height: 40px;
           border: 3px solid #fff;
           cursor: pointer;
           box-shadow: 0 2px 6px rgba(0,0,0,0.3);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 16px;
+          font-size: 20px;
           font-weight: bold;
         }
       </style>
@@ -436,15 +437,23 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
               }
 
               restaurants.forEach((restaurant, index) => {
-                const { location, name } = restaurant;
-                const category = getCategoryForRestaurant(name);
+                const { location, name, category: restaurantCategory } = restaurant;
+                
+                // Use restaurant's category if available, otherwise categorize by name
+                let category;
+                if (restaurantCategory) {
+                  category = categories.find(c => c.name === restaurantCategory);
+                }
+                if (!category) {
+                  category = getCategoryForRestaurant(name);
+                }
 
-                console.log('🗺️ Creating marker for:', name, 'at', location.latitude, location.longitude);
+                console.log('🗺️ Creating marker for:', name, 'category:', category?.name, 'emoji:', category?.emoji);
 
                 const markerEl = document.createElement('div');
                 markerEl.className = 'marker';
                 markerEl.style.backgroundColor = category ? category.color : '#4a90e2';
-                markerEl.innerHTML = category ? category.emoji : '🍽️';
+                markerEl.innerHTML = category && category.emoji ? category.emoji : '🍽️';
                 markerEl.title = name;
 
                 const popup = new mapboxgl.Popup({

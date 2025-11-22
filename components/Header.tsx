@@ -3,8 +3,16 @@ import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 
-function Header() {
+interface HeaderProps {
+  showDarkModeToggle?: boolean;
+}
+
+function Header({ showDarkModeToggle = false }: HeaderProps) {
   const { isDark, toggleTheme, theme } = useTheme();
+
+  if (!showDarkModeToggle) {
+    return null;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
