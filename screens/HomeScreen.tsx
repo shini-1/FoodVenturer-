@@ -69,6 +69,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const geocodeActiveRef = useRef(0);
   const geocodeQueueRef = useRef<string[]>([]);
   const queuedRef = useRef<Set<string>>(new Set());
+  const autoLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const SERVER_PAGE_SIZE = 20;
   const [serverPage, setServerPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -204,6 +205,23 @@ function HomeScreen({ navigation }: { navigation: any }) {
     setServerPage(1);
     loadPage(1);
   }, [loadPage]);
+
+  useEffect(() => {
+    if (!hasMore || isLoadingPage || refreshing) return;
+    if (autoLoadTimerRef.current) {
+      clearTimeout(autoLoadTimerRef.current);
+    }
+    autoLoadTimerRef.current = setTimeout(() => {
+      const next = serverPage + 1;
+      setServerPage(next);
+      loadPage(next);
+    }, 400);
+    return () => {
+      if (autoLoadTimerRef.current) {
+        clearTimeout(autoLoadTimerRef.current);
+      }
+    };
+  }, [restaurants.length, hasMore, isLoadingPage, refreshing, serverPage, loadPage]);
 
   useEffect(() => {
     console.log('🏠 HomeScreen: Restaurants state updated:', restaurants.length);
