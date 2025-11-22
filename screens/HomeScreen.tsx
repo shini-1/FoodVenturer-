@@ -70,6 +70,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const geocodeQueueRef = useRef<string[]>([]);
   const queuedRef = useRef<Set<string>>(new Set());
   const autoLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLoadingRef = useRef(false);
+  const refreshingRef = useRef(false);
+  const hasMoreRef = useRef(true);
   const SERVER_PAGE_SIZE = 20;
   const [serverPage, setServerPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -207,14 +210,30 @@ function HomeScreen({ navigation }: { navigation: any }) {
   }, [loadPage]);
 
   useEffect(() => {
+    isLoadingRef.current = isLoadingPage;
+  }, [isLoadingPage]);
+
+  useEffect(() => {
+    refreshingRef.current = refreshing;
+  }, [refreshing]);
+
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+
+  useEffect(() => {
     if (!hasMore || isLoadingPage || refreshing) return;
     if (autoLoadTimerRef.current) {
       clearTimeout(autoLoadTimerRef.current);
     }
     autoLoadTimerRef.current = setTimeout(() => {
-      const next = serverPage + 1;
-      setServerPage(next);
-      loadPage(next);
+      if (hasMoreRef.current && !isLoadingRef.current && !refreshingRef.current) {
+        setServerPage((sp) => {
+          const next = sp + 1;
+          loadPage(next);
+          return next;
+        });
+      }
     }, 400);
     return () => {
       if (autoLoadTimerRef.current) {
