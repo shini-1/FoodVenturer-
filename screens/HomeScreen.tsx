@@ -64,8 +64,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const [addressCache, setAddressCache] = useState<{[key: string]: string}>({});
   const [geocodingInProgress, setGeocodingInProgress] = useState<Set<string>>(new Set());
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const PAGE_SIZE = 20;
-  const [page, setPage] = useState(1);
   const [debouncedSearchText, setDebouncedSearchText] = useState('');
   const GEOCODE_CONCURRENCY = 3;
   const geocodeActiveRef = useRef(0);
@@ -190,7 +188,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
     if (isLoadingPage) return;
     try {
       setRefreshing(true);
-      setPage(1);
       setServerPage(1);
       setHasMore(true);
       clearAddressCache();
@@ -317,7 +314,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     return matchesSearch && matchesCategory;
   }), [categorizedRestaurants, debouncedSearchText, selectedCategory]);
 
-  const visibleRestaurants = useMemo(() => filteredRestaurants.slice(0, page * PAGE_SIZE), [filteredRestaurants, page]);
+  const visibleRestaurants = useMemo(() => filteredRestaurants, [filteredRestaurants]);
 
   useEffect(() => {
     const h = setTimeout(() => setDebouncedSearchText(searchText), 300);
@@ -325,7 +322,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
   }, [searchText]);
 
   useEffect(() => {
-    setPage(1);
+    geocodeActiveRef.current = 0;
+    geocodeQueueRef.current = [];
+    queuedRef.current.clear();
   }, [debouncedSearchText, selectedCategory]);
 
   useEffect(() => {
@@ -400,47 +399,20 @@ function HomeScreen({ navigation }: { navigation: any }) {
   }, [addressCache, navigation, theme, restaurantCategories]);
 
   const renderListFooter = useCallback(() => {
-    const canExtendClient = visibleRestaurants.length < filteredRestaurants.length;
-    const canFetchMore = hasMore && !isLoadingPage;
-    const disabled = isLoadingPage || (!canExtendClient && !canFetchMore);
-
-    if (!canExtendClient && !hasMore) {
+    if (!hasMore && !isLoadingPage) {
       return <View style={{ height: 16 }} />;
     }
 
-    return (
-      <View style={[styles.footer, { backgroundColor: theme.background }]}>
-        {isLoadingPage ? (
+    if (isLoadingPage) {
+      return (
+        <View style={[styles.footer, { backgroundColor: theme.background }]}> 
           <ActivityIndicator style={styles.footerSpinner} color={theme.primary} size="small" />
-        ) : null}
-        <TouchableOpacity
-          onPress={() => {
-            if (canExtendClient) {
-              setPage((p) => p + 1);
-            } else if (canFetchMore) {
-              const next = serverPage + 1;
-              setServerPage(next);
-              loadPage(next);
-            }
-          }}
-          disabled={disabled}
-          accessibilityRole="button"
-          accessibilityLabel="Load more restaurants"
-          style={[
-            styles.footerButton,
-            {
-              backgroundColor: disabled ? theme.surface : theme.primary,
-              borderColor: theme.primary,
-            },
-          ]}
-        >
-          <Text style={[styles.footerButtonText, { color: theme.background }]}>
-            {canExtendClient ? 'Load more' : hasMore ? 'Load more' : 'No more'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }, [visibleRestaurants.length, filteredRestaurants.length, hasMore, isLoadingPage, serverPage, theme, loadPage]);
+        </View>
+      );
+    }
+
+    return null;
+  }, [hasMore, isLoadingPage, theme]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -547,13 +519,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         onRefresh={onRefresh}
         onEndReached={() => {
           if (isLoadingPage || refreshing) return;
-          // First, extend client window if we have more locally filtered items
-          if (visibleRestaurants.length < filteredRestaurants.length) {
-            setPage((p) => p + 1);
-            return;
-          }
-          // If we've shown all locally available items, fetch next server page
-          if (hasMore && !isLoadingPage) {
+          if (hasMore) {
             setServerPage((sp) => {
               const next = sp + 1;
               loadPage(next);
@@ -728,16 +694,6 @@ const styles = StyleSheet.create({
   },
   footerSpinner: {
     marginBottom: 8,
-  },
-  footerButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  footerButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
 });
 
