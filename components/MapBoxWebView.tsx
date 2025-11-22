@@ -8,7 +8,6 @@ import { getAllCategories } from '../src/services/categoryService';
 import { OfflineService } from '../src/services/offlineService';
 import { Alert } from 'react-native';
 import * as Location from 'expo-location';
-import { resolveCategoryConfig, getCategoryConfig } from '../src/config/categoryConfig';
 
 interface Restaurant {
   id: string;
@@ -416,10 +415,6 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
 
               console.log('🗺️ Processing', categories.length, 'categories and', restaurants.length, 'restaurants');
 
-              // Import category config functions
-              const resolveCategoryConfig = ${resolveCategoryConfig.toString()};
-              const getCategoryConfig = ${getCategoryConfig.toString()};
-              
               // Category configuration data
               const CATEGORY_CONFIG = ${JSON.stringify(Object.fromEntries(
                 Object.entries({
