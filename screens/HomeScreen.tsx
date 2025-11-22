@@ -165,8 +165,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
   ];
 
   const loadPage = useCallback(async (targetPage: number) => {
-    if (isLoadingPage) return;
+    if (isLoadingRef.current) return;
     try {
+      isLoadingRef.current = true;
       setIsLoadingPage(true);
       console.log(`🏠 HomeScreen: Fetching restaurants page ${targetPage} (size ${SERVER_PAGE_SIZE})`);
       const { restaurants: pageData, total } = await OfflineService.getRestaurantsPageWithOffline(targetPage, SERVER_PAGE_SIZE);
@@ -179,14 +180,18 @@ function HomeScreen({ navigation }: { navigation: any }) {
           return merged;
         });
       }
-      setHasMore(targetPage * SERVER_PAGE_SIZE < total);
+      const more = typeof total === 'number'
+        ? (targetPage * SERVER_PAGE_SIZE) < total
+        : (pageData.length === SERVER_PAGE_SIZE);
+      setHasMore(more);
     } catch (error) {
       console.error('❌ HomeScreen: Failed to load restaurants page:', error);
       Alert.alert('Connection Error', 'Unable to load more restaurants. Check your internet and try again.');
     } finally {
       setIsLoadingPage(false);
+      isLoadingRef.current = false;
     }
-  }, [isLoadingPage]);
+  }, []);
 
   const onRefresh = useCallback(async () => {
     if (isLoadingPage) return;
@@ -207,7 +212,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   useEffect(() => {
     setServerPage(1);
     loadPage(1);
-  }, [loadPage]);
+  }, []);
 
   useEffect(() => {
     isLoadingRef.current = isLoadingPage;
