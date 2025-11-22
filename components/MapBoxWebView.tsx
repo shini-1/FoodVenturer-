@@ -8,6 +8,7 @@ import { getAllCategories } from '../src/services/categoryService';
 import { OfflineService } from '../src/services/offlineService';
 import { Alert } from 'react-native';
 import * as Location from 'expo-location';
+import { resolveCategoryConfig, getCategoryConfig } from '../src/config/categoryConfig';
 
 interface Restaurant {
   id: string;
@@ -415,45 +416,80 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
 
               console.log('🗺️ Processing', categories.length, 'categories and', restaurants.length, 'restaurants');
 
-              function getCategoryForRestaurant(restaurantName) {
+              // Import category config functions
+              const resolveCategoryConfig = ${resolveCategoryConfig.toString()};
+              const getCategoryConfig = ${getCategoryConfig.toString()};
+              
+              // Category configuration data
+              const CATEGORY_CONFIG = ${JSON.stringify(Object.fromEntries(
+                Object.entries({
+                  italian: { name: 'italian', emoji: '🍕', color: '#E74C3C' },
+                  cafe: { name: 'cafe', emoji: '☕', color: '#8B4513' },
+                  fast_food: { name: 'fast_food', emoji: '🍔', color: '#FF8C00' },
+                  asian: { name: 'asian', emoji: '🥢', color: '#E67E22' },
+                  japanese: { name: 'japanese', emoji: '🍱', color: '#9B59B6' },
+                  ramen: { name: 'ramen', emoji: '🍜', color: '#F39C12' },
+                  thai: { name: 'thai', emoji: '🍜', color: '#27AE60' },
+                  bakery: { name: 'bakery', emoji: '🥖', color: '#F39C12' },
+                  grill: { name: 'grill', emoji: '🥩', color: '#E74C3C' },
+                  seafood: { name: 'seafood', emoji: '🦞', color: '#3498DB' },
+                  mexican: { name: 'mexican', emoji: '🌮', color: '#E67E22' },
+                  buffet: { name: 'buffet', emoji: '🍽️', color: '#F1C40F' },
+                  fine_dining: { name: 'fine_dining', emoji: '🍾', color: '#8E44AD' },
+                  fast_casual: { name: 'fast_casual', emoji: '🏃', color: '#16A085' },
+                  family: { name: 'family', emoji: '👨‍👩‍👧‍👦', color: '#F39C12' },
+                  diner: { name: 'diner', emoji: '🍳', color: '#95A5A6' },
+                  casual: { name: 'casual', emoji: '🍽️', color: '#4A90E2' },
+                })
+              ))};
+              
+              const DEFAULT_CATEGORY = { name: 'casual', emoji: '🍽️', color: '#4A90E2' };
+              
+              function getCategoryForRestaurant(restaurantCategory, restaurantName) {
+                // Try database category first
+                if (restaurantCategory) {
+                  const normalized = restaurantCategory.toLowerCase().trim();
+                  if (CATEGORY_CONFIG[normalized]) {
+                    return CATEGORY_CONFIG[normalized];
+                  }
+                }
+                
+                // Fall back to name-based guessing
                 const nameLower = restaurantName.toLowerCase();
-
-                if (nameLower.includes('pizza') || nameLower.includes('pizzeria')) return categories.find(c => c.name === 'italian') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('burger') || nameLower.includes('mcdonald') || nameLower.includes('kfc') || nameLower.includes('wendy')) return categories.find(c => c.name === 'fast_food') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('cafe') || nameLower.includes('coffee') || nameLower.includes('starbucks')) return categories.find(c => c.name === 'cafe') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('sushi') || nameLower.includes('japanese') || nameLower.includes('tokyo')) return categories.find(c => c.name === 'japanese') || categories.find(c => c.name === 'asian') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('ramen') || nameLower.includes('thai') || nameLower.includes('china') || nameLower.includes('wok')) return categories.find(c => c.name === 'asian') || categories.find(c => c.name === 'thai') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('bakery') || nameLower.includes('bread') || nameLower.includes('pastry')) return categories.find(c => c.name === 'bakery') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('steak') || nameLower.includes('grill') || nameLower.includes('barbecue')) return categories.find(c => c.name === 'grill') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('seafood') || nameLower.includes('fish') || nameLower.includes('lobster') || nameLower.includes('shrimp')) return categories.find(c => c.name === 'seafood') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('mexican') || nameLower.includes('taco') || nameLower.includes('burrito')) return categories.find(c => c.name === 'mexican') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('buffet') || nameLower.includes('all you can eat')) return categories.find(c => c.name === 'buffet') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('fine') || nameLower.includes('elegant') || nameLower.includes('upscale')) return categories.find(c => c.name === 'fine_dining') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('fast') || nameLower.includes('quick')) return categories.find(c => c.name === 'fast_casual') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('family') || nameLower.includes('kids')) return categories.find(c => c.name === 'family') || categories.find(c => c.name === 'casual');
-                if (nameLower.includes('diner')) return categories.find(c => c.name === 'diner') || categories.find(c => c.name === 'casual');
-
-                return categories.find(c => c.name === 'casual') || categories[0];
+                
+                // Check for specific keywords
+                if (nameLower.includes('ramen')) return CATEGORY_CONFIG.ramen || DEFAULT_CATEGORY;
+                if (nameLower.includes('pizza') || nameLower.includes('pizzeria')) return CATEGORY_CONFIG.italian || DEFAULT_CATEGORY;
+                if (nameLower.includes('burger') || nameLower.includes('mcdonald') || nameLower.includes('kfc') || nameLower.includes('wendy')) return CATEGORY_CONFIG.fast_food || DEFAULT_CATEGORY;
+                if (nameLower.includes('cafe') || nameLower.includes('coffee') || nameLower.includes('starbucks')) return CATEGORY_CONFIG.cafe || DEFAULT_CATEGORY;
+                if (nameLower.includes('sushi') || nameLower.includes('japanese') || nameLower.includes('tokyo')) return CATEGORY_CONFIG.japanese || DEFAULT_CATEGORY;
+                if (nameLower.includes('thai')) return CATEGORY_CONFIG.thai || DEFAULT_CATEGORY;
+                if (nameLower.includes('chinese') || nameLower.includes('china') || nameLower.includes('wok')) return CATEGORY_CONFIG.asian || DEFAULT_CATEGORY;
+                if (nameLower.includes('bakery') || nameLower.includes('bread') || nameLower.includes('pastry')) return CATEGORY_CONFIG.bakery || DEFAULT_CATEGORY;
+                if (nameLower.includes('steak') || nameLower.includes('grill') || nameLower.includes('barbecue')) return CATEGORY_CONFIG.grill || DEFAULT_CATEGORY;
+                if (nameLower.includes('seafood') || nameLower.includes('fish') || nameLower.includes('lobster') || nameLower.includes('shrimp')) return CATEGORY_CONFIG.seafood || DEFAULT_CATEGORY;
+                if (nameLower.includes('mexican') || nameLower.includes('taco') || nameLower.includes('burrito')) return CATEGORY_CONFIG.mexican || DEFAULT_CATEGORY;
+                if (nameLower.includes('buffet') || nameLower.includes('all you can eat')) return CATEGORY_CONFIG.buffet || DEFAULT_CATEGORY;
+                if (nameLower.includes('fine') || nameLower.includes('elegant') || nameLower.includes('upscale')) return CATEGORY_CONFIG.fine_dining || DEFAULT_CATEGORY;
+                if (nameLower.includes('fast') || nameLower.includes('quick')) return CATEGORY_CONFIG.fast_casual || DEFAULT_CATEGORY;
+                if (nameLower.includes('family') || nameLower.includes('kids')) return CATEGORY_CONFIG.family || DEFAULT_CATEGORY;
+                if (nameLower.includes('diner')) return CATEGORY_CONFIG.diner || DEFAULT_CATEGORY;
+                
+                return DEFAULT_CATEGORY;
               }
 
               restaurants.forEach((restaurant, index) => {
                 const { location, name, category: restaurantCategory } = restaurant;
                 
-                // Use restaurant's category if available, otherwise categorize by name
-                let category;
-                if (restaurantCategory) {
-                  category = categories.find(c => c.name === restaurantCategory);
-                }
-                if (!category) {
-                  category = getCategoryForRestaurant(name);
-                }
+                // Use new category resolution logic
+                const categoryConfig = getCategoryForRestaurant(restaurantCategory, name);
 
-                console.log('🗺️ Creating marker for:', name, 'category:', category?.name, 'emoji:', category?.emoji);
+                console.log('🗺️ Creating marker for:', name, 'category:', categoryConfig.name, 'emoji:', categoryConfig.emoji, 'color:', categoryConfig.color);
 
                 const markerEl = document.createElement('div');
                 markerEl.className = 'marker';
-                markerEl.style.backgroundColor = category ? category.color : '#4a90e2';
-                markerEl.innerHTML = category && category.emoji ? category.emoji : '🍽️';
+                markerEl.style.backgroundColor = categoryConfig.color;
+                markerEl.innerHTML = categoryConfig.emoji;
                 markerEl.title = name;
 
                 const popup = new mapboxgl.Popup({
@@ -461,7 +497,7 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
                   closeButton: true,
                   closeOnClick: false
                 }).setHTML('<div style="font-size: 14px; line-height: 1.4;"><strong>' + name + '</strong><br>' +
-                  (category ? '<span style="color:' + category.color + '; font-weight: bold;">' + category.emoji + ' ' + category.name.replace('_', ' ').toUpperCase() + '</span>' : 'No category') +
+                  '<span style="color:' + categoryConfig.color + '; font-weight: bold;">' + categoryConfig.emoji + ' ' + categoryConfig.name.replace('_', ' ').toUpperCase() + '</span>' +
                   '<br><small>📍 ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4) + '</small></div>');
 
                 const marker = new mapboxgl.Marker(markerEl)
