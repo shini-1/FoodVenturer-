@@ -11,45 +11,17 @@ function MapControls({
   markerCount = 0,
 }: MapControlsProps) {
   return (
-    <>
-      {/* Status indicator - top left */}
-      <View style={styles.statusContainer}>
-        <Text style={styles.statusText}>✅ Map ready with {markerCount} markers</Text>
-      </View>
-
-      {/* Info button - bottom right */}
-      <TouchableOpacity
-        style={styles.infoButton}
-        onPress={onInfoPress}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.infoButtonText}>i</Text>
-      </TouchableOpacity>
-    </>
+    <TouchableOpacity
+      style={styles.infoButton}
+      onPress={onInfoPress}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.infoButtonText}>i</Text>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  statusContainer: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statusText: {
-    fontSize: 13,
-    color: '#000000',
-    fontWeight: '500',
-  },
   infoButton: {
     position: 'absolute',
     bottom: 12,

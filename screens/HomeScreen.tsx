@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'absolute',
-    top: 20,
+    top: 28,
     left: 80,
     right: 20,
     height: 40,
