@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { useTheme } from '../theme/ThemeContext';
-import Header from '../components/Header';
 import LoginScreenNew from './LoginScreenNew';
 import RegisterScreenNew from './RegisterScreenNew';
 import AdminLoginScreen from './AdminLoginScreen';
@@ -11,6 +11,10 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
   const [showBusinessModal, setShowBusinessModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  
+  // Long press handling for secret admin access (10 seconds)
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const [isLongPressing, setIsLongPressing] = useState(false);
 
   const handleRoleSelect = (role: string) => {
     console.log('🔍 handleRoleSelect called with role:', role);
@@ -59,6 +63,39 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
 
   const handleSwitchToLogin = () => {
     setAuthMode('login');
+  };
+
+  // Handle press start for Business Owners button
+  const handleBusinessPressIn = () => {
+    console.log('🔒 Business button press started');
+    const timer = setTimeout(() => {
+      console.log('🔒 10 seconds elapsed - opening admin modal');
+      setShowAdminModal(true);
+      setIsLongPressing(false);
+    }, 10000); // 10 seconds
+    
+    longPressTimer.current = timer;
+    setIsLongPressing(true);
+  };
+
+  // Handle press end for Business Owners button
+  const handleBusinessPressOut = () => {
+    console.log('🔒 Business button press ended');
+    
+    // Clear the timer
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    
+    // If not long pressing (timer didn't complete), open business modal
+    if (isLongPressing) {
+      console.log('🔒 Opening business modal (normal press)');
+      setAuthMode('login');
+      setShowBusinessModal(true);
+    }
+    
+    setIsLongPressing(false);
   };
 
   return (
@@ -115,33 +152,36 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
       {/* Normal role selection content */}
       {!showBusinessModal && !showAdminModal && (
         <>
-          <Header showDarkModeToggle={true} />
-          <Text style={[styles.title, { color: theme.text }]}>Welcome to FoodVenturer</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Select your role to continue</Text>
+          {/* Logo Container */}
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('../assets/foodventure-logo.png')}
+              style={styles.logoImage}
+              contentFit="cover"
+              transition={300}
+            />
+          </View>
 
+          {/* Welcome Text */}
+          <Text style={styles.welcomeText}>Welcome to FoodVenture</Text>
+
+          {/* Food Explorer Button */}
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}
+            style={styles.roleButton}
             onPress={() => handleRoleSelect('explorer')}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.buttonText, { color: theme.text }]}>🍽️ Food Explorer</Text>
-            <Text style={[styles.buttonSubtext, { color: theme.textSecondary }]}>Browse restaurants and find food</Text>
+            <Text style={styles.roleButtonText}>Food Explorer</Text>
           </TouchableOpacity>
 
+          {/* Business Owners Button - with secret 10s long press for admin */}
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}
-            onPress={() => handleRoleSelect('business')}
+            style={styles.roleButton}
+            onPressIn={handleBusinessPressIn}
+            onPressOut={handleBusinessPressOut}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.buttonText, { color: theme.text }]}>🏪 Business Owner</Text>
-            <Text style={[styles.buttonSubtext, { color: theme.textSecondary }]}>Manage your establishment</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}
-            onPress={() => handleRoleSelect('admin')}
-            onLongPress={() => navigation.navigate('CreateAdmin')} // Hidden admin creation for dev
-          >
-            <Text style={[styles.buttonText, { color: theme.text }]}>⚙️ Admin</Text>
-            <Text style={[styles.buttonSubtext, { color: theme.textSecondary }]}>Manage the platform</Text>
+            <Text style={styles.roleButtonText}>Business Owners</Text>
           </TouchableOpacity>
         </>
       )}
@@ -155,38 +195,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: '#2C3E50', // Dark navy background
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
+  logoContainer: {
+    width: '85%',
+    height: 280,
+    backgroundColor: '#E8E8E8',
+    borderRadius: 25,
     marginBottom: 40,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  welcomeText: {
+    fontSize: 26,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 50,
     textAlign: 'center',
   },
-  button: {
-    padding: 20,
-    marginVertical: 10,
-    borderRadius: 15,
-    width: '100%',
+  roleButton: {
+    width: '85%',
+    height: 65,
+    backgroundColor: '#E8E8E8',
+    borderRadius: 32.5,
+    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderTopWidth: 4,
-    elevation: 5,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    marginVertical: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
-  buttonText: {
-    fontSize: 18,
+  roleButtonText: {
+    fontSize: 19,
     fontWeight: 'bold',
-  },
-  buttonSubtext: {
-    fontSize: 14,
-    marginTop: 5,
+    color: '#000000',
   },
   modalOverlay: {
     position: 'absolute',
