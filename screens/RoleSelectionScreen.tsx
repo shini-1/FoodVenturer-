@@ -107,7 +107,7 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.mainContainer}>
       {/* Modal overlays - positioned absolutely over the entire screen */}
       {(showBusinessModal || showAdminModal) && (
         <View style={styles.modalOverlay}>
@@ -160,8 +160,8 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
       {/* Normal role selection content */}
       {!showBusinessModal && !showAdminModal && (
         <>
-          {/* Logo Container */}
-          <View style={styles.logoContainer}>
+          {/* Top Section - Light Gray Background with Logo */}
+          <View style={styles.topSection}>
             <Image
               source={require('../assets/foodventure-logo.jpg')}
               style={styles.logoImage}
@@ -170,27 +170,30 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
             />
           </View>
 
-          {/* Welcome Text */}
-          <Text style={styles.welcomeText}>Welcome to FoodVenture</Text>
+          {/* Bottom Section - Dark Navy Background with Content */}
+          <View style={styles.bottomSection}>
+            {/* Welcome Text */}
+            <Text style={styles.welcomeText}>Welcome to FoodVenturer!</Text>
 
-          {/* Food Explorer Button */}
-          <TouchableOpacity
-            style={styles.roleButton}
-            onPress={() => handleRoleSelect('explorer')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.roleButtonText}>Food Explorer</Text>
-          </TouchableOpacity>
+            {/* Food Explorer Button */}
+            <TouchableOpacity
+              style={styles.roleButton}
+              onPress={() => handleRoleSelect('explorer')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.roleButtonText}>Food Explorer</Text>
+            </TouchableOpacity>
 
-          {/* Business Owners Button - with secret 10s long press for admin */}
-          <TouchableOpacity
-            style={styles.roleButton}
-            onPressIn={handleBusinessPressIn}
-            onPressOut={handleBusinessPressOut}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.roleButtonText}>Business Owners</Text>
-          </TouchableOpacity>
+            {/* Business Owners Button - with secret 10s long press for admin */}
+            <TouchableOpacity
+              style={styles.roleButton}
+              onPressIn={handleBusinessPressIn}
+              onPressOut={handleBusinessPressOut}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.roleButtonText}>Business Owners</Text>
+            </TouchableOpacity>
+          </View>
         </>
       )}
     </View>
@@ -198,29 +201,30 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  mainContainer: {
     flex: 1,
+  },
+  topSection: {
+    flex: 1,
+    backgroundColor: '#E8E8E8',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#2C3E50', // Dark navy background
-  },
-  logoContainer: {
-    width: '85%',
-    height: 280,
-    backgroundColor: '#E8E8E8',
-    borderRadius: 25,
-    marginBottom: 40,
-    overflow: 'hidden',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
   },
   logoImage: {
-    width: '100%',
-    height: '100%',
+    width: '85%',
+    height: '70%',
+    borderRadius: 15,
+  },
+  bottomSection: {
+    flex: 1,
+    backgroundColor: '#2C3E50',
+    paddingTop: 40,
+    paddingHorizontal: 20,
+    alignItems: 'center',
   },
   welcomeText: {
     fontSize: 26,
