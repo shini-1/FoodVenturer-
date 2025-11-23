@@ -68,10 +68,17 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
   // Handle press start for Business Owners button
   const handleBusinessPressIn = () => {
     console.log('🔒 Business button press started');
+    
+    // Clear any existing timer
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+    
     const timer = setTimeout(() => {
       console.log('🔒 10 seconds elapsed - opening admin modal');
       setShowAdminModal(true);
       setIsLongPressing(false);
+      longPressTimer.current = null; // Clear timer reference
     }, 10000); // 10 seconds
     
     longPressTimer.current = timer;
@@ -82,24 +89,25 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
   const handleBusinessPressOut = () => {
     console.log('🔒 Business button press ended');
     
-    // Clear the timer
+    // Check if timer is still running (not completed)
     if (longPressTimer.current) {
+      // Timer was cancelled = normal press, open business modal
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
-    }
-    
-    // If not long pressing (timer didn't complete), open business modal
-    if (isLongPressing) {
+      
       console.log('🔒 Opening business modal (normal press)');
       setAuthMode('login');
       setShowBusinessModal(true);
+    } else {
+      // Timer completed = admin modal already opened
+      console.log('🔒 Admin modal already opened (10s elapsed)');
     }
     
     setIsLongPressing(false);
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={styles.container}>
       {/* Modal overlays - positioned absolutely over the entire screen */}
       {(showBusinessModal || showAdminModal) && (
         <View style={styles.modalOverlay}>
