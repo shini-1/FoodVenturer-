@@ -215,6 +215,14 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     color: '#C0392B', // Red
   },
   
+  // Turkish
+  turkish: {
+    name: 'turkish',
+    label: 'Turkish',
+    emoji: '🥙',
+    color: '#E74C3C', // Red
+  },
+  
   // Mediterranean
   mediterranean: {
     name: 'mediterranean',
@@ -298,6 +306,7 @@ export function guessCategoryFromName(restaurantName: string): CategoryConfig {
     [['chinese', 'china', 'wok'], 'chinese'],
     [['japanese', 'tokyo', 'osaka'], 'japanese'],
     [['korean'], 'korean'],
+    [['turkish', 'kebab', 'doner', 'shawarma'], 'turkish'],
     [['indian', 'curry'], 'indian'],
     [['mediterranean'], 'mediterranean'],
     [['buffet', 'all you can eat'], 'buffet'],

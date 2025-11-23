@@ -353,6 +353,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const RestaurantCard = useCallback(({ restaurant }: { restaurant: CategorizedRestaurant }) => {
     const address = addressCache[restaurant.id] || '📍 Loading address...';
     const isFavorite = favorites.has(restaurant.id);
+    const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
 
     return (
       <TouchableOpacity
@@ -380,7 +381,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               {address}
             </Text>
             <Text style={styles.cardCategory}>
-              {resolveCategoryConfig(restaurant.category, restaurant.name).name}
+              {categoryConfig.emoji} {categoryConfig.label}
             </Text>
           </View>
           {/* Favorite button in top-right */}
