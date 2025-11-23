@@ -330,7 +330,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
           restaurantId: restaurant.id,
           restaurant: restaurant
         })}
-        style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.primary }]}
+        style={styles.card}
       >
         <View style={styles.cardContent}>
           <Image
@@ -345,14 +345,16 @@ function HomeScreen({ navigation }: { navigation: any }) {
             }}
           />
           <View style={styles.cardTextContent}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>{restaurant.name.split(', ')[0]}</Text>
-            <Text style={[styles.cardLocation, { color: theme.textSecondary }]}>
+            <Text style={styles.cardTitle}>{restaurant.name.split(', ')[0]}</Text>
+            <Text style={styles.cardLocation}>
               {address}
             </Text>
-            <Text style={[styles.cardCategory, { color: theme.primary }]}>
-              {resolveCategoryConfig(restaurant.category, restaurant.name).emoji} {resolveCategoryConfig(restaurant.category, restaurant.name).name}
+            <Text style={styles.cardCategory}>
+              {resolveCategoryConfig(restaurant.category, restaurant.name).name}
             </Text>
           </View>
+          {/* Star icon in top-right */}
+          <Text style={styles.starIcon}>⭐</Text>
         </View>
       </TouchableOpacity>
     );
@@ -365,8 +367,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
     if (isLoadingPage) {
       return (
-        <View style={[styles.footer, { backgroundColor: theme.background }]}> 
-          <ActivityIndicator style={styles.footerSpinner} color={theme.primary} size="small" />
+        <View style={styles.footer}> 
+          <ActivityIndicator style={styles.footerSpinner} color="#4A90E2" size="small" />
         </View>
       );
     }
@@ -375,7 +377,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   }, [hasMore, isLoadingPage, theme]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={styles.container}>
       <Header />
       <TouchableOpacity
         onPress={() => navigation.goBack()}
@@ -387,19 +389,19 @@ function HomeScreen({ navigation }: { navigation: any }) {
         placeholder="Search restaurants"
         value={searchText}
         onChangeText={setSearchText}
-        style={[styles.searchBar, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
-        placeholderTextColor={theme.textSecondary}
+        style={styles.searchBar}
+        placeholderTextColor="#999999"
       />
 
       {/* Category Filter Button */}
       <TouchableOpacity
         onPress={() => setShowCategoryModal(true)}
-        style={[styles.categoryButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+        style={styles.categoryButton}
       >
-        <Text style={{ color: theme.text, fontSize: 16 }}>
+        <Text style={{ color: '#000000', fontSize: 16 }}>
           {restaurantCategories.find(cat => cat.value === selectedCategory)?.emoji || '🍽️'}
         </Text>
-        <Text style={{ color: theme.text, fontSize: 12, marginLeft: 4 }}>
+        <Text style={{ color: '#000000', fontSize: 12, marginLeft: 4 }}>
           ▼
         </Text>
       </TouchableOpacity>
@@ -460,8 +462,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
             return <MapBoxWebView restaurants={visibleRestaurants} />;
           })()
         ) : (
-          <View style={[styles.loadingContainer, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.loadingText, { color: theme.text }]}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>
               {restaurants.length === 0 ? '🔄 Loading restaurants...' : '🔍 No restaurants match your search'}
             </Text>
           </View>
@@ -493,8 +495,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
         windowSize={5}
         removeClippedSubviews
         ListEmptyComponent={
-          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.primary }]}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>
               {restaurants.length === 0 ? 'No restaurants loaded yet' : 'No restaurants match your search'}
             </Text>
           </View>
@@ -509,6 +511,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 80, // Account for header
+    backgroundColor: '#E6F3FF', // Light blue background
   },
   backButton: {
     position: 'absolute',
@@ -526,26 +529,39 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 60,
     left: 80,
-    right: 20,
+    right: 80,
     height: 40,
     borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
+    borderRadius: 20,
+    paddingHorizontal: 16,
     zIndex: 10,
+    backgroundColor: '#FFFFFF',
+    color: '#000000',
+    borderColor: '#000000',
   },
   mapContainer: {
     flex: 1,
-    marginTop: 10, // Reduced from 20
+    marginTop: 10,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#000000',
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
   },
   cardsContainer: {
     flex: 1,
-    paddingHorizontal: 10,
+    paddingHorizontal: 0,
+    backgroundColor: '#E6F3FF',
   },
   card: {
-    padding: 15,
-    marginVertical: 5,
-    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    marginVertical: 8,
+    marginHorizontal: 16,
+    borderRadius: 12,
     borderWidth: 2,
+    borderColor: '#000000',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -554,29 +570,40 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    position: 'relative',
   },
   restaurantImage: {
-    width: 60,
-    height: 60,
+    width: 120,
+    height: 120,
     borderRadius: 8,
-    marginRight: 12,
+    marginRight: 16,
   },
   cardTextContent: {
     flex: 1,
+    justifyContent: 'flex-start',
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
+    color: '#000000',
+    marginBottom: 8,
   },
   cardLocation: {
     fontSize: 14,
-    marginTop: 5,
+    color: '#666666',
+    marginBottom: 4,
   },
   cardCategory: {
-    fontSize: 12,
-    marginTop: 3,
+    fontSize: 14,
+    color: '#000000',
     fontWeight: '600',
+  },
+  starIcon: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    fontSize: 28,
   },
   categoryButton: {
     position: 'absolute',
@@ -585,11 +612,13 @@ const styles = StyleSheet.create({
     width: 50,
     height: 40,
     borderWidth: 1,
-    borderRadius: 5,
+    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#000000',
   },
   modalOverlay: {
     flex: 1,
@@ -641,16 +670,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   loadingText: {
     fontSize: 16,
     textAlign: 'center',
+    color: '#000000',
   },
   footer: {
     paddingVertical: 16,
     paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#E6F3FF',
   },
   footerSpinner: {
     marginBottom: 8,
