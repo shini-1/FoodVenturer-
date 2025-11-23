@@ -209,15 +209,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8E8E8',
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+    overflow: 'hidden',
   },
   logoImage: {
-    width: '85%',
-    height: '70%',
-    borderRadius: 15,
+    width: '100%',
+    height: '100%',
   },
   bottomSection: {
     flex: 1,

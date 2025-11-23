@@ -433,9 +433,22 @@ function HomeScreen({ navigation }: { navigation: any }) {
           placeholderTextColor={DESIGN_COLORS.textPlaceholder}
         />
         <Text style={styles.searchIcon}>🔍</Text>
+        
+        {/* Category Filter Button */}
+        <TouchableOpacity
+          style={styles.categoryButton}
+          onPress={() => setShowCategoryModal(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.categoryButtonEmoji}>
+            {restaurantCategories.find(c => c.value === selectedCategory)?.emoji || '🍽️'}
+          </Text>
+          <Text style={styles.categoryButtonLabel}>
+            {restaurantCategories.find(c => c.value === selectedCategory)?.label || 'All'}
+          </Text>
+          <Text style={styles.dropdownIcon}>▼</Text>
+        </TouchableOpacity>
       </View>
-
-      {/* Category Filter Button - Hidden in this design */}
 
       {/* Category Filter Modal */}
       <Modal
@@ -562,6 +575,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 90,
+    gap: 8,
   },
   searchBar: {
     flex: 1,
@@ -578,6 +592,31 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     fontSize: 18,
+  },
+  categoryButton: {
+    height: 40,
+    paddingHorizontal: 12,
+    backgroundColor: DESIGN_COLORS.buttonBackground,
+    borderWidth: 1,
+    borderColor: DESIGN_COLORS.border,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 100,
+  },
+  categoryButtonEmoji: {
+    fontSize: 16,
+  },
+  categoryButtonLabel: {
+    fontSize: 13,
+    color: DESIGN_COLORS.textPrimary,
+    fontWeight: '500',
+  },
+  dropdownIcon: {
+    fontSize: 10,
+    color: DESIGN_COLORS.textPrimary,
+    marginLeft: 2,
   },
   mapContainer: {
     flex: 1,
@@ -648,21 +687,6 @@ const styles = StyleSheet.create({
   },
   favoriteIcon: {
     fontSize: 28,
-  },
-  categoryButton: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    width: 50,
-    height: 40,
-    borderWidth: 1,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-    backgroundColor: '#FFFFFF',
-    borderColor: '#000000',
   },
   modalOverlay: {
     flex: 1,
