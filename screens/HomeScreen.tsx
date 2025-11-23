@@ -14,6 +14,7 @@ import { Image } from 'expo-image';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
+import MapControls from '../components/MapControls';
 import { OfflineService } from '../src/services/offlineService';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { resolveCategoryConfig, getAllCategoryOptions } from '../src/config/categoryConfig';
@@ -385,26 +386,18 @@ function HomeScreen({ navigation }: { navigation: any }) {
       >
         <Text style={[styles.backText, { color: '#E81CFF' }]}>✕</Text>
       </TouchableOpacity>
-      <TextInput
-        placeholder="Search restaurants"
-        value={searchText}
-        onChangeText={setSearchText}
-        style={styles.searchBar}
-        placeholderTextColor="#999999"
-      />
+      <View style={styles.searchContainer}>
+        <TextInput
+          placeholder="Search restaurants"
+          value={searchText}
+          onChangeText={setSearchText}
+          style={styles.searchBar}
+          placeholderTextColor="#999999"
+        />
+        <Text style={styles.searchIcon}>🔍</Text>
+      </View>
 
-      {/* Category Filter Button */}
-      <TouchableOpacity
-        onPress={() => setShowCategoryModal(true)}
-        style={styles.categoryButton}
-      >
-        <Text style={{ color: '#000000', fontSize: 16 }}>
-          {restaurantCategories.find(cat => cat.value === selectedCategory)?.emoji || '🍽️'}
-        </Text>
-        <Text style={{ color: '#000000', fontSize: 12, marginLeft: 4 }}>
-          ▼
-        </Text>
-      </TouchableOpacity>
+      {/* Category Filter Button - Hidden in this design */}
 
       {/* Category Filter Modal */}
       <Modal
@@ -457,10 +450,16 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
       <View style={styles.mapContainer}>
         {visibleRestaurants.length > 0 ? (
-          (() => {
-            console.log('🗺️ Passing restaurants to MapBoxWebView:', visibleRestaurants.length, visibleRestaurants);
-            return <MapBoxWebView restaurants={visibleRestaurants} />;
-          })()
+          <>
+            <MapBoxWebView restaurants={visibleRestaurants} />
+            <MapControls
+              markerCount={visibleRestaurants.length}
+              onZoomIn={() => console.log('Zoom in')}
+              onZoomOut={() => console.log('Zoom out')}
+              onLocationPress={() => console.log('Location pressed')}
+              onInfoPress={() => Alert.alert('Map Info', 'Mapbox GL JS map with restaurant markers')}
+            />
+          </>
         ) : (
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>
@@ -525,19 +524,31 @@ const styles = StyleSheet.create({
     fontSize: 35,
     fontWeight: 'bold',
   },
-  searchBar: {
+  searchContainer: {
     position: 'absolute',
     top: 60,
     left: 80,
-    right: 80,
+    right: 20,
+    height: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  searchBar: {
+    flex: 1,
     height: 40,
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 16,
-    zIndex: 10,
+    paddingRight: 40,
     backgroundColor: '#FFFFFF',
     color: '#000000',
     borderColor: '#000000',
+  },
+  searchIcon: {
+    position: 'absolute',
+    right: 16,
+    fontSize: 18,
   },
   mapContainer: {
     flex: 1,
