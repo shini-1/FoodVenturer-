@@ -14,7 +14,6 @@ import { Image } from 'expo-image';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
-import MapControls from '../components/MapControls';
 import { OfflineService } from '../src/services/offlineService';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { resolveCategoryConfig, getAllCategoryOptions } from '../src/config/categoryConfig';
@@ -489,13 +488,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
       <View style={styles.mapContainer}>
         {visibleRestaurants.length > 0 ? (
-          <>
-            <MapBoxWebView restaurants={visibleRestaurants} />
-            <MapControls
-              markerCount={visibleRestaurants.length}
-              onInfoPress={() => Alert.alert('Map Info', 'Mapbox GL JS map with restaurant markers')}
-            />
-          </>
+          <MapBoxWebView restaurants={visibleRestaurants} />
         ) : (
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>
@@ -562,7 +555,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'absolute',
-    top: 28,
+    top: 27,
     left: 80,
     right: 20,
     height: 40,
