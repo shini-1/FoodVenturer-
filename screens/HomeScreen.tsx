@@ -25,6 +25,19 @@ interface CategorizedRestaurant extends Restaurant {
   category: string; // Override to make category required
 }
 
+// Design colors matching the mockup exactly
+const DESIGN_COLORS = {
+  background: '#E6F3FF',      // Light blue - main screen background
+  cardBackground: '#FFFFFF',   // White - card backgrounds
+  border: '#000000',           // Black - all borders
+  textPrimary: '#000000',      // Black - primary text (names, types)
+  textSecondary: '#666666',    // Gray - secondary text (locations)
+  textPlaceholder: '#999999',  // Light gray - placeholder text
+  buttonBackground: '#FFFFFF', // White - button backgrounds
+  infoBg: '#000000',          // Black - info button background
+  infoText: '#FFFFFF',        // White - info button text
+};
+
 // Placeholder image URLs based on category (using unsplash for consistent placeholders)
 const getPlaceholderImage = (category: string): string => {
   const placeholders: { [key: string]: string } = {
@@ -384,7 +397,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         onPress={() => navigation.goBack()}
         style={styles.backButton}
       >
-        <Text style={[styles.backText, { color: '#E81CFF' }]}>✕</Text>
+        <Text style={styles.backText}>✕</Text>
       </TouchableOpacity>
       <View style={styles.searchContainer}>
         <TextInput
@@ -392,7 +405,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
           value={searchText}
           onChangeText={setSearchText}
           style={styles.searchBar}
-          placeholderTextColor="#999999"
+          placeholderTextColor={DESIGN_COLORS.textPlaceholder}
         />
         <Text style={styles.searchIcon}>🔍</Text>
       </View>
@@ -510,29 +523,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 80, // Account for header
-    backgroundColor: '#E6F3FF', // Light blue background
+    backgroundColor: DESIGN_COLORS.background,
   },
   backButton: {
     position: 'absolute',
-    top: 25,
-    left: 5,
-    padding: 18,
-    borderRadius: 10,
-    zIndex: 10,
+    top: 20,
+    left: 20,
+    padding: 10,
+    zIndex: 90,
   },
   backText: {
     fontSize: 35,
     fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
   searchContainer: {
     position: 'absolute',
-    top: 60,
-    left: 80,
+    top: 20,
+    left: 70,
     right: 20,
     height: 40,
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 10,
+    zIndex: 90,
   },
   searchBar: {
     flex: 1,
@@ -541,9 +554,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingRight: 40,
-    backgroundColor: '#FFFFFF',
-    color: '#000000',
-    borderColor: '#000000',
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    color: DESIGN_COLORS.textPrimary,
+    borderColor: DESIGN_COLORS.border,
   },
   searchIcon: {
     position: 'absolute',
@@ -556,23 +569,23 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#000000',
+    borderColor: DESIGN_COLORS.border,
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: DESIGN_COLORS.cardBackground,
   },
   cardsContainer: {
     flex: 1,
     paddingHorizontal: 0,
-    backgroundColor: '#E6F3FF',
+    backgroundColor: DESIGN_COLORS.background,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: DESIGN_COLORS.cardBackground,
     padding: 16,
     marginVertical: 8,
     marginHorizontal: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#000000',
+    borderColor: DESIGN_COLORS.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -597,17 +610,17 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000000',
+    color: DESIGN_COLORS.textPrimary,
     marginBottom: 8,
   },
   cardLocation: {
     fontSize: 14,
-    color: '#666666',
+    color: DESIGN_COLORS.textSecondary,
     marginBottom: 4,
   },
   cardCategory: {
     fontSize: 14,
-    color: '#000000',
+    color: DESIGN_COLORS.textPrimary,
     fontWeight: '600',
   },
   starIcon: {
@@ -681,19 +694,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: DESIGN_COLORS.cardBackground,
   },
   loadingText: {
     fontSize: 16,
     textAlign: 'center',
-    color: '#000000',
+    color: DESIGN_COLORS.textPrimary,
   },
   footer: {
     paddingVertical: 16,
     paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E6F3FF',
+    backgroundColor: DESIGN_COLORS.background,
   },
   footerSpinner: {
     marginBottom: 8,
