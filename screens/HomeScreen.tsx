@@ -93,6 +93,22 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingPage, setIsLoadingPage] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  // Toggle favorite status
+  const toggleFavorite = useCallback((restaurantId: string) => {
+    setFavorites(prev => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(restaurantId)) {
+        newFavorites.delete(restaurantId);
+        console.log('❤️ Removed from favorites:', restaurantId);
+      } else {
+        newFavorites.add(restaurantId);
+        console.log('❤️ Added to favorites:', restaurantId);
+      }
+      return newFavorites;
+    });
+  }, []);
 
   // Clear address cache to refresh with new geocoding logic
   const clearAddressCache = () => {
@@ -337,6 +353,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   // RestaurantCard component that handles address display
   const RestaurantCard = useCallback(({ restaurant }: { restaurant: CategorizedRestaurant }) => {
     const address = addressCache[restaurant.id] || '📍 Loading address...';
+    const isFavorite = favorites.has(restaurant.id);
 
     return (
       <TouchableOpacity
@@ -367,12 +384,21 @@ function HomeScreen({ navigation }: { navigation: any }) {
               {resolveCategoryConfig(restaurant.category, restaurant.name).name}
             </Text>
           </View>
-          {/* Star icon in top-right */}
-          <Text style={styles.starIcon}>⭐</Text>
+          {/* Favorite button in top-right */}
+          <TouchableOpacity
+            style={styles.favoriteButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              toggleFavorite(restaurant.id);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.favoriteIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
-  }, [addressCache, navigation, theme, restaurantCategories]);
+  }, [addressCache, navigation, favorites, toggleFavorite]);
 
   const renderListFooter = useCallback(() => {
     if (!hasMore && !isLoadingPage) {
@@ -467,9 +493,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
             <MapBoxWebView restaurants={visibleRestaurants} />
             <MapControls
               markerCount={visibleRestaurants.length}
-              onZoomIn={() => console.log('Zoom in')}
-              onZoomOut={() => console.log('Zoom out')}
-              onLocationPress={() => console.log('Location pressed')}
               onInfoPress={() => Alert.alert('Map Info', 'Mapbox GL JS map with restaurant markers')}
             />
           </>
@@ -540,7 +563,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     position: 'absolute',
     top: 20,
-    left: 70,
+    left: 65,
     right: 20,
     height: 40,
     flexDirection: 'row',
@@ -623,10 +646,14 @@ const styles = StyleSheet.create({
     color: DESIGN_COLORS.textPrimary,
     fontWeight: '600',
   },
-  starIcon: {
+  favoriteButton: {
     position: 'absolute',
     top: 0,
     right: 0,
+    padding: 4,
+    zIndex: 10,
+  },
+  favoriteIcon: {
     fontSize: 28,
   },
   categoryButton: {
