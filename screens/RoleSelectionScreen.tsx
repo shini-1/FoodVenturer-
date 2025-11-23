@@ -155,7 +155,7 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
           {/* Logo Container */}
           <View style={styles.logoContainer}>
             <Image
-              source={require('../assets/foodventure-logo.png')}
+              source={require('../assets/foodventure-logo.jpg')}
               style={styles.logoImage}
               contentFit="cover"
               transition={300}
