@@ -15,6 +15,7 @@ export const TABLES = {
   ADMINS: 'admins',
   MENU_ITEMS: 'menu_items',
   RESTAURANT_RATINGS: 'restaurant_ratings',
+  RESTAURANT_DEVICE_RATINGS: 'restaurant_device_ratings',
 };
 
 export const BUCKETS = {

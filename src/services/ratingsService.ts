@@ -44,21 +44,11 @@ export async function submitRating(
     throw new Error(insertError.message);
   }
 
-  // Recompute average for the restaurant
-  const { data, error, count } = await supabase
-    .from(TABLES.RESTAURANT_RATINGS)
-    .select('stars', { count: 'exact' })
-    .eq('restaurant_id', restaurantId);
-
-  if (error) throw new Error(error.message);
-
-  const rows = (data ?? []) as any[];
-  const c = count ?? rows.length;
-  const avg = c === 0 ? 0 : rows.reduce((s, r: any) => s + (r.stars || 0), 0) / c;
-
+  // Recompute combined average (user + device) for the restaurant
+  const { average } = await getAverageRating(restaurantId);
   const { error: updateError } = await supabase
     .from(TABLES.RESTAURANTS)
-    .update({ rating: avg })
+    .update({ rating: average })
     .eq('id', restaurantId);
 
   if (updateError) throw new Error(updateError.message);
@@ -84,15 +74,31 @@ export async function getUserRating(
 export async function getAverageRating(
   restaurantId: string
 ): Promise<{ average: number; count: number }> {
-  const { data, error, count } = await supabase
-    .from(TABLES.RESTAURANT_RATINGS)
-    .select('stars', { count: 'exact' })
-    .eq('restaurant_id', restaurantId);
+  // Fetch both user and device rating stars
+  const [userRes, deviceRes] = await Promise.all([
+    supabase
+      .from(TABLES.RESTAURANT_RATINGS)
+      .select('stars', { count: 'exact' })
+      .eq('restaurant_id', restaurantId),
+    supabase
+      .from(TABLES.RESTAURANT_DEVICE_RATINGS)
+      .select('stars', { count: 'exact' })
+      .eq('restaurant_id', restaurantId),
+  ]);
 
-  if (error) throw new Error(error.message);
+  if (userRes.error) throw new Error(userRes.error.message);
+  if (deviceRes.error) throw new Error(deviceRes.error.message);
 
-  const rows = (data ?? []) as any[];
-  const c = count ?? rows.length;
-  const avg = c === 0 ? 0 : rows.reduce((s, r: any) => s + (r.stars || 0), 0) / c;
-  return { average: avg, count: c };
+  const userRows = (userRes.data ?? []) as any[];
+  const userCount = userRes.count ?? userRows.length;
+  const userSum = userRows.reduce((s, r: any) => s + (r.stars || 0), 0);
+
+  const deviceRows = (deviceRes.data ?? []) as any[];
+  const deviceCount = deviceRes.count ?? deviceRows.length;
+  const deviceSum = deviceRows.reduce((s, r: any) => s + (r.stars || 0), 0);
+
+  const totalCount = userCount + deviceCount;
+  const totalSum = userSum + deviceSum;
+  const avg = totalCount === 0 ? 0 : totalSum / totalCount;
+  return { average: avg, count: totalCount };
 }

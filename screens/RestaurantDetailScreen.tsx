@@ -17,6 +17,8 @@ import { reverseGeocode } from '../src/services/geocodingService';
 import { menuService } from '../src/services/menuService';
 import { promoService, Promo } from '../src/services/promoService';
 import { getAverageRating, getUserRating, submitRating } from '../src/services/ratingsService';
+import { getDeviceId } from '../src/services/deviceId';
+import { submitDeviceRating, getDeviceRating } from '../src/services/deviceRatingsService';
 import { supabase } from '../src/config/supabase';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
@@ -201,6 +203,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
   const [avgRating, setAvgRating] = useState<number>(initialRestaurant?.rating ?? 0);
   const [ratingCount, setRatingCount] = useState<number>(0);
   const [myRating, setMyRating] = useState<number | null>(null);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
   const [submittingRating, setSubmittingRating] = useState<boolean>(false);
 
   // Debug logging
@@ -224,7 +227,17 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
     }
   }, [initialRestaurant, restaurantId]);
 
-  // Load rating aggregate and user rating
+  // Load device ID once
+  useEffect(() => {
+    (async () => {
+      try {
+        const id = await getDeviceId();
+        setDeviceId(id);
+      } catch {}
+    })();
+  }, []);
+
+  // Load rating aggregate and user/device rating
   useEffect(() => {
     const loadRatings = async () => {
       if (!restaurant?.id) return;
@@ -239,13 +252,16 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
         if (uid) {
           const ur = await getUserRating(restaurant.id, uid);
           if (ur) setMyRating(ur.stars);
+        } else if (deviceId) {
+          const dr = await getDeviceRating(restaurant.id, deviceId);
+          if (dr) setMyRating(dr.stars);
         } else {
           setMyRating(null);
         }
       } catch {}
     };
     if (restaurant) loadRatings();
-  }, [restaurant]);
+  }, [restaurant, deviceId]);
 
   // Fetch address from coordinates
   useEffect(() => {
@@ -396,7 +412,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
               </Text>
             </View>
 
-            {/* Interactive rating for logged-in users (one-time) */}
+            {/* Interactive rating for user or device (one-time) */}
             {myRating != null ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -420,18 +436,21 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
                         if (!restaurant?.id) return;
                         const { data } = await supabase.auth.getUser();
                         const uid = data?.user?.id;
-                        if (!uid) {
-                          Alert.alert('Login required', 'Please log in to rate this restaurant.');
-                          return;
-                        }
                         setSubmittingRating(true);
-                        await submitRating(restaurant.id, uid, star);
-                        setMyRating(star);
+                        if (uid) {
+                          await submitRating(restaurant.id, uid, star);
+                          setMyRating(star);
+                        } else {
+                          const id = deviceId || (await getDeviceId());
+                          await submitDeviceRating(restaurant.id, id, star);
+                          setDeviceId(id);
+                          setMyRating(star);
+                        }
                         const { average, count } = await getAverageRating(restaurant.id);
                         setAvgRating(average);
                         setRatingCount(count);
                       } catch (e: any) {
-                        if (e?.message === 'ALREADY_RATED') {
+                        if (e?.message === 'ALREADY_RATED' || e?.message === 'ALREADY_RATED_DEVICE') {
                           Alert.alert('Already rated', 'You have already rated this restaurant.');
                           try {
                             const { data } = await supabase.auth.getUser();
@@ -439,6 +458,9 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
                             if (uid) {
                               const ur = await getUserRating(restaurant.id, uid);
                               if (ur) setMyRating(ur.stars);
+                            } else if (deviceId) {
+                              const dr = await getDeviceRating(restaurant.id, deviceId);
+                              if (dr) setMyRating(dr.stars);
                             }
                           } catch {}
                         } else {

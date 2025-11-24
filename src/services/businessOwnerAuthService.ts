@@ -29,22 +29,46 @@ class BusinessOwnerAuthService {
    */
   async signUp(signUpData: SignUpData): Promise<BusinessOwnerProfile> {
     try {
-      // Create Supabase auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: signUpData.email,
         password: signUpData.password,
       });
-
       if (authError) throw authError;
-
-      if (!authData.user) {
-        throw new Error('Failed to create user account');
-      }
+      if (!authData.user) throw new Error('Failed to create user account');
 
       const uid = authData.user.id;
+      const hasSession = !!authData.session?.access_token;
+      if (hasSession) {
+        await this.ensureProfileExists(uid, {
+          email: signUpData.email,
+          firstName: signUpData.firstName,
+          lastName: signUpData.lastName,
+          phoneNumber: signUpData.phoneNumber,
+          businessName: signUpData.businessName,
+        });
+      }
 
-      // Create business owner profile in database
-      const profile: Omit<BusinessOwnerProfile, 'uid'> = {
+      // Create pending submission for admin review (best-effort)
+      try {
+        await supabase
+          .from(TABLES.RESTAURANT_SUBMISSIONS)
+          .insert({
+            owner_id: uid,
+            business_name: signUpData.businessName || '',
+            owner_name: `${signUpData.firstName} ${signUpData.lastName}`.trim(),
+            email: signUpData.email,
+            phone: signUpData.phoneNumber || '',
+            location: null,
+            image: null,
+            description: '',
+            cuisine_type: '',
+            status: 'pending',
+            submitted_at: new Date().toISOString(),
+          });
+      } catch {}
+
+      return {
+        uid,
         email: signUpData.email,
         firstName: signUpData.firstName,
         lastName: signUpData.lastName,
@@ -54,30 +78,6 @@ class BusinessOwnerAuthService {
         createdAt: new Date(),
         isVerified: false,
       };
-
-      const profileData = {
-        uid,
-        email: profile.email,
-        first_name: profile.firstName,
-        last_name: profile.lastName,
-        phone_number: profile.phoneNumber,
-        business_name: profile.businessName,
-        role: profile.role,
-        created_at: profile.createdAt.toISOString(),
-        is_verified: profile.isVerified,
-      };
-
-      const { error: insertError } = await supabase
-        .from(this.BUSINESS_OWNERS_TABLE)
-        .insert(profileData);
-
-      if (insertError) {
-        // Clean up auth user if profile creation failed
-        await supabase.auth.admin.deleteUser(uid);
-        throw insertError;
-      }
-
-      return { uid, ...profile };
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error));
     }
@@ -99,11 +99,17 @@ class BusinessOwnerAuthService {
         throw new Error('Authentication failed');
       }
 
-      // Get profile from database
-      const profile = await this.getProfile(data.user.id);
-
+      let profile = await this.getProfile(data.user.id);
       if (!profile) {
-        throw new Error('Business owner profile not found');
+        await this.ensureProfileExists(data.user.id, { email });
+        profile = await this.getProfile(data.user.id);
+      }
+
+      if (!profile) throw new Error('Business owner profile not found');
+
+      // Enforce verification before allowing login
+      if (!profile.isVerified) {
+        throw new Error('Your account is pending verification by the admin. Please try again later.');
       }
 
       return profile;
@@ -224,6 +230,28 @@ class BusinessOwnerAuthService {
       } as BusinessOwnerProfile;
     } catch (error) {
       return null;
+    }
+  }
+
+  private async ensureProfileExists(uid: string, base: { email: string; firstName?: string; lastName?: string; phoneNumber?: string; businessName?: string }): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from(this.BUSINESS_OWNERS_TABLE)
+        .insert({
+          uid,
+          email: base.email,
+          first_name: base.firstName || '',
+          last_name: base.lastName || '',
+          phone_number: base.phoneNumber ?? null,
+          business_name: base.businessName ?? null,
+          role: 'business_owner',
+          created_at: new Date().toISOString(),
+          is_verified: false,
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      throw error;
     }
   }
 
