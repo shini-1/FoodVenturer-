@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+inimport { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export const SUPABASE_CONFIG = {
   url: process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://dvkpflctotjavgrvbgay.supabase.co',
@@ -13,6 +13,7 @@ export const TABLES = {
   RESTAURANT_SUBMISSIONS: 'restaurant_submissions',
   BUSINESS_OWNERS: 'business_owners',
   ADMINS: 'admins',
+  MENU_ITEMS: 'menu_items',
 };
 
 export const BUCKETS = {
