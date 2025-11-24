@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Linking,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
@@ -15,6 +16,8 @@ import { Restaurant, MenuItem } from '../types';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { menuService } from '../src/services/menuService';
 import { promoService, Promo } from '../src/services/promoService';
+import { getAverageRating, getUserRating, submitRating } from '../src/services/ratingsService';
+import { supabase } from '../src/config/supabase';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
 
@@ -195,6 +198,10 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
   const [menuLoading, setMenuLoading] = useState(false);
   const [promos, setPromos] = useState<Promo[]>([]);
   const [promoLoading, setPromoLoading] = useState(false);
+  const [avgRating, setAvgRating] = useState<number>(initialRestaurant?.rating ?? 0);
+  const [ratingCount, setRatingCount] = useState<number>(0);
+  const [myRating, setMyRating] = useState<number | null>(null);
+  const [submittingRating, setSubmittingRating] = useState<boolean>(false);
 
   // Debug logging
   useEffect(() => {
@@ -216,6 +223,29 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
       setLoading(false);
     }
   }, [initialRestaurant, restaurantId]);
+
+  // Load rating aggregate and user rating
+  useEffect(() => {
+    const loadRatings = async () => {
+      if (!restaurant?.id) return;
+      try {
+        const { average, count } = await getAverageRating(restaurant.id);
+        setAvgRating(average);
+        setRatingCount(count);
+      } catch {}
+      try {
+        const { data } = await supabase.auth.getUser();
+        const uid = data?.user?.id;
+        if (uid) {
+          const ur = await getUserRating(restaurant.id, uid);
+          if (ur) setMyRating(ur.stars);
+        } else {
+          setMyRating(null);
+        }
+      } catch {}
+    };
+    if (restaurant) loadRatings();
+  }, [restaurant]);
 
   // Fetch address from coordinates
   useEffect(() => {
@@ -348,18 +378,86 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
 
             {/* Rating and Category */}
             <View style={styles.ratingSection}>
-              {restaurant.rating && (
-                <View style={styles.ratingContainer}>
-                  <Text style={{color: '#FFD700', fontSize: 16}}>Star</Text>
-                  <Text style={[styles.ratingText, { color: theme.text }]}>
-                    {restaurant.rating.toFixed(1)}
-                  </Text>
-                </View>
-              )}
+              <View style={styles.ratingContainer}>
+                <Text style={{ color: '#FFD700', fontSize: 16 }}>
+                  {(() => {
+                    const r = Math.round(avgRating || 0);
+                    const full = '★'.repeat(Math.max(0, Math.min(5, r)));
+                    const empty = '☆'.repeat(5 - Math.max(0, Math.min(5, r)));
+                    return full + empty;
+                  })()}
+                </Text>
+                <Text style={[styles.ratingText, { color: theme.text }]}>
+                  {avgRating ? avgRating.toFixed(1) : 'No ratings yet'}{ratingCount ? ` (${ratingCount})` : ''}
+                </Text>
+              </View>
               <Text style={[styles.categoryText, { color: theme.textSecondary }]}>
-                {restaurant.category || 'Restaurant'} - {restaurant.priceRange || '$'}
+                {restaurant.category || 'Restaurant'} - {restaurant.priceRange || '₱'}
               </Text>
             </View>
+
+            {/* Interactive rating for logged-in users (one-time) */}
+            {myRating != null ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <View key={star} style={{ marginRight: 6 }}>
+                    <Text style={{ fontSize: 22, color: '#FFD700' }}>
+                      {myRating >= star ? '★' : '☆'}
+                    </Text>
+                  </View>
+                ))}
+                <Text style={{ marginLeft: 8, color: theme.textSecondary }}>
+                  You rated {myRating}★
+                </Text>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={async () => {
+                      try {
+                        if (!restaurant?.id) return;
+                        const { data } = await supabase.auth.getUser();
+                        const uid = data?.user?.id;
+                        if (!uid) {
+                          Alert.alert('Login required', 'Please log in to rate this restaurant.');
+                          return;
+                        }
+                        setSubmittingRating(true);
+                        await submitRating(restaurant.id, uid, star);
+                        setMyRating(star);
+                        const { average, count } = await getAverageRating(restaurant.id);
+                        setAvgRating(average);
+                        setRatingCount(count);
+                      } catch (e: any) {
+                        if (e?.message === 'ALREADY_RATED') {
+                          Alert.alert('Already rated', 'You have already rated this restaurant.');
+                          try {
+                            const { data } = await supabase.auth.getUser();
+                            const uid = data?.user?.id;
+                            if (uid) {
+                              const ur = await getUserRating(restaurant.id, uid);
+                              if (ur) setMyRating(ur.stars);
+                            }
+                          } catch {}
+                        } else {
+                          console.warn('Rating submit failed', e);
+                        }
+                      } finally {
+                        setSubmittingRating(false);
+                      }
+                    }}
+                    disabled={submittingRating}
+                    style={{ marginRight: 6 }}
+                  >
+                    <Text style={{ fontSize: 22, color: '#FFD700' }}>
+                      {'☆'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Description */}

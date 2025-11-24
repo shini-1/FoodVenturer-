@@ -18,6 +18,7 @@ export interface Restaurant {
   image?: string; // Optional logo/image URL
   category?: string;
   rating?: number;
+  editorialRating?: number;
   priceRange?: string; // $, $$, $$$, $$$$
   description?: string;
   phone?: string;

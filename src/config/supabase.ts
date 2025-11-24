@@ -14,6 +14,7 @@ export const TABLES = {
   BUSINESS_OWNERS: 'business_owners',
   ADMINS: 'admins',
   MENU_ITEMS: 'menu_items',
+  RESTAURANT_RATINGS: 'restaurant_ratings',
 };
 
 export const BUCKETS = {

@@ -30,6 +30,8 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     image: '',
     category: 'casual',
     description: '',
+    priceRange: '₱₱',
+    editorialRating: '',
     phone: '',
     hours: '',
     website: ''
@@ -58,6 +60,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     image: '',
     description: '',
     category: 'casual',
+    priceRange: '₱₱',
     phone: '',
     hours: '',
     website: ''
@@ -74,8 +77,45 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         Alert.alert('Error', 'Failed to load restaurants');
       }
     };
+
+  // (moved function below, outside of useEffect)
     fetchRestaurants();
   }, []);
+
+  // Get current device location for Add Restaurant modal (sets lat/long)
+  const handleGetLocationForAdd = async () => {
+    try {
+      setLocationLoading(true);
+      console.log('📍 Admin(Add): Getting current location...');
+
+      const locationServiceInstance = new LocationService();
+      const location = await locationServiceInstance.getCurrentLocation();
+      if (location) {
+        setAddForm(prev => ({
+          ...prev,
+          latitude: location.latitude.toString(),
+          longitude: location.longitude.toString()
+        }));
+        console.log('📍 Admin(Add): Location obtained:', location);
+
+        try {
+          const address = await reverseGeocode(location.latitude, location.longitude);
+          Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4)}`);
+        } catch (geocodeError) {
+          console.warn('📍 Admin(Add): Reverse geocoding failed:', geocodeError);
+          Alert.alert('Success', `Location updated!\nCoordinates: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+        }
+      } else {
+        console.warn('📍 Admin(Add): Failed to get location');
+        Alert.alert('Location Error', 'Unable to get your current location. Please check location permissions and try again.');
+      }
+    } catch (error: any) {
+      console.error('📍 Admin(Add): Location error:', error);
+      Alert.alert('Location Error', `Failed to access location services: ${error.message}`);
+    } finally {
+      setLocationLoading(false);
+    }
+  };
 
   useEffect(() => {
     const checkLocationAvailability = async () => {
@@ -245,6 +285,8 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       image: restaurant.image || '',
       category: restaurant.category || 'casual',
       description: restaurant.description || '',
+      priceRange: restaurant.priceRange || '₱₱',
+      editorialRating: typeof restaurant.editorialRating === 'number' ? restaurant.editorialRating.toString() : '',
       phone: restaurant.phone || '',
       hours: restaurant.hours || '',
       website: restaurant.website || ''
@@ -285,11 +327,18 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         return;
       }
 
+      const editorialValue = parseFloat(editForm.editorialRating);
+      const clampedEditorial = Number.isFinite(editorialValue)
+        ? Math.max(0, Math.min(5, editorialValue))
+        : undefined;
+
       await updateRestaurant(editingRestaurant.id, {
         name,
         location: { latitude, longitude },
         image: editForm.image.trim() || undefined,
         category: editForm.category,
+        priceRange: editForm.priceRange,
+        editorialRating: clampedEditorial,
         description: editForm.description.trim() || undefined,
         phone: editForm.phone.trim() || undefined,
         hours: editForm.hours.trim() || undefined,
@@ -302,6 +351,8 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         location: { latitude, longitude },
         image: editForm.image.trim() || undefined,
         category: editForm.category,
+        priceRange: editForm.priceRange,
+        editorialRating: clampedEditorial,
         description: editForm.description.trim() || undefined,
         phone: editForm.phone.trim() || undefined,
         hours: editForm.hours.trim() || undefined,
@@ -355,7 +406,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         hours: addForm.hours.trim() || undefined,
         website: addForm.website.trim() || undefined,
         rating: undefined,
-        priceRange: undefined
+        priceRange: addForm.priceRange
       };
 
       await addRestaurant(restaurantData);
@@ -370,6 +421,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         image: '',
         description: '',
         category: 'casual',
+        priceRange: '₱₱',
         phone: '',
         hours: '',
         website: ''
@@ -1055,9 +1107,9 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         setImageUploading(true);
 
                         try {
-                          const { uploadRestaurantImage } = await import('../services/imageService');
+                          const { uploadImageToRestaurantBucket } = await import('../services/imageService');
                           const tempMenuItemId = `menu_${Date.now()}`;
-                          const uploadedImageUrl = await uploadRestaurantImage(imageUri, tempMenuItemId, 'gallery');
+                          const uploadedImageUrl = await uploadImageToRestaurantBucket(imageUri, tempMenuItemId);
                           
                           setMenuEditForm(prev => ({
                             ...prev,
@@ -1181,10 +1233,23 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 placeholderTextColor={theme.textSecondary}
               />
 
+              <TouchableOpacity
+                onPress={handleGetLocationForAdd}
+                disabled={locationLoading}
+                style={{ backgroundColor: locationLoading ? theme.border : '#28a745', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 5, alignSelf: 'flex-start', marginBottom: 10 }}
+              >
+                {locationLoading ? (
+                  <ActivityIndicator size="small" color={theme.text} />
+                ) : (
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>📍 Get Location</Text>
+                )}
+              </TouchableOpacity>
+
               <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Latitude:</Text>
               <TextInput
                 value={addForm.latitude}
-                onChangeText={(text) => setAddForm(prev => ({ ...prev, latitude: text }))}
+                editable={false}
+                selectTextOnFocus={false}
                 style={{
                   borderWidth: 1,
                   borderColor: theme.border,
@@ -1200,79 +1265,23 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
               />
 
               <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Longitude:</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
-                <TextInput
-                  value={addForm.longitude}
-                  onChangeText={(text) => setAddForm(prev => ({ ...prev, longitude: text }))}
-                  style={{
-                    flex: 1,
-                    borderWidth: 1,
-                    borderColor: theme.border,
-                    borderRadius: 5,
-                    padding: 10,
-                    color: theme.text,
-                    backgroundColor: theme.background
-                  }}
-                  placeholder="e.g. 122.3649"
-                  keyboardType="numeric"
-                  placeholderTextColor={theme.textSecondary}
-                />
-                <TouchableOpacity
-                  onPress={async () => {
-                    try {
-                      setLocationLoading(true);
-                      console.log('📍 Admin: Getting current location for add...');
-
-                      const locationServiceInstance = new LocationService();
-                      const location = await locationServiceInstance.getCurrentLocation();
-                      if (location) {
-                        setAddForm(prev => ({
-                          ...prev,
-                          latitude: location.latitude.toString(),
-                          longitude: location.longitude.toString()
-                        }));
-                        console.log('📍 Admin: Location obtained for add:', location);
-
-                        try {
-                          const address = await reverseGeocode(location.latitude, location.longitude);
-                          Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4)}`);
-                        } catch (geocodeError) {
-                          console.warn('📍 Admin: Reverse geocoding failed:', geocodeError);
-                          Alert.alert('Success', `Location updated!\nCoordinates: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
-                        }
-                      } else {
-                        console.warn('📍 Admin: Failed to get location for add');
-                        Alert.alert('Location Error', 'Unable to get your current location. Please check location permissions and try again.');
-                      }
-                    } catch (error: any) {
-                      console.error('📍 Admin: Location error for add:', error);
-                      Alert.alert('Location Error', `Failed to access location services: ${error.message}`);
-                    } finally {
-                      setLocationLoading(false);
-                    }
-                  }}
-                  disabled={locationLoading}
-                  style={{
-                    marginLeft: 10,
-                    backgroundColor: locationLoading ? theme.border : '#28a745',
-                    paddingHorizontal: 15,
-                    paddingVertical: 10,
-                    borderRadius: 5
-                  }}
-                >
-                  {locationLoading ? (
-                    <ActivityIndicator size="small" color={theme.text} />
-                  ) : (
-                    <Text style={{
-                      color: !locationAvailable ? theme.textSecondary : 'white',
-                      fontSize: 12,
-                      fontWeight: 'bold'
-                    }}>
-                      {!locationAvailable ? '📍 Location Unavailable' : '📍 Get Location'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+              <TextInput
+                value={addForm.longitude}
+                editable={false}
+                selectTextOnFocus={false}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  color: theme.text,
+                  backgroundColor: theme.background,
+                  marginBottom: 15
+                }}
+                placeholder="e.g. 122.3649"
+                keyboardType="numeric"
+                placeholderTextColor={theme.textSecondary}
+              />
 
               <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Category:</Text>
               <View style={{ marginBottom: 15 }}>
@@ -1296,6 +1305,27 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 ))}
               </View>
 
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Price Range (₱):</Text>
+              <View style={{ flexDirection: 'row', marginBottom: 15 }}>
+                {['₱','₱₱','₱₱₱','₱₱₱₱'].map((pr) => (
+                  <TouchableOpacity
+                    key={pr}
+                    onPress={() => setAddForm(prev => ({ ...prev, priceRange: pr }))}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      marginRight: 8,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                      borderRadius: 6,
+                      backgroundColor: addForm.priceRange === pr ? theme.primary : theme.surface
+                    }}
+                  >
+                    <Text style={{ color: addForm.priceRange === pr ? theme.background : theme.text }}>{pr}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Description:</Text>
               <TextInput
                 value={addForm.description}
@@ -1395,9 +1425,9 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         setImageUploading(true);
 
                         try {
-                          const { uploadRestaurantImage } = await import('../services/imageService');
+                          const { uploadImageToRestaurantBucket } = await import('../services/imageService');
                           const tempRestaurantId = `temp_${Date.now()}`;
-                          const uploadedImageUrl = await uploadRestaurantImage(imageUri, tempRestaurantId, 'logo');
+                          const uploadedImageUrl = await uploadImageToRestaurantBucket(imageUri, tempRestaurantId);
                           
                           setAddForm(prev => ({
                             ...prev,
@@ -1459,6 +1489,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                     image: '',
                     description: '',
                     category: 'casual',
+                    priceRange: '₱₱',
                     phone: '',
                     hours: '',
                     website: ''
@@ -1597,6 +1628,45 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Price Range (₱):</Text>
+              <View style={{ flexDirection: 'row', marginBottom: 15 }}>
+                {['₱','₱₱','₱₱₱','₱₱₱₱'].map((pr) => (
+                  <TouchableOpacity
+                    key={pr}
+                    onPress={() => setEditForm(prev => ({ ...prev, priceRange: pr }))}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      marginRight: 8,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                      borderRadius: 6,
+                      backgroundColor: editForm.priceRange === pr ? theme.primary : theme.surface
+                    }}
+                  >
+                    <Text style={{ color: editForm.priceRange === pr ? theme.background : theme.text }}>{pr}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Editorial Rating (0–5):</Text>
+              <TextInput
+                value={editForm.editorialRating}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, editorialRating: text }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 15,
+                  color: theme.text,
+                  backgroundColor: theme.background
+                }}
+                placeholder="e.g., 4.5"
+                keyboardType="decimal-pad"
+                placeholderTextColor={theme.textSecondary}
+              />
 
               <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Description:</Text>
               <TextInput

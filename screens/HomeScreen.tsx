@@ -383,6 +383,22 @@ function HomeScreen({ navigation }: { navigation: any }) {
             <Text style={styles.cardCategory}>
               {categoryConfig.emoji} {categoryConfig.label}
             </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+              <Text style={{ color: '#FFD700' }}>
+                {(() => {
+                  const r = Math.round(restaurant.rating || 0);
+                  const full = '★'.repeat(Math.max(0, Math.min(5, r)));
+                  const empty = '☆'.repeat(5 - Math.max(0, Math.min(5, r)));
+                  return full + empty;
+                })()}
+              </Text>
+              <Text style={{ marginLeft: 6, color: DESIGN_COLORS.textSecondary }}>
+                {typeof restaurant.rating === 'number' ? restaurant.rating.toFixed(1) : 'No ratings yet'}
+              </Text>
+              <Text style={{ marginLeft: 10, color: DESIGN_COLORS.textPrimary }}>
+                {restaurant.priceRange || '₱'}
+              </Text>
+            </View>
           </View>
           {/* Favorite button in top-right */}
           <TouchableOpacity

@@ -39,6 +39,7 @@ export const getRestaurants = async (): Promise<Restaurant[]> => {
         image: row.image ?? undefined,
         category: row.category ?? undefined,
         rating,
+        editorialRating: typeof row.editorial_rating === 'number' ? row.editorial_rating : (row.editorial_rating ? Number(row.editorial_rating) : undefined),
         priceRange: row.price_range ?? undefined,
         description: row.description ?? undefined,
         phone: row.phone ?? undefined,
@@ -133,6 +134,7 @@ export const updateRestaurant = async (id: string, updates: Partial<Restaurant>)
     if (updates.image !== undefined) updateData.image = updates.image;
     if (updates.category !== undefined) updateData.category = updates.category;
     if (updates.rating !== undefined) updateData.rating = updates.rating;
+    if (updates.editorialRating !== undefined) updateData.editorial_rating = updates.editorialRating;
     if (updates.priceRange !== undefined) updateData.price_range = updates.priceRange;
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.phone !== undefined) updateData.phone = updates.phone;
@@ -167,6 +169,7 @@ export const addRestaurant = async (restaurantData: Omit<Restaurant, 'id'>): Pro
       website: restaurantData.website ?? '',
       hours: restaurantData.hours ?? '',
       rating: restaurantData.rating ?? 0,
+      editorial_rating: restaurantData.editorialRating ?? null,
     };
 
     const { error } = await supabase
@@ -195,25 +198,35 @@ export const approveRestaurant = async (submissionId: string): Promise<void> => 
     if (error) throw new Error(error.message);
     if (!submission) throw new Error('Submission not found');
 
-    // Add to approved restaurants
+    // Add to approved restaurant_owners (snake_case columns)
     const { error: insertError } = await supabase
       .from(RESTAURANT_OWNERS_TABLE)
-      .insert([{
-        userId: submission.ownerId,
-        businessName: submission.businessName,
-        ownerName: submission.ownerName,
-        email: submission.email,
-        phone: submission.phone,
-        location: submission.location,
-        image: submission.image || undefined,
-        description: submission.description || undefined,
-        cuisineType: submission.cuisineType,
-        status: 'approved',
-        createdAt: new Date().toISOString(),
-        approvedAt: new Date().toISOString(),
-      }]);
+      .insert([
+        {
+          user_id: submission.owner_id,
+          business_name: submission.business_name,
+          owner_name: submission.owner_name,
+          email: submission.email,
+          phone: submission.phone,
+          location: submission.location || null,
+          image: submission.image || null,
+          description: submission.description || null,
+          cuisine_type: submission.cuisine_type || null,
+          status: 'approved',
+          created_at: new Date().toISOString(),
+          approved_at: new Date().toISOString(),
+        },
+      ]);
 
     if (insertError) throw new Error(insertError.message);
+
+    // Mark business owner profile as verified
+    const { error: verifyError } = await supabase
+      .from(TABLES.BUSINESS_OWNERS)
+      .update({ is_verified: true, updated_at: new Date().toISOString() })
+      .eq('uid', submission.owner_id);
+
+    if (verifyError) throw new Error(verifyError.message);
 
     // Update submission status
     const { error: updateError } = await supabase
@@ -365,13 +378,8 @@ export const cleanupDuplicateRestaurants = async (): Promise<{ deleted: number, 
       );
 
       if (existing) {
-        // Keep the one with more complete data or newer update
-        if (restaurant.updatedAt && (!existing.updatedAt || new Date(restaurant.updatedAt) > new Date(existing.updatedAt))) {
-          duplicatesToDelete.push(existing.id);
-          uniqueRestaurants[uniqueRestaurants.indexOf(existing)] = restaurant;
-        } else {
-          duplicatesToDelete.push(restaurant.id);
-        }
+        // Default: keep the first encountered, mark current as duplicate
+        duplicatesToDelete.push(restaurant.id);
       } else {
         uniqueRestaurants.push(restaurant);
       }
@@ -466,10 +474,12 @@ export const createRestaurantSubmission = async (submission: Omit<RestaurantSubm
 
     const { data, error } = await supabase
       .from(SUBMISSIONS_TABLE)
-      .insert([submissionData]);
+      .insert([submissionData])
+      .select('id')
+      .single();
 
     if (error) throw new Error(error.message);
-    return data[0].id;
+    return data.id;
   } catch (error: any) {
     console.error('Error creating restaurant submission:', error);
     throw new Error(error.message || 'Failed to create restaurant submission');
