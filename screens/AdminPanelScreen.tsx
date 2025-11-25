@@ -9,6 +9,8 @@ import { Restaurant, RestaurantOwner, RestaurantSubmission, MenuItem } from '../
 import * as ImagePicker from 'expo-image-picker';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { LocationService } from '../services/expoLocationService';
+import { listBusinessOwners, confirmOwnerEmail, verifyOwner, confirmAndVerify, BusinessOwnerAdminView } from '../src/services/adminBusinessOwnersService';
+import { adminAuthService } from '../src/services/adminAuthService';
 
 function AdminPanelScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -36,7 +38,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     hours: '',
     website: ''
   });
-  const [activeTab, setActiveTab] = useState<'restaurants' | 'pending' | 'menu'>('restaurants');
+  const [activeTab, setActiveTab] = useState<'restaurants' | 'pending' | 'menu' | 'owners'>('restaurants');
   const [addressCache, setAddressCache] = useState<{[key: string]: string}>({});
   const [imageUploading, setImageUploading] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -66,6 +68,12 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     website: ''
   });
   const [addLoading, setAddLoading] = useState(false);
+  const [owners, setOwners] = useState<BusinessOwnerAdminView[]>([]);
+  const [loadingOwners, setLoadingOwners] = useState(false);
+  const [confirmingOwnerUid, setConfirmingOwnerUid] = useState<string | null>(null);
+  const [verifyingOwnerUid, setVerifyingOwnerUid] = useState<string | null>(null);
+  const [confirmAndVerifyingUid, setConfirmAndVerifyingUid] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -78,11 +86,9 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       }
     };
 
-  // (moved function below, outside of useEffect)
     fetchRestaurants();
   }, []);
 
-  // Get current device location for Add Restaurant modal (sets lat/long)
   const handleGetLocationForAdd = async () => {
     try {
       setLocationLoading(true);
@@ -149,6 +155,31 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     fetchPendingBusinesses();
   }, [activeTab]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const admin = await adminAuthService.getCurrentUser();
+        setIsAdmin(!!admin);
+      } catch {}
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'owners') return;
+    const fetchOwners = async () => {
+      try {
+        setLoadingOwners(true);
+        const data = await listBusinessOwners('pending');
+        setOwners(data);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to load business owners');
+      } finally {
+        setLoadingOwners(false);
+      }
+    };
+    fetchOwners();
+  }, [activeTab]);
+
   const handleDeleteBusiness = async (businessId: string) => {
     try {
       await deleteRestaurantOwner(businessId);
@@ -181,6 +212,45 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       Alert.alert('Success', 'Restaurant listing rejected successfully!');
     } catch (error: any) {
       Alert.alert('Error', `Rejection failed: ${error.message}`);
+    }
+  };
+
+  const handleConfirmOwnerEmail = async (uid: string) => {
+    try {
+      setConfirmingOwnerUid(uid);
+      await confirmOwnerEmail(uid);
+      setOwners(prev => prev.map(o => o.uid === uid ? { ...o, emailConfirmed: true } : o));
+      Alert.alert('Success', 'Email confirmed successfully');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to confirm email');
+    } finally {
+      setConfirmingOwnerUid(null);
+    }
+  };
+
+  const handleVerifyOwner = async (uid: string) => {
+    try {
+      setVerifyingOwnerUid(uid);
+      await verifyOwner(uid);
+      setOwners(prev => prev.filter(o => o.uid !== uid));
+      Alert.alert('Success', 'Owner verified successfully');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to verify owner');
+    } finally {
+      setVerifyingOwnerUid(null);
+    }
+  };
+
+  const handleConfirmAndVerifyOwner = async (uid: string) => {
+    try {
+      setConfirmAndVerifyingUid(uid);
+      await confirmAndVerify(uid);
+      setOwners(prev => prev.filter(o => o.uid !== uid));
+      Alert.alert('Success', 'Email confirmed and owner verified');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to confirm and verify');
+    } finally {
+      setConfirmAndVerifyingUid(null);
     }
   };
 
@@ -721,6 +791,23 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
             ⏳ Pending
           </Text>
         </TouchableOpacity>
+
+        {isAdmin && (
+          <TouchableOpacity
+            onPress={() => setActiveTab('owners')}
+            style={[
+              styles.tabButton,
+              activeTab === 'owners' && { backgroundColor: theme.primary }
+            ]}
+          >
+            <Text style={[
+              styles.tabText,
+              { color: activeTab === 'owners' ? theme.background : theme.text }
+            ]}>
+              👤 Owners
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20, gap: 10 }}>
@@ -997,6 +1084,108 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         </>
       )}
 
+      {activeTab === 'owners' && (
+        <>
+          <Text style={{ fontSize: 18, marginBottom: 10, color: theme.text }}>Business Owners</Text>
+          {loadingOwners ? (
+            <View style={{ alignItems: 'center', padding: 20 }}>
+              <Text style={{ color: theme.textSecondary }}>Loading owners...</Text>
+            </View>
+          ) : owners.length === 0 ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}>
+              <Text style={{ fontSize: 24, color: theme.textSecondary, marginBottom: 10 }}>👤</Text>
+              <Text style={{ fontSize: 18, color: theme.text, marginBottom: 10 }}>No Owners</Text>
+              <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center' }}>
+                Newly registered business owners will appear here.
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={owners}
+              keyExtractor={(item) => item.uid}
+              renderItem={({ item }) => (
+                <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }} numberOfLines={1}>
+                      {item.firstName} {item.lastName}
+                    </Text>
+                    <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                      📧 {item.email}{item.businessName ? ` | 🏪 ${item.businessName}` : ''}
+                    </Text>
+                    <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                      Created: {new Date(item.createdAt).toLocaleDateString()}
+                    </Text>
+                    <Text style={{ color: item.emailConfirmed ? '#28a745' : '#ffc107', fontSize: 12, marginTop: 2 }}>
+                      Email: {item.emailConfirmed ? 'Confirmed' : 'Not Confirmed'}
+                    </Text>
+                    <Text style={{ color: item.isVerified ? '#28a745' : '#ffc107', fontSize: 12, marginTop: 2 }}>
+                      Verified: {item.isVerified ? 'Yes' : 'No'}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => handleConfirmOwnerEmail(item.uid)}
+                      disabled={item.emailConfirmed || confirmingOwnerUid === item.uid || confirmAndVerifyingUid === item.uid}
+                      style={{
+                        backgroundColor: item.emailConfirmed ? theme.border : '#007bff',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 4
+                      }}
+                    >
+                      {confirmingOwnerUid === item.uid ? (
+                        <ActivityIndicator color={theme.text} size="small" />
+                      ) : (
+                        <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                          {item.emailConfirmed ? 'Confirmed' : 'Confirm Email'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleVerifyOwner(item.uid)}
+                      disabled={item.isVerified || verifyingOwnerUid === item.uid || confirmAndVerifyingUid === item.uid}
+                      style={{
+                        backgroundColor: item.isVerified ? theme.border : '#28a745',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 4
+                      }}
+                    >
+                      {verifyingOwnerUid === item.uid ? (
+                        <ActivityIndicator color={theme.text} size="small" />
+                      ) : (
+                        <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                          {item.isVerified ? 'Verified' : 'Verify'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleConfirmAndVerifyOwner(item.uid)}
+                      disabled={(item.emailConfirmed && item.isVerified) || confirmAndVerifyingUid === item.uid}
+                      style={{
+                        backgroundColor: (item.emailConfirmed && item.isVerified) ? theme.border : '#6f42c1',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 4
+                      }}
+                    >
+                      {confirmAndVerifyingUid === item.uid ? (
+                        <ActivityIndicator color={theme.text} size="small" />
+                      ) : (
+                        <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                          Confirm + Verify
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              style={{ backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}
+            />
+          )}
+        </>
+      )}
+
       <Modal
         visible={showMenuEditModal}
         transparent={true}
@@ -1103,7 +1292,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
                       if (!result.canceled && result.assets && result.assets.length > 0) {
                         const imageUri = result.assets[0].uri;
-                        console.log('📷 Selected menu item image URI:', imageUri);
                         setImageUploading(true);
 
                         try {
@@ -1119,14 +1307,12 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                           Alert.alert('Success', 'Image uploaded successfully!');
 
                         } catch (uploadError: any) {
-                          console.error('Image upload error:', uploadError);
                           Alert.alert('Error', `Failed to upload image: ${uploadError?.message || 'Unknown error'}`);
                         } finally {
                           setImageUploading(false);
                         }
                       }
                     } catch (error) {
-                      console.error('Image picker error:', error);
                       Alert.alert('Error', 'Failed to select image');
                     }
                   }}

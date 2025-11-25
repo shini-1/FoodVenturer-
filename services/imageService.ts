@@ -58,3 +58,39 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
     throw new Error(error.message || 'Failed to upload image to Supabase');
   }
 };
+
+/**
+ * Upload an image to the restaurant images bucket and return its public URL
+ * Does NOT update any database rows; useful for forms prior to record creation
+ */
+export const uploadImageToRestaurantBucket = async (
+  imageUri: string,
+  filePrefix: string,
+  contentType: string = 'image/jpeg'
+): Promise<string> => {
+  try {
+    const fileName = `${filePrefix}-${Date.now()}.jpg`;
+    const filePath = `${fileName}`;
+
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+
+    const { error: uploadError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, blob, { contentType, upsert: true });
+
+    if (uploadError) {
+      throw new Error(`Failed to upload image: ${uploadError.message}`);
+    }
+
+    const publicUrlData = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(filePath);
+
+    const imageUrl = publicUrlData.data.publicUrl;
+    return imageUrl;
+  } catch (error: any) {
+    console.error('Error uploading image to storage:', error);
+    throw new Error(error.message || 'Failed to upload image');
+  }
+};
