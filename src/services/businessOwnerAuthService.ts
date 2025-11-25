@@ -1,4 +1,5 @@
-import { supabase, TABLES } from '../config/supabase';
+import { supabase, TABLES, SUPABASE_CONFIG } from '../config/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export interface BusinessOwnerProfile {
   uid: string;
@@ -46,6 +47,18 @@ class BusinessOwnerAuthService {
           phoneNumber: signUpData.phoneNumber,
           businessName: signUpData.businessName,
         });
+      } else {
+        const serviceSupabase = createClient(
+          SUPABASE_CONFIG.url,
+          SUPABASE_CONFIG.serviceRoleKey
+        );
+        await this.ensureProfileExists(uid, {
+          email: signUpData.email,
+          firstName: signUpData.firstName,
+          lastName: signUpData.lastName,
+          phoneNumber: signUpData.phoneNumber,
+          businessName: signUpData.businessName,
+        }, serviceSupabase as any);
       }
 
       // Create pending submission for admin review (best-effort)
@@ -231,9 +244,10 @@ class BusinessOwnerAuthService {
     }
   }
 
-  private async ensureProfileExists(uid: string, base: { email: string; firstName?: string; lastName?: string; phoneNumber?: string; businessName?: string }): Promise<void> {
+  private async ensureProfileExists(uid: string, base: { email: string; firstName?: string; lastName?: string; phoneNumber?: string; businessName?: string }, client?: any): Promise<void> {
     try {
-      const { error } = await supabase
+      const db = client ?? supabase;
+      const { error } = await db
         .from(this.BUSINESS_OWNERS_TABLE)
         .insert({
           uid,

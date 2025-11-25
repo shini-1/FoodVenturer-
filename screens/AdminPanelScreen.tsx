@@ -9,7 +9,7 @@ import { Restaurant, RestaurantOwner, RestaurantSubmission, MenuItem } from '../
 import * as ImagePicker from 'expo-image-picker';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { LocationService } from '../services/expoLocationService';
-import { listBusinessOwners, confirmOwnerEmail, verifyOwner, confirmAndVerify, BusinessOwnerAdminView } from '../src/services/adminBusinessOwnersService';
+import { listOwnersFromAuth, confirmOwnerEmail, verifyOwner, confirmAndVerify, BusinessOwnerAdminView } from '../src/services/adminBusinessOwnersService';
 import { adminAuthService } from '../src/services/adminAuthService';
 import { supabase, TABLES } from '../src/config/supabase';
 
@@ -170,7 +170,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
   const loadOwners = async () => {
     try {
       setLoadingOwners(true);
-      const data = await listBusinessOwners(ownerFilter);
+      const data = await listOwnersFromAuth(ownerFilter);
       setOwners(data);
     } catch (error) {
       Alert.alert('Error', 'Failed to load business owners');
@@ -182,7 +182,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
   const refreshOwners = async () => {
     try {
       setRefreshingOwners(true);
-      const data = await listBusinessOwners(ownerFilter);
+      const data = await listOwnersFromAuth(ownerFilter);
       setOwners(data);
     } finally {
       setRefreshingOwners(false);
@@ -192,7 +192,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
   useEffect(() => {
     if (activeTab !== 'owners') return;
     loadOwners();
-  }, [activeTab]);
+  }, [activeTab, ownerFilter]);
 
   useEffect(() => {
     if (activeTab !== 'owners') return;
@@ -1151,9 +1151,14 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                     <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }} numberOfLines={1}>
                       {item.firstName} {item.lastName}
                     </Text>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2, flexShrink: 1, flexWrap: 'wrap' }} numberOfLines={2}>
-                      📧 {item.email}{item.businessName ? ` | 🏪 ${item.businessName}` : ''}
+                    <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2, flexShrink: 1 }} numberOfLines={2} ellipsizeMode="middle">
+                      📧 {item.email}
                     </Text>
+                    {item.businessName ? (
+                      <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2, flexShrink: 1 }} numberOfLines={2} ellipsizeMode="tail">
+                        🏪 {item.businessName}
+                      </Text>
+                    ) : null}
                     <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
                       Created: {new Date(item.createdAt).toLocaleDateString()}
                     </Text>

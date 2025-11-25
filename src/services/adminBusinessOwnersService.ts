@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { supabase, SUPABASE_CONFIG, TABLES } from '../config/supabase';
+import { SUPABASE_CONFIG, TABLES } from '../config/supabase';
 
 interface BusinessOwnerRow {
   uid: string;
@@ -74,6 +74,53 @@ export async function listBusinessOwners(filter: 'all' | 'pending' = 'pending'):
   return views.filter((v): v is BusinessOwnerAdminView => !!v);
 }
 
+export async function listOwnersFromAuth(filter: 'all' | 'pending' = 'all'): Promise<BusinessOwnerAdminView[]> {
+  const { data: { users } = { users: [] } } = await serviceSupabase.auth.admin.listUsers({ page: 1, perPage: 200 } as any);
+  const authUsers = (users || []).filter(u => !!u.email);
+
+  // Load admins to exclude
+  const { data: admins } = await serviceSupabase
+    .from(TABLES.ADMINS)
+    .select('uid')
+    .range(0, 499);
+  const adminSet = new Set((admins || []).map(a => a.uid));
+
+  // Prepare UID list and fetch matching business_owners rows in bulk
+  const uids = authUsers.map(u => u.id);
+  const { data: ownerRows } = await serviceSupabase
+    .from(TABLES.BUSINESS_OWNERS)
+    .select('*')
+    .in('uid', uids.length ? uids : ['__none__'])
+    .range(0, 499);
+  const ownerMap = new Map((ownerRows || []).map((r: any) => [r.uid, r]));
+
+  const views: BusinessOwnerAdminView[] = authUsers
+    .filter(u => !adminSet.has(u.id))
+    .map(u => {
+      const row = ownerMap.get(u.id);
+      const emailConfirmed = Boolean((u as any).email_confirmed_at);
+      return {
+        uid: u.id,
+        email: u.email!,
+        firstName: row?.first_name ?? '',
+        lastName: row?.last_name ?? '',
+        phoneNumber: row?.phone_number ?? undefined,
+        businessName: row?.business_name ?? undefined,
+        isVerified: Boolean(row?.is_verified),
+        createdAt: (row?.created_at ?? u.created_at) as string,
+        emailConfirmed,
+      } as BusinessOwnerAdminView;
+    });
+
+  // Sort newest first by createdAt
+  views.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  if (filter === 'pending') {
+    return views.filter(v => !v.isVerified);
+  }
+  return views;
+}
+
 export async function confirmOwnerEmail(uid: string): Promise<void> {
   const { error } = await serviceSupabase.auth.admin.updateUserById(uid, { email_confirm: true });
   if (error) {
@@ -82,13 +129,37 @@ export async function confirmOwnerEmail(uid: string): Promise<void> {
 }
 
 export async function verifyOwner(uid: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await serviceSupabase
     .from(TABLES.BUSINESS_OWNERS)
     .update({ is_verified: true })
-    .eq('uid', uid);
+    .eq('uid', uid)
+    .select('uid');
 
   if (error) {
     throw new Error(error.message ?? 'Failed to verify owner');
+  }
+
+  // If no row was updated, create it
+  if (!data || data.length === 0) {
+    const { data: userData } = await serviceSupabase.auth.admin.getUserById(uid);
+    const email = userData?.user?.email ?? '';
+    const { error: insertError } = await serviceSupabase
+      .from(TABLES.BUSINESS_OWNERS)
+      .insert({
+        uid,
+        email,
+        first_name: '',
+        last_name: '',
+        phone_number: null,
+        business_name: null,
+        role: 'business_owner',
+        created_at: new Date().toISOString(),
+        is_verified: true,
+      });
+
+    if (insertError) {
+      throw new Error(insertError.message ?? 'Failed to create owner row while verifying');
+    }
   }
 }
 
