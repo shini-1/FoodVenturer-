@@ -23,6 +23,7 @@
     "expo-font": "~14.0.9",
     "expo-image": "^3.0.10",
     "expo-image-picker": "^17.0.8",
+    "expo-linking": "~7.0.6",
     "expo-location": "^19.0.7",
     "expo-status-bar": "~3.0.8",
     "firebase": "^10.13.0",

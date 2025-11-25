@@ -4,6 +4,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './theme/ThemeContext';
 import { AuthProvider } from './components/AuthContext';
 import { NetworkProvider } from './src/contexts/NetworkContext';
+import * as Linking from 'expo-linking';
+import { supabase } from './src/config/supabase';
 import RoleSelectionScreen from './screens/RoleSelectionScreen';
 import HomeScreen from './screens/HomeScreen';
 import BusinessPanelScreen from './screens/BusinessPanelScreen';
@@ -30,6 +32,64 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('RoleSelection');
   const [screenParams, setScreenParams] = useState<NavigationParams>({});
   const [navigationHistory, setNavigationHistory] = useState<Screen[]>(['RoleSelection']);
+
+  // Handle deep links for email confirmation
+  useEffect(() => {
+    // Handle initial URL when app is opened from a link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
+      }
+    });
+
+    // Handle URL when app is already open
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      handleDeepLink(url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const handleDeepLink = async (url: string) => {
+    console.log('📱 Deep link received:', url);
+    
+    // Parse the URL to extract tokens
+    const { queryParams } = Linking.parse(url);
+    
+    if (queryParams) {
+      const access_token = queryParams.access_token as string;
+      const refresh_token = queryParams.refresh_token as string;
+      const type = queryParams.type as string;
+
+      if (access_token && refresh_token) {
+        console.log('🔐 Setting session from deep link...');
+        
+        // Set the session in Supabase
+        const { error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+
+        if (error) {
+          console.error('❌ Error setting session:', error.message);
+        } else {
+          console.log('✅ Session set successfully!');
+          
+          // Handle different types of confirmations
+          if (type === 'recovery') {
+            console.log('Password recovery confirmed');
+            // Navigate to password reset screen if you have one
+          } else if (type === 'signup') {
+            console.log('Email confirmed successfully!');
+            // Navigate to home or appropriate screen
+            navigate('Home');
+          }
+        }
+      }
+    }
+  };
 
   const navigate = (screen: Screen, params?: NavigationParams) => {
     setCurrentScreen(screen);
