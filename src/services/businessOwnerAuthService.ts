@@ -162,9 +162,7 @@ class BusinessOwnerAuthService {
    */
   async updateProfile(uid: string, updates: Partial<BusinessOwnerProfile>): Promise<void> {
     try {
-      const updateData: any = {
-        updated_at: new Date().toISOString(),
-      };
+      const updateData: any = {};
 
       if (updates.firstName) updateData.first_name = updates.firstName;
       if (updates.lastName) updateData.last_name = updates.lastName;

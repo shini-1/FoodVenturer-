@@ -30,8 +30,8 @@ const serviceSupabase = createClient(
 );
 
 export async function getOwnerAdminView(uid: string): Promise<BusinessOwnerAdminView | null> {
-  const { data: row, error } = await supabase
-    .from<BusinessOwnerRow>(TABLES.BUSINESS_OWNERS)
+  const { data: row, error } = await serviceSupabase
+    .from(TABLES.BUSINESS_OWNERS)
     .select('*')
     .eq('uid', uid)
     .single();
@@ -57,10 +57,11 @@ export async function getOwnerAdminView(uid: string): Promise<BusinessOwnerAdmin
 }
 
 export async function listBusinessOwners(filter: 'all' | 'pending' = 'pending'): Promise<BusinessOwnerAdminView[]> {
-  const query = supabase
-    .from<BusinessOwnerRow>(TABLES.BUSINESS_OWNERS)
+  const query = serviceSupabase
+    .from(TABLES.BUSINESS_OWNERS)
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(0, 199);
 
   if (filter === 'pending') {
     query.eq('is_verified', false);
@@ -69,12 +70,8 @@ export async function listBusinessOwners(filter: 'all' | 'pending' = 'pending'):
   const { data, error } = await query;
   if (error || !data) return [];
 
-  const results: BusinessOwnerAdminView[] = [];
-  for (const row of data) {
-    const view = await getOwnerAdminView(row.uid);
-    if (view) results.push(view);
-  }
-  return results;
+  const views = await Promise.all(data.map((row) => getOwnerAdminView(row.uid)));
+  return views.filter((v): v is BusinessOwnerAdminView => !!v);
 }
 
 export async function confirmOwnerEmail(uid: string): Promise<void> {
@@ -87,7 +84,7 @@ export async function confirmOwnerEmail(uid: string): Promise<void> {
 export async function verifyOwner(uid: string): Promise<void> {
   const { error } = await supabase
     .from(TABLES.BUSINESS_OWNERS)
-    .update({ is_verified: true, updated_at: new Date().toISOString() })
+    .update({ is_verified: true })
     .eq('uid', uid);
 
   if (error) {

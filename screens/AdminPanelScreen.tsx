@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, FlatList, Alert, TouchableOpacity, Modal, TextInput, ScrollView, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import { View, Text, Button, FlatList, Alert, TouchableOpacity, Modal, TextInput, ScrollView, StyleSheet, ActivityIndicator, Image, RefreshControl } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import { getRestaurants, deleteRestaurant, getApprovedRestaurants, getPendingRestaurants, approveRestaurant, rejectRestaurant, deleteRestaurantOwner, updateRestaurantOwner, getRestaurantStats, updateRestaurant, addRestaurant } from '../services/restaurants';
@@ -11,6 +11,7 @@ import { reverseGeocode } from '../src/services/geocodingService';
 import { LocationService } from '../services/expoLocationService';
 import { listBusinessOwners, confirmOwnerEmail, verifyOwner, confirmAndVerify, BusinessOwnerAdminView } from '../src/services/adminBusinessOwnersService';
 import { adminAuthService } from '../src/services/adminAuthService';
+import { supabase, TABLES } from '../src/config/supabase';
 
 function AdminPanelScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -74,6 +75,8 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
   const [verifyingOwnerUid, setVerifyingOwnerUid] = useState<string | null>(null);
   const [confirmAndVerifyingUid, setConfirmAndVerifyingUid] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [refreshingOwners, setRefreshingOwners] = useState(false);
+  const [ownerFilter, setOwnerFilter] = useState<'all' | 'pending'>('all');
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -164,20 +167,45 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     })();
   }, []);
 
+  const loadOwners = async () => {
+    try {
+      setLoadingOwners(true);
+      const data = await listBusinessOwners(ownerFilter);
+      setOwners(data);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load business owners');
+    } finally {
+      setLoadingOwners(false);
+    }
+  };
+
+  const refreshOwners = async () => {
+    try {
+      setRefreshingOwners(true);
+      const data = await listBusinessOwners(ownerFilter);
+      setOwners(data);
+    } finally {
+      setRefreshingOwners(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab !== 'owners') return;
-    const fetchOwners = async () => {
-      try {
-        setLoadingOwners(true);
-        const data = await listBusinessOwners('pending');
-        setOwners(data);
-      } catch (error) {
-        Alert.alert('Error', 'Failed to load business owners');
-      } finally {
-        setLoadingOwners(false);
-      }
+    loadOwners();
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'owners') return;
+    const channel = supabase
+      .channel('owners_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: TABLES.BUSINESS_OWNERS }, () => {
+        refreshOwners();
+      })
+      .subscribe();
+
+    return () => {
+      try { supabase.removeChannel(channel); } catch {}
     };
-    fetchOwners();
   }, [activeTab]);
 
   const handleDeleteBusiness = async (businessId: string) => {
@@ -1087,6 +1115,20 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       {activeTab === 'owners' && (
         <>
           <Text style={{ fontSize: 18, marginBottom: 10, color: theme.text }}>Business Owners</Text>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+        <TouchableOpacity
+          onPress={() => setOwnerFilter('all')}
+          style={{ backgroundColor: ownerFilter === 'all' ? theme.primary : theme.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: theme.border }}
+        >
+          <Text style={{ color: ownerFilter === 'all' ? theme.background : theme.text, fontWeight: 'bold', fontSize: 12 }}>All</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setOwnerFilter('pending')}
+          style={{ backgroundColor: ownerFilter === 'pending' ? theme.primary : theme.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: theme.border }}
+        >
+          <Text style={{ color: ownerFilter === 'pending' ? theme.background : theme.text, fontWeight: 'bold', fontSize: 12 }}>Pending</Text>
+        </TouchableOpacity>
+      </View>
           {loadingOwners ? (
             <View style={{ alignItems: 'center', padding: 20 }}>
               <Text style={{ color: theme.textSecondary }}>Loading owners...</Text>
@@ -1109,7 +1151,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                     <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }} numberOfLines={1}>
                       {item.firstName} {item.lastName}
                     </Text>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                    <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2, flexShrink: 1, flexWrap: 'wrap' }} numberOfLines={2}>
                       📧 {item.email}{item.businessName ? ` | 🏪 ${item.businessName}` : ''}
                     </Text>
                     <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
@@ -1181,6 +1223,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 </View>
               )}
               style={{ backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}
+              refreshControl={<RefreshControl refreshing={refreshingOwners} onRefresh={refreshOwners} tintColor={theme.text} />}
             />
           )}
         </>
