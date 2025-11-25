@@ -28,13 +28,15 @@ function AdminLoginScreen({ navigation, onClose, onSwitchToSignup }: AdminLoginS
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      console.log('❌ Please fill in all fields');
+      setError('Please fill in all fields');
       return;
     }
 
+    setError('');
     setIsLoading(true);
     try {
       await loginAsAdmin(email.trim(), password);
@@ -46,6 +48,7 @@ function AdminLoginScreen({ navigation, onClose, onSwitchToSignup }: AdminLoginS
       }, 300);
     } catch (error: any) {
       console.error('❌ Admin login failed:', error.message);
+      setError(error.message || 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -142,6 +145,13 @@ function AdminLoginScreen({ navigation, onClose, onSwitchToSignup }: AdminLoginS
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Error Message */}
+          {error ? (
+            <View style={[styles.errorContainer, { backgroundColor: '#ff000020', borderColor: '#ff0000' }]}>
+              <Text style={[styles.errorText, { color: '#ff0000' }]}>{error}</Text>
+            </View>
+          ) : null}
 
           {/* Forgot Password */}
           <TouchableOpacity
@@ -251,6 +261,17 @@ const styles = StyleSheet.create({
   loginButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  errorContainer: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

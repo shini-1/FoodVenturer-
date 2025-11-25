@@ -21,50 +21,69 @@ class AdminAuthService {
    */
   async signIn(email: string, password: string): Promise<AdminProfile> {
     try {
+      console.log('🔐 Attempting admin login for:', email);
+      
       // Sign in with Supabase auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Auth error:', error.message);
+        throw error;
+      }
 
       if (!data.user) {
-        throw new Error('Authentication failed');
+        throw new Error('Authentication failed - no user returned');
       }
 
       const uid = data.user.id;
+      console.log('✅ Auth successful, UID:', uid);
 
       // Verify this is an admin account
+      console.log('🔍 Checking admin table...');
       const { data: adminData, error: adminError } = await supabase
         .from(this.ADMINS_TABLE)
         .select('*')
         .eq('uid', uid)
         .single();
 
-      if (adminError || !adminData) {
+      console.log('Admin data:', adminData);
+      console.log('Admin error:', adminError);
+
+      if (adminError) {
+        await supabase.auth.signOut();
+        console.error('❌ Admin check error:', adminError.message);
+        throw new Error('Access denied: Not an admin account');
+      }
+
+      if (!adminData) {
         await supabase.auth.signOut();
         throw new Error('Access denied: Not an admin account');
       }
 
-      if (!adminData.is_active) {
+      // Check is_active only if the column exists
+      if (adminData.is_active === false) {
         await supabase.auth.signOut();
         throw new Error('Account suspended. Contact support.');
       }
 
+      console.log('✅ Admin login successful!');
+
       return {
         uid,
-        email: adminData.email || '',
+        email: adminData.email || email,
         role: 'admin',
         firstName: adminData.first_name || '',
         lastName: adminData.last_name || '',
         adminLevel: adminData.admin_level || 'support',
         createdAt: new Date(adminData.created_at),
         lastLogin: new Date(),
-        isActive: adminData.is_active || false,
+        isActive: adminData.is_active !== false,
       };
     } catch (error: any) {
-      console.error('Admin sign-in error:', error);
+      console.error('❌ Admin sign-in error:', error);
       throw new Error(error.message || 'Admin authentication failed');
     }
   }
