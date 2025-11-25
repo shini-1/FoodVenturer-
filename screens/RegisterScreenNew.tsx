@@ -125,18 +125,23 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
 
       console.log('✅ Auth service returned profile:', profile);
 
-      setUser({
-        uid: profile.uid,
-        email: profile.email,
-        role: profile.role,
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-      });
+      // Show admin approval message instead of auto-login
+      Alert.alert(
+        'Account Created Successfully! 🎉',
+        'Your business owner account has been created and is pending admin approval.\n\nYou will be able to log in once an administrator reviews and activates your account. This typically takes 1-2 business days.\n\nThank you for your patience!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              console.log('🔍 User acknowledged approval message');
+              onClose?.();
+            }
+          }
+        ]
+      );
 
-      console.log('✅ Account created successfully');
-      console.log('🔍 Calling onClose...');
-      onClose?.();
-      // Navigation will be handled automatically by AuthContext state management
+      console.log('✅ Account created successfully - pending admin approval');
+      // Do NOT set user or auto-login - they must wait for admin approval
     } catch (error: any) {
       console.error('❌ Registration Failed:', error.message);
       console.error('❌ Full error object:', error);

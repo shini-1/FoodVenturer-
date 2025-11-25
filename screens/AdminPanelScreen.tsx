@@ -208,6 +208,14 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
     };
   }, [activeTab]);
 
+  useEffect(() => {
+    if (activeTab !== 'owners') return;
+    const id = setInterval(() => {
+      refreshOwners();
+    }, 10000);
+    return () => clearInterval(id);
+  }, [activeTab, ownerFilter]);
+
   const handleDeleteBusiness = async (businessId: string) => {
     try {
       await deleteRestaurantOwner(businessId);
@@ -1065,7 +1073,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
-                  <View style={{ flex: 1, marginRight: 10 }}>
+                  <View style={{ flex: 1, marginRight: 10, minWidth: 0 }}>
                     <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }} numberOfLines={2}>
                       {item.businessName}
                     </Text>
@@ -1147,8 +1155,8 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
               keyExtractor={(item) => item.uid}
               renderItem={({ item }) => (
                 <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
-                  <View style={{ flex: 1, marginRight: 10 }}>
-                    <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }} numberOfLines={1}>
+                  <View style={{ flex: 1, marginRight: 10, minWidth: 0 }}>
+                    <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500', flexShrink: 1 }} numberOfLines={1} ellipsizeMode="tail">
                       {item.firstName} {item.lastName}
                     </Text>
                     <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2, flexShrink: 1 }} numberOfLines={2} ellipsizeMode="middle">
@@ -1169,7 +1177,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                       Verified: {item.isVerified ? 'Yes' : 'No'}
                     </Text>
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flexDirection: 'row', gap: 8, flexShrink: 0 }}>
                     <TouchableOpacity
                       onPress={() => handleConfirmOwnerEmail(item.uid)}
                       disabled={item.emailConfirmed || confirmingOwnerUid === item.uid || confirmAndVerifyingUid === item.uid}
@@ -1177,13 +1185,14 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         backgroundColor: item.emailConfirmed ? theme.border : '#007bff',
                         paddingHorizontal: 12,
                         paddingVertical: 6,
-                        borderRadius: 4
+                        borderRadius: 4,
+                        minWidth: 100
                       }}
                     >
                       {confirmingOwnerUid === item.uid ? (
-                        <ActivityIndicator color={theme.text} size="small" />
+                        <ActivityIndicator color="white" size="small" />
                       ) : (
-                        <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                        <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>
                           {item.emailConfirmed ? 'Confirmed' : 'Confirm Email'}
                         </Text>
                       )}
@@ -1195,13 +1204,14 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         backgroundColor: item.isVerified ? theme.border : '#28a745',
                         paddingHorizontal: 12,
                         paddingVertical: 6,
-                        borderRadius: 4
+                        borderRadius: 4,
+                        minWidth: 70
                       }}
                     >
                       {verifyingOwnerUid === item.uid ? (
-                        <ActivityIndicator color={theme.text} size="small" />
+                        <ActivityIndicator color="white" size="small" />
                       ) : (
-                        <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                        <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>
                           {item.isVerified ? 'Verified' : 'Verify'}
                         </Text>
                       )}
@@ -1213,13 +1223,14 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         backgroundColor: (item.emailConfirmed && item.isVerified) ? theme.border : '#6f42c1',
                         paddingHorizontal: 12,
                         paddingVertical: 6,
-                        borderRadius: 4
+                        borderRadius: 4,
+                        minWidth: 120
                       }}
                     >
                       {confirmAndVerifyingUid === item.uid ? (
-                        <ActivityIndicator color={theme.text} size="small" />
+                        <ActivityIndicator color="white" size="small" />
                       ) : (
-                        <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                        <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>
                           Confirm + Verify
                         </Text>
                       )}

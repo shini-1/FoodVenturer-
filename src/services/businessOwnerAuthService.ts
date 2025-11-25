@@ -39,6 +39,8 @@ class BusinessOwnerAuthService {
 
       const uid = authData.user.id;
       const hasSession = !!authData.session?.access_token;
+      
+      // Create profile - use session if available, otherwise call Edge Function
       if (hasSession) {
         await this.ensureProfileExists(uid, {
           email: signUpData.email,
@@ -48,17 +50,22 @@ class BusinessOwnerAuthService {
           businessName: signUpData.businessName,
         });
       } else {
-        const serviceSupabase = createClient(
-          SUPABASE_CONFIG.url,
-          SUPABASE_CONFIG.serviceRoleKey
-        );
-        await this.ensureProfileExists(uid, {
-          email: signUpData.email,
-          firstName: signUpData.firstName,
-          lastName: signUpData.lastName,
-          phoneNumber: signUpData.phoneNumber,
-          businessName: signUpData.businessName,
-        }, serviceSupabase as any);
+        // No session - call Edge Function to create profile with service role
+        try {
+          await supabase.functions.invoke('create-owner-profile', {
+            body: {
+              uid,
+              email: signUpData.email,
+              firstName: signUpData.firstName,
+              lastName: signUpData.lastName,
+              phoneNumber: signUpData.phoneNumber,
+              businessName: signUpData.businessName,
+            }
+          });
+        } catch (edgeFnError) {
+          console.warn('Edge function failed, profile may need manual creation:', edgeFnError);
+          // Profile creation will be handled by admin verification
+        }
       }
 
       // Create pending submission for admin review (best-effort)
