@@ -53,7 +53,13 @@ export async function toggleDeviceFavorite(restaurantId: string): Promise<boolea
       .eq('device_id', deviceId)
       .maybeSingle();
     
-    if (checkError) throw new Error(checkError.message);
+    if (checkError) {
+      // If table doesn't exist, throw friendly error
+      if (checkError.message?.includes('does not exist') || checkError.code === '42P01') {
+        throw new Error('Favorites feature not yet set up. Please run the database migration.');
+      }
+      throw new Error(checkError.message);
+    }
     
     if (existing) {
       // Remove favorite
@@ -119,7 +125,14 @@ export async function getDeviceFavorites(): Promise<string[]> {
       .select('restaurant_id')
       .eq('device_id', deviceId);
     
-    if (error) throw new Error(error.message);
+    if (error) {
+      // If table doesn't exist, just return empty array
+      if (error.message?.includes('does not exist') || error.code === '42P01') {
+        console.warn('⚠️ Favorites table not yet created. Run CREATE_DEVICE_FAVORITES_TABLE.sql');
+        return [];
+      }
+      throw new Error(error.message);
+    }
     return (data || []).map(item => item.restaurant_id);
   } catch (error) {
     console.error('❌ Failed to get device favorites:', error);

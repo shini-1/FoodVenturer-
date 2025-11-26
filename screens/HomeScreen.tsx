@@ -111,23 +111,25 @@ function HomeScreen({ navigation }: { navigation: any }) {
       console.log('❤️ Loaded', favoriteIds.length, 'device favorites');
     } catch (error) {
       console.error('❌ Failed to load favorites:', error);
+      // Don't crash - just use empty favorites
+      setFavorites(new Set());
     }
   };
 
   // Toggle favorite status with device-based persistence
   const toggleFavorite = useCallback(async (restaurantId: string) => {
-    try {
-      // Optimistic UI update
-      setFavorites(prev => {
-        const newFavorites = new Set(prev);
-        if (newFavorites.has(restaurantId)) {
-          newFavorites.delete(restaurantId);
-        } else {
-          newFavorites.add(restaurantId);
-        }
-        return newFavorites;
-      });
+    // Optimistic UI update
+    setFavorites(prev => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(restaurantId)) {
+        newFavorites.delete(restaurantId);
+      } else {
+        newFavorites.add(restaurantId);
+      }
+      return newFavorites;
+    });
 
+    try {
       if (isOnline) {
         // Online: Save to database immediately
         const isFavorited = await toggleDeviceFavorite(restaurantId);
@@ -152,6 +154,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
         }
         return newFavorites;
       });
+      // Show user-friendly message
+      Alert.alert('Favorites', 'Could not save favorite. Please try again later.');
     }
   }, [isOnline, favorites]);
 
