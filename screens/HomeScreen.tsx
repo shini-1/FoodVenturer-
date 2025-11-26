@@ -14,6 +14,7 @@ import { Image } from 'expo-image';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
+import OfflineBanner from '../components/OfflineBanner';
 import { OfflineService } from '../src/services/offlineService';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { resolveCategoryConfig, getAllCategoryOptions } from '../src/config/categoryConfig';
@@ -226,6 +227,19 @@ function HomeScreen({ navigation }: { navigation: any }) {
     loadPage(1);
   }, []);
 
+  // Refresh restaurants when screen comes into focus (e.g., after rating a restaurant)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('🏠 HomeScreen focused - refreshing restaurants');
+      // Refresh the first page to get updated ratings
+      setServerPage(1);
+      setRestaurants([]);
+      loadPage(1);
+    });
+
+    return unsubscribe;
+  }, [navigation, loadPage]);
+
   useEffect(() => {
     isLoadingRef.current = isLoadingPage;
   }, [isLoadingPage]);
@@ -435,6 +449,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
   return (
     <View style={styles.container}>
       <Header />
+      <OfflineBanner onSyncPress={() => {
+        // Refresh data after sync
+        setServerPage(1);
+        setRestaurants([]);
+        loadPage(1);
+      }} />
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={styles.backButton}

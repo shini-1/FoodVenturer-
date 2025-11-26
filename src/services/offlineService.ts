@@ -8,10 +8,16 @@ const CACHE_KEYS = {
   RESTAURANTS: 'cached_restaurants',
   CATEGORIES: 'cached_categories',
   CACHE_TIMESTAMP: 'cache_timestamp',
-  LAST_UPDATE: 'last_update_timestamp'
+  LAST_UPDATE: 'last_update_timestamp',
+  RESTAURANT_DETAIL: 'cached_restaurant_detail_',
+  SEARCH_RESULTS: 'cached_search_results_',
+  GEOCODE_CACHE: 'cached_geocode_',
+  USER_LOCATION: 'cached_user_location'
 };
 
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const SEARCH_CACHE_DURATION = 1 * 60 * 60 * 1000; // 1 hour for search results
+const GEOCODE_CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days for geocoding
 
 export class OfflineService {
   // Cache restaurant data
@@ -248,5 +254,200 @@ export class OfflineService {
       console.log('📱 No cached data available');
       throw new Error('No data available - check your internet connection');
     }
+  }
+
+  /**
+   * Cache individual restaurant detail
+   */
+  static async cacheRestaurantDetail(restaurant: Restaurant): Promise<void> {
+    try {
+      const key = `${CACHE_KEYS.RESTAURANT_DETAIL}${restaurant.id}`;
+      const cacheData = {
+        data: restaurant,
+        timestamp: Date.now(),
+      };
+      await AsyncStorage.setItem(key, JSON.stringify(cacheData));
+      console.log('📱 Cached restaurant detail:', restaurant.name);
+    } catch (error) {
+      console.error('❌ Failed to cache restaurant detail:', error);
+    }
+  }
+
+  /**
+   * Get cached restaurant detail
+   */
+  static async getCachedRestaurantDetail(restaurantId: string): Promise<Restaurant | null> {
+    try {
+      const key = `${CACHE_KEYS.RESTAURANT_DETAIL}${restaurantId}`;
+      const cached = await AsyncStorage.getItem(key);
+      if (!cached) return null;
+
+      const cacheData = JSON.parse(cached);
+      const now = Date.now();
+
+      if (now - cacheData.timestamp > CACHE_DURATION) {
+        console.log('📱 Restaurant detail cache expired');
+        await AsyncStorage.removeItem(key);
+        return null;
+      }
+
+      console.log('📱 Loaded restaurant detail from cache');
+      return cacheData.data;
+    } catch (error) {
+      console.error('❌ Failed to load cached restaurant detail:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Cache search results
+   */
+  static async cacheSearchResults(query: string, results: Restaurant[]): Promise<void> {
+    try {
+      const key = `${CACHE_KEYS.SEARCH_RESULTS}${query.toLowerCase()}`;
+      const cacheData = {
+        data: results,
+        timestamp: Date.now(),
+      };
+      await AsyncStorage.setItem(key, JSON.stringify(cacheData));
+      console.log('📱 Cached search results for:', query);
+    } catch (error) {
+      console.error('❌ Failed to cache search results:', error);
+    }
+  }
+
+  /**
+   * Get cached search results
+   */
+  static async getCachedSearchResults(query: string): Promise<Restaurant[] | null> {
+    try {
+      const key = `${CACHE_KEYS.SEARCH_RESULTS}${query.toLowerCase()}`;
+      const cached = await AsyncStorage.getItem(key);
+      if (!cached) return null;
+
+      const cacheData = JSON.parse(cached);
+      const now = Date.now();
+
+      if (now - cacheData.timestamp > SEARCH_CACHE_DURATION) {
+        console.log('📱 Search cache expired');
+        await AsyncStorage.removeItem(key);
+        return null;
+      }
+
+      console.log('📱 Loaded search results from cache');
+      return cacheData.data;
+    } catch (error) {
+      console.error('❌ Failed to load cached search results:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Cache geocoding result
+   */
+  static async cacheGeocode(lat: number, lng: number, address: string): Promise<void> {
+    try {
+      const key = `${CACHE_KEYS.GEOCODE_CACHE}${lat.toFixed(4)}_${lng.toFixed(4)}`;
+      const cacheData = {
+        address,
+        timestamp: Date.now(),
+      };
+      await AsyncStorage.setItem(key, JSON.stringify(cacheData));
+    } catch (error) {
+      console.error('❌ Failed to cache geocode:', error);
+    }
+  }
+
+  /**
+   * Get cached geocoding result
+   */
+  static async getCachedGeocode(lat: number, lng: number): Promise<string | null> {
+    try {
+      const key = `${CACHE_KEYS.GEOCODE_CACHE}${lat.toFixed(4)}_${lng.toFixed(4)}`;
+      const cached = await AsyncStorage.getItem(key);
+      if (!cached) return null;
+
+      const cacheData = JSON.parse(cached);
+      const now = Date.now();
+
+      if (now - cacheData.timestamp > GEOCODE_CACHE_DURATION) {
+        await AsyncStorage.removeItem(key);
+        return null;
+      }
+
+      return cacheData.address;
+    } catch (error) {
+      console.error('❌ Failed to load cached geocode:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Cache user location
+   */
+  static async cacheUserLocation(latitude: number, longitude: number): Promise<void> {
+    try {
+      const locationData = {
+        latitude,
+        longitude,
+        timestamp: Date.now(),
+      };
+      await AsyncStorage.setItem(CACHE_KEYS.USER_LOCATION, JSON.stringify(locationData));
+      console.log('📱 Cached user location');
+    } catch (error) {
+      console.error('❌ Failed to cache user location:', error);
+    }
+  }
+
+  /**
+   * Get cached user location
+   */
+  static async getCachedUserLocation(): Promise<{ latitude: number; longitude: number } | null> {
+    try {
+      const cached = await AsyncStorage.getItem(CACHE_KEYS.USER_LOCATION);
+      if (!cached) return null;
+
+      const locationData = JSON.parse(cached);
+      const now = Date.now();
+
+      // Location cache valid for 1 hour
+      if (now - locationData.timestamp > 60 * 60 * 1000) {
+        await AsyncStorage.removeItem(CACHE_KEYS.USER_LOCATION);
+        return null;
+      }
+
+      return {
+        latitude: locationData.latitude,
+        longitude: locationData.longitude,
+      };
+    } catch (error) {
+      console.error('❌ Failed to load cached user location:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Perform offline search on cached restaurants
+   */
+  static async searchOffline(query: string): Promise<Restaurant[]> {
+    const cached = await this.getCachedRestaurants();
+    if (!cached || cached.length === 0) {
+      return [];
+    }
+
+    const lowerQuery = query.toLowerCase().trim();
+    if (!lowerQuery) {
+      return cached;
+    }
+
+    return cached.filter(restaurant => {
+      const name = restaurant.name?.toLowerCase() || '';
+      const category = restaurant.category?.toLowerCase() || '';
+      const description = restaurant.description?.toLowerCase() || '';
+      
+      return name.includes(lowerQuery) || 
+             category.includes(lowerQuery) || 
+             description.includes(lowerQuery);
+    });
   }
 }
