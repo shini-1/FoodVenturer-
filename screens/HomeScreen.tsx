@@ -370,7 +370,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
             }}
             style={styles.restaurantImage}
             contentFit="cover"
-            placeholder={require('../assets/icon.png')}
+            transition={300}
             onError={() => {
               console.log('Image load error for', restaurant.name);
             }}
@@ -674,6 +674,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 8,
     marginRight: 16,
+    backgroundColor: '#f0f0f0',
   },
   cardTextContent: {
     flex: 1,
