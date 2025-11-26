@@ -500,9 +500,13 @@ function HomeScreen({ navigation }: { navigation: any }) {
       <Header />
       <OfflineBanner onSyncPress={() => {
         // Refresh data after sync
-        setServerPage(1);
-        setRestaurants([]);
-        loadPage(1);
+        try {
+          setServerPage(1);
+          setRestaurants([]);
+          loadPage(1);
+        } catch (error) {
+          console.error('❌ Failed to refresh after sync:', error);
+        }
       }} />
       <TouchableOpacity
         onPress={() => navigation.goBack()}

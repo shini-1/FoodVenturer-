@@ -21,8 +21,13 @@ export default function OfflineBanner({ onSyncPress }: OfflineBannerProps) {
   }, []);
 
   const loadPendingCount = async () => {
-    const count = await OfflineQueueService.getPendingCount();
-    setPendingCount(count);
+    try {
+      const count = await OfflineQueueService.getPendingCount();
+      setPendingCount(count);
+    } catch (error) {
+      console.error('❌ Failed to load pending count:', error);
+      setPendingCount(0);
+    }
   };
 
   const handleSync = async () => {
@@ -46,7 +51,8 @@ export default function OfflineBanner({ onSyncPress }: OfflineBannerProps) {
       console.log('📡 Back online - auto-syncing queued actions');
       handleSync();
     }
-  }, [isOnline]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline, pendingCount]);
 
   if (isOnline && pendingCount === 0) {
     return null; // Don't show banner when online and no pending actions
