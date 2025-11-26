@@ -18,6 +18,9 @@ import OfflineBanner from '../components/OfflineBanner';
 import { OfflineService } from '../src/services/offlineService';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { resolveCategoryConfig, getAllCategoryOptions } from '../src/config/categoryConfig';
+import { toggleDeviceFavorite, getDeviceFavorites } from '../src/services/deviceFavoritesService';
+import { OfflineQueueService } from '../src/services/offlineQueueService';
+import { useNetwork } from '../src/contexts/NetworkContext';
 
 import { Restaurant } from '../types';
 
@@ -73,6 +76,7 @@ function isValidHttpUrl(value?: string): boolean {
 
 function HomeScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
+  const { isOnline } = useNetwork();
   const [searchText, setSearchText] = useState('');
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -95,20 +99,61 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const [refreshing, setRefreshing] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
-  // Toggle favorite status
-  const toggleFavorite = useCallback((restaurantId: string) => {
-    setFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(restaurantId)) {
-        newFavorites.delete(restaurantId);
-        console.log('❤️ Removed from favorites:', restaurantId);
-      } else {
-        newFavorites.add(restaurantId);
-        console.log('❤️ Added to favorites:', restaurantId);
-      }
-      return newFavorites;
-    });
+  // Load device favorites on mount
+  useEffect(() => {
+    loadDeviceFavorites();
   }, []);
+
+  const loadDeviceFavorites = async () => {
+    try {
+      const favoriteIds = await getDeviceFavorites();
+      setFavorites(new Set(favoriteIds));
+      console.log('❤️ Loaded', favoriteIds.length, 'device favorites');
+    } catch (error) {
+      console.error('❌ Failed to load favorites:', error);
+    }
+  };
+
+  // Toggle favorite status with device-based persistence
+  const toggleFavorite = useCallback(async (restaurantId: string) => {
+    try {
+      // Optimistic UI update
+      setFavorites(prev => {
+        const newFavorites = new Set(prev);
+        if (newFavorites.has(restaurantId)) {
+          newFavorites.delete(restaurantId);
+        } else {
+          newFavorites.add(restaurantId);
+        }
+        return newFavorites;
+      });
+
+      if (isOnline) {
+        // Online: Save to database immediately
+        const isFavorited = await toggleDeviceFavorite(restaurantId);
+        console.log(isFavorited ? '❤️ Added to favorites' : '💔 Removed from favorites');
+      } else {
+        // Offline: Queue for later sync
+        await OfflineQueueService.enqueueAction('favorite', {
+          restaurantId,
+          action: favorites.has(restaurantId) ? 'remove' : 'add'
+        });
+        console.log('📥 Favorite action queued for sync');
+      }
+    } catch (error) {
+      console.error('❌ Failed to toggle favorite:', error);
+      // Revert optimistic update on error
+      setFavorites(prev => {
+        const newFavorites = new Set(prev);
+        if (newFavorites.has(restaurantId)) {
+          newFavorites.delete(restaurantId);
+        } else {
+          newFavorites.add(restaurantId);
+        }
+        return newFavorites;
+      });
+    }
+  }, [isOnline, favorites]);
 
   // Clear address cache to refresh with new geocoding logic
   const clearAddressCache = () => {

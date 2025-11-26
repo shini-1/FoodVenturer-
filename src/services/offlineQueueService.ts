@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { submitRating } from './ratingsService';
 import { submitDeviceRating } from './deviceRatingsService';
+import { toggleDeviceFavorite } from './deviceFavoritesService';
 
 const QUEUE_KEY = 'offline_action_queue';
 
@@ -139,8 +140,9 @@ export class OfflineQueueService {
         break;
         
       case 'favorite':
-        // TODO: Implement favorite sync
-        console.log('⚠️ Favorite sync not yet implemented');
+        // Toggle favorite (will add or remove based on current state)
+        await toggleDeviceFavorite(action.data.restaurantId);
+        console.log('❤️ Synced favorite action for restaurant:', action.data.restaurantId);
         break;
         
       case 'restaurant_create':
