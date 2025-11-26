@@ -824,6 +824,21 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
             ⏳ Pending
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setActiveTab('owners')}
+          style={[
+            styles.tabButton,
+            activeTab === 'owners' && { backgroundColor: theme.primary }
+          ]}
+        >
+          <Text style={[
+            styles.tabText,
+            { color: activeTab === 'owners' ? theme.background : theme.text }
+          ]}>
+            👥 Owners
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20, gap: 10 }}>
@@ -1052,6 +1067,175 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                     >
                       <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>❌ Reject</Text>
                     </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              style={{ backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}
+            />
+          )}
+        </>
+      )}
+
+      {activeTab === 'owners' && (
+        <>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <Text style={{ fontSize: 18, color: theme.text }}>Authentication Users</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setOwnerFilter('all')}
+                style={{
+                  backgroundColor: ownerFilter === 'all' ? theme.primary : theme.surface,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 4,
+                  borderWidth: 1,
+                  borderColor: theme.border
+                }}
+              >
+                <Text style={{ color: ownerFilter === 'all' ? theme.background : theme.text, fontSize: 12, fontWeight: 'bold' }}>
+                  All ({owners.length})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setOwnerFilter('pending')}
+                style={{
+                  backgroundColor: ownerFilter === 'pending' ? theme.primary : theme.surface,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 4,
+                  borderWidth: 1,
+                  borderColor: theme.border
+                }}
+              >
+                <Text style={{ color: ownerFilter === 'pending' ? theme.background : theme.text, fontSize: 12, fontWeight: 'bold' }}>
+                  Pending
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {loadingOwners ? (
+            <View style={{ alignItems: 'center', padding: 20 }}>
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={{ color: theme.textSecondary, marginTop: 10 }}>Loading users...</Text>
+            </View>
+          ) : owners.length === 0 ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 8, marginTop: 10, padding: 20 }}>
+              <Text style={{ fontSize: 24, color: theme.textSecondary, marginBottom: 10 }}>👥</Text>
+              <Text style={{ fontSize: 18, color: theme.text, marginBottom: 10 }}>No Users Found</Text>
+              <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center' }}>
+                {ownerFilter === 'pending' ? 'No pending users to verify' : 'No authentication users in the system'}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={owners}
+              keyExtractor={(item) => item.uid}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshingOwners}
+                  onRefresh={refreshOwners}
+                  tintColor={theme.primary}
+                />
+              }
+              renderItem={({ item }) => (
+                <View style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border, backgroundColor: theme.surface }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                      <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }}>
+                        {item.email}
+                      </Text>
+                      <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                        UID: {item.uid.substring(0, 8)}...
+                      </Text>
+                      {item.firstName || item.lastName ? (
+                        <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                          Name: {item.firstName} {item.lastName}
+                        </Text>
+                      ) : null}
+                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                        <Text style={{
+                          color: item.emailConfirmed ? '#28a745' : '#ffc107',
+                          fontSize: 11,
+                          fontWeight: 'bold'
+                        }}>
+                          {item.emailConfirmed ? '✅ Email Confirmed' : '⏳ Email Pending'}
+                        </Text>
+                        {item.isVerified && (
+                          <Text style={{ color: '#28a745', fontSize: 11, fontWeight: 'bold' }}>
+                            ✅ Verified
+                          </Text>
+                        )}
+                      </View>
+                      {item.createdAt && (
+                        <Text style={{ color: theme.textSecondary, fontSize: 11, marginTop: 2 }}>
+                          Created: {new Date(item.createdAt).toLocaleDateString()}
+                        </Text>
+                      )}
+                      {item.lastSignIn && (
+                        <Text style={{ color: theme.textSecondary, fontSize: 11 }}>
+                          Last sign in: {new Date(item.lastSignIn).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={{ gap: 6 }}>
+                      <TouchableOpacity
+                        onPress={() => handleOpenSupabaseAuth(item.uid)}
+                        style={{
+                          backgroundColor: '#6f42c1',
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 4,
+                          minWidth: 100
+                        }}
+                      >
+                        <Text style={{ color: 'white', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>
+                          🔗 Open in Supabase
+                        </Text>
+                      </TouchableOpacity>
+                      {!item.emailConfirmed && (
+                        <TouchableOpacity
+                          onPress={() => handleConfirmOwnerEmail(item.uid)}
+                          disabled={confirmingOwnerUid === item.uid}
+                          style={{
+                            backgroundColor: confirmingOwnerUid === item.uid ? theme.border : '#17a2b8',
+                            paddingHorizontal: 10,
+                            paddingVertical: 6,
+                            borderRadius: 4,
+                            minWidth: 100
+                          }}
+                        >
+                          {confirmingOwnerUid === item.uid ? (
+                            <ActivityIndicator color="white" size="small" />
+                          ) : (
+                            <Text style={{ color: 'white', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>
+                              ✉️ Confirm Email
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
+                      {!item.isVerified && item.emailConfirmed && (
+                        <TouchableOpacity
+                          onPress={() => handleVerifyOwner(item.uid)}
+                          disabled={verifyingOwnerUid === item.uid}
+                          style={{
+                            backgroundColor: verifyingOwnerUid === item.uid ? theme.border : '#28a745',
+                            paddingHorizontal: 10,
+                            paddingVertical: 6,
+                            borderRadius: 4,
+                            minWidth: 100
+                          }}
+                        >
+                          {verifyingOwnerUid === item.uid ? (
+                            <ActivityIndicator color="white" size="small" />
+                          ) : (
+                            <Text style={{ color: 'white', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>
+                              ✅ Verify Owner
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 </View>
               )}
