@@ -8,11 +8,16 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import { restaurantService, CreateRestaurantData } from '../src/services/restaurantService';
+import * as ImagePicker from 'expo-image-picker';
+import { LocationService } from '../services/expoLocationService';
+import { reverseGeocode } from '../src/services/geocodingService';
+import { uploadImageToRestaurantBucket } from '../services/imageService';
 
 interface CreateRestaurantScreenProps {
   navigation: any;
@@ -26,18 +31,105 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
   const [restaurantName, setRestaurantName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [priceRange, setPriceRange] = useState('');
-  const [location, setLocation] = useState('');
+  const [priceRange, setPriceRange] = useState('₱₱');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [phone, setPhone] = useState('');
   const [website, setWebsite] = useState('');
   const [hours, setHours] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+
+  const handleGetLocation = async () => {
+    try {
+      setLocationLoading(true);
+      console.log('📍 Getting current location...');
+
+      const locationServiceInstance = new LocationService();
+      const location = await locationServiceInstance.getCurrentLocation();
+      
+      if (location) {
+        setLatitude(location.latitude.toString());
+        setLongitude(location.longitude.toString());
+        console.log('📍 Location obtained:', location);
+
+        try {
+          const address = await reverseGeocode(location.latitude, location.longitude);
+          Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4)}`);
+        } catch (geocodeError) {
+          console.warn('📍 Reverse geocoding failed:', geocodeError);
+          Alert.alert('Success', `Location updated!\nCoordinates: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+        }
+      } else {
+        console.warn('📍 Failed to get location');
+        Alert.alert('Location Error', 'Unable to get your current location. Please check location permissions and try again.');
+      }
+    } catch (error: any) {
+      console.error('📍 Location error:', error);
+      Alert.alert('Location Error', `Failed to access location services: ${error.message}`);
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const handleSelectImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant permission to access your photos');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        console.log('📷 Selected image URI:', imageUri);
+        setImageUploading(true);
+
+        try {
+          const tempRestaurantId = `temp_${Date.now()}`;
+          const uploadedImageUrl = await uploadImageToRestaurantBucket(imageUri, tempRestaurantId);
+          
+          setImageUrl(uploadedImageUrl);
+          Alert.alert('Success', 'Image uploaded successfully!');
+        } catch (uploadError: any) {
+          console.error('Image upload error:', uploadError);
+          Alert.alert('Error', `Failed to upload image: ${uploadError?.message || 'Unknown error'}`);
+        } finally {
+          setImageUploading(false);
+        }
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to select image');
+    }
+  };
 
   const handleCreateRestaurant = async () => {
     // Basic validation
-    if (!restaurantName.trim() || !category.trim() || !location.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields (Name, Category, Location)');
+    if (!restaurantName.trim() || !category.trim()) {
+      Alert.alert('Error', 'Please fill in all required fields (Name, Category)');
+      return;
+    }
+
+    if (!latitude || !longitude) {
+      Alert.alert('Error', 'Please use the "Get Location" button to set the restaurant location');
+      return;
+    }
+
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      Alert.alert('Error', 'Invalid location coordinates');
       return;
     }
 
@@ -47,8 +139,8 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
         name: restaurantName.trim(),
         description: description.trim(),
         category: category.trim(),
-        priceRange: priceRange.trim(),
-        location: location.trim(),
+        priceRange: priceRange,
+        location: `${lat},${lng}`,
         imageUrl: imageUrl.trim(),
         phone: phone.trim(),
         website: website.trim(),
@@ -112,6 +204,21 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
             onChangeText={setCategory}
           />
 
+          <TouchableOpacity
+            onPress={handleGetLocation}
+            disabled={locationLoading}
+            style={[
+              styles.locationButton,
+              { backgroundColor: locationLoading ? theme.border : '#28a745' }
+            ]}
+          >
+            {locationLoading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text style={styles.locationButtonText}>📍 Get Location</Text>
+            )}
+          </TouchableOpacity>
+
           <TextInput
             style={[
               styles.input,
@@ -121,10 +228,11 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
                 color: theme.text,
               },
             ]}
-            placeholder="Location * (e.g., 123 Main St, City, State)"
+            placeholder="Latitude *"
             placeholderTextColor={theme.textSecondary}
-            value={location}
-            onChangeText={setLocation}
+            value={latitude}
+            editable={false}
+            selectTextOnFocus={false}
           />
 
           <TextInput
@@ -136,27 +244,63 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
                 color: theme.text,
               },
             ]}
-            placeholder="Price Range (e.g., $, $$, $$$, $$$$)"
+            placeholder="Longitude *"
             placeholderTextColor={theme.textSecondary}
-            value={priceRange}
-            onChangeText={setPriceRange}
+            value={longitude}
+            editable={false}
+            selectTextOnFocus={false}
           />
 
-          <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
-            placeholder="Image URL"
-            placeholderTextColor={theme.textSecondary}
-            value={imageUrl}
-            onChangeText={setImageUrl}
-            keyboardType="url"
-          />
+          <Text style={[styles.fieldLabel, { color: theme.text }]}>Price Range (₱)</Text>
+          <View style={styles.priceRangeContainer}>
+            {['₱','₱₱','₱₱₱','₱₱₱₱'].map((pr) => (
+              <TouchableOpacity
+                key={pr}
+                onPress={() => setPriceRange(pr)}
+                style={[
+                  styles.priceRangeButton,
+                  {
+                    borderColor: theme.primary,
+                    backgroundColor: priceRange === pr ? theme.primary : theme.inputBackground
+                  }
+                ]}
+              >
+                <Text style={[
+                  styles.priceRangeText,
+                  { color: priceRange === pr ? 'white' : theme.text }
+                ]}>
+                  {pr}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={[styles.fieldLabel, { color: theme.text }]}>Restaurant Image</Text>
+          <View style={styles.imagePickerContainer}>
+            <TouchableOpacity
+              onPress={handleSelectImage}
+              disabled={imageUploading}
+              style={[
+                styles.imagePickerButton,
+                { backgroundColor: imageUploading ? theme.border : theme.primary }
+              ]}
+            >
+              {imageUploading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text style={styles.imagePickerButtonText}>📷 Select Image</Text>
+              )}
+            </TouchableOpacity>
+            {imageUrl ? (
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.imagePreview}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={[styles.noImageText, { color: theme.textSecondary }]}>No image selected</Text>
+            )}
+          </View>
 
           <TextInput
             style={[
@@ -294,6 +438,71 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  locationButton: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  locationButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  fieldLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  priceRangeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 8,
+  },
+  priceRangeButton: {
+    flex: 1,
+    borderWidth: 2,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  priceRangeText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  imagePickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  imagePickerButton: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  imagePickerButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  imagePreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+  },
+  noImageText: {
+    fontSize: 14,
+    fontStyle: 'italic',
   },
 });
 
