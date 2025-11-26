@@ -58,7 +58,8 @@ class RestaurantService {
           description: restaurant.description,
           category: restaurant.category,
           price_range: restaurant.priceRange,
-          location: restaurant.location,
+          latitude: restaurant.location.latitude,
+          longitude: restaurant.location.longitude,
           image: restaurant.image,
           phone: restaurant.phone,
           website: restaurant.website,
@@ -75,7 +76,10 @@ class RestaurantService {
       const createdRestaurant: Restaurant = {
         id: data.id,
         name: data.name,
-        location: data.location,
+        location: {
+          latitude: parseFloat(data.latitude),
+          longitude: parseFloat(data.longitude),
+        },
         image: data.image,
         category: data.category,
         rating: data.rating,
