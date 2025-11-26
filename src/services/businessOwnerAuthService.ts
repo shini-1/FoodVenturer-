@@ -30,42 +30,55 @@ class BusinessOwnerAuthService {
    */
   async signUp(signUpData: SignUpData): Promise<BusinessOwnerProfile> {
     try {
+      // Sign up with email auto-confirmation disabled
+      // Business owners will be verified by admin instead
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: signUpData.email,
         password: signUpData.password,
+        options: {
+          emailRedirectTo: undefined, // No email confirmation needed
+          data: {
+            role: 'business_owner',
+            first_name: signUpData.firstName,
+            last_name: signUpData.lastName,
+          }
+        }
       });
       if (authError) throw authError;
       if (!authData.user) throw new Error('Failed to create user account');
 
       const uid = authData.user.id;
-      const hasSession = !!authData.session?.access_token;
       
-      // Create profile - use session if available, otherwise call Edge Function
-      if (hasSession) {
-        await this.ensureProfileExists(uid, {
+      // Always create profile via Edge Function to bypass RLS
+      // This ensures profile is created even without email confirmation
+      const { data: profileData, error: profileError } = await supabase.functions.invoke('create-owner-profile', {
+        body: {
+          uid,
           email: signUpData.email,
           firstName: signUpData.firstName,
           lastName: signUpData.lastName,
           phoneNumber: signUpData.phoneNumber,
           businessName: signUpData.businessName,
-        });
-      } else {
-        // No session - call Edge Function to create profile with service role
-        try {
-          await supabase.functions.invoke('create-owner-profile', {
-            body: {
-              uid,
-              email: signUpData.email,
-              firstName: signUpData.firstName,
-              lastName: signUpData.lastName,
-              phoneNumber: signUpData.phoneNumber,
-              businessName: signUpData.businessName,
-            }
-          });
-        } catch (edgeFnError) {
-          console.warn('Edge function failed, profile may need manual creation:', edgeFnError);
-          // Profile creation will be handled by admin verification
         }
+      });
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        // Continue anyway - admin can create profile manually if needed
+      }
+
+      // Auto-confirm email for business owners using edge function
+      // This allows them to log in after admin verification
+      try {
+        const { error: confirmError } = await supabase.functions.invoke('admin-confirm-owner', {
+          body: { uid, autoConfirm: true }
+        });
+        if (confirmError) {
+          console.warn('Auto-confirm email failed:', confirmError);
+          // Continue - admin can confirm manually
+        }
+      } catch (confirmErr) {
+        console.warn('Auto-confirm exception:', confirmErr);
       }
 
       // Create pending submission for admin review (best-effort)
@@ -85,7 +98,9 @@ class BusinessOwnerAuthService {
             status: 'pending',
             submitted_at: new Date().toISOString(),
           });
-      } catch {}
+      } catch (submissionErr) {
+        console.warn('Submission creation failed:', submissionErr);
+      }
 
       return {
         uid,

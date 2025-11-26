@@ -23,11 +23,14 @@ export const getRestaurants = async (): Promise<Restaurant[]> => {
     return rows.map((row) => {
       let location: { latitude: number; longitude: number };
       if (row.location && typeof row.location === 'object' && 'latitude' in row.location && 'longitude' in row.location) {
+        // Location stored as JSON object
         location = { latitude: Number(row.location.latitude), longitude: Number(row.location.longitude) };
       } else if (row.latitude != null && row.longitude != null) {
+        // Location stored in separate columns
         location = { latitude: Number(row.latitude), longitude: Number(row.longitude) };
       } else {
-        location = { latitude: 40.7128, longitude: -74.0060 };
+        // Default fallback location
+        location = { latitude: 40.7128, longitude: -74.0060 }; // NYC coordinates
       }
 
       const rating = typeof row.rating === 'number' ? row.rating : (row.rating ? Number(row.rating) : undefined);
@@ -130,7 +133,13 @@ export const updateRestaurant = async (id: string, updates: Partial<Restaurant>)
   try {
     const updateData: any = {};
     if (updates.name !== undefined) updateData.name = updates.name;
-    if (updates.location) updateData.location = { latitude: updates.location.latitude, longitude: updates.location.longitude };
+
+    // Handle location field - use separate latitude and longitude columns
+    if (updates.location) {
+      updateData.latitude = updates.location.latitude;
+      updateData.longitude = updates.location.longitude;
+    }
+
     if (updates.image !== undefined) updateData.image = updates.image;
     if (updates.category !== undefined) updateData.category = updates.category;
     if (updates.rating !== undefined) updateData.rating = updates.rating;
@@ -141,14 +150,21 @@ export const updateRestaurant = async (id: string, updates: Partial<Restaurant>)
     if (updates.hours !== undefined) updateData.hours = updates.hours;
     if (updates.website !== undefined) updateData.website = updates.website;
 
+    console.log('🔄 Updating restaurant with data:', updateData);
+
     const { error } = await supabase
       .from(RESTAURANTS_TABLE)
       .update(updateData)
       .eq('id', id);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('❌ Restaurant update error:', error);
+      throw new Error(error.message);
+    }
+
+    console.log('✅ Restaurant updated successfully');
   } catch (error: any) {
-    console.error('Error updating restaurant:', error);
+    console.error('❌ Error updating restaurant:', error);
     throw new Error(error.message || 'Failed to update restaurant');
   }
 };
@@ -163,7 +179,9 @@ export const addRestaurant = async (restaurantData: Omit<Restaurant, 'id'>): Pro
       description: restaurantData.description ?? '',
       category: restaurantData.category ?? '',
       price_range: restaurantData.priceRange ?? '',
-      location: restaurantData.location ? { latitude: restaurantData.location.latitude, longitude: restaurantData.location.longitude } : null,
+      // Use separate latitude and longitude columns
+      latitude: restaurantData.location?.latitude ?? null,
+      longitude: restaurantData.location?.longitude ?? null,
       image: restaurantData.image ?? '',
       phone: restaurantData.phone ?? '',
       website: restaurantData.website ?? '',
@@ -172,20 +190,24 @@ export const addRestaurant = async (restaurantData: Omit<Restaurant, 'id'>): Pro
       editorial_rating: restaurantData.editorialRating ?? null,
     };
 
+    console.log('➕ Adding restaurant with data:', insertData);
+
     const { error } = await supabase
       .from(RESTAURANTS_TABLE)
       .insert([insertData]);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('❌ Restaurant add error:', error);
+      throw new Error(error.message);
+    }
+
+    console.log('✅ Restaurant added successfully');
   } catch (error: any) {
-    console.error('Error adding restaurant:', error);
+    console.error('❌ Error adding restaurant:', error);
     throw new Error(error.message || 'Failed to add restaurant');
   }
 };
 
-/**
- * Approve a restaurant submission
- */
 export const approveRestaurant = async (submissionId: string): Promise<void> => {
   try {
     // First, get the submission data
@@ -198,29 +220,8 @@ export const approveRestaurant = async (submissionId: string): Promise<void> => 
     if (error) throw new Error(error.message);
     if (!submission) throw new Error('Submission not found');
 
-    // Add to approved restaurant_owners (snake_case columns)
-    const { error: insertError } = await supabase
-      .from(RESTAURANT_OWNERS_TABLE)
-      .insert([
-        {
-          user_id: submission.owner_id,
-          business_name: submission.business_name,
-          owner_name: submission.owner_name,
-          email: submission.email,
-          phone: submission.phone,
-          location: submission.location || null,
-          image: submission.image || null,
-          description: submission.description || null,
-          cuisine_type: submission.cuisine_type || null,
-          status: 'approved',
-          created_at: new Date().toISOString(),
-          approved_at: new Date().toISOString(),
-        },
-      ]);
-
-    if (insertError) throw new Error(insertError.message);
-
-    // Mark business owner profile as verified
+    // Note: User doesn't have restaurant_owners table, so we skip that step
+    // Just mark business owner profile as verified
     const { error: verifyError } = await supabase
       .from(TABLES.BUSINESS_OWNERS)
       .update({ is_verified: true, updated_at: new Date().toISOString() })
@@ -264,9 +265,9 @@ export const rejectRestaurant = async (submissionId: string, reason: string): Pr
 export const deleteRestaurantOwner = async (businessId: string): Promise<void> => {
   try {
     const { error } = await supabase
-      .from(RESTAURANT_OWNERS_TABLE)
+      .from(TABLES.BUSINESS_OWNERS)
       .delete()
-      .eq('id', businessId);
+      .eq('uid', businessId); // Use uid instead of id since we're deleting by user ID
 
     if (error) throw new Error(error.message);
   } catch (error: any) {
@@ -281,9 +282,9 @@ export const deleteRestaurantOwner = async (businessId: string): Promise<void> =
 export const updateRestaurantOwner = async (businessId: string, updates: any): Promise<void> => {
   try {
     const { error } = await supabase
-      .from(RESTAURANT_OWNERS_TABLE)
+      .from(TABLES.BUSINESS_OWNERS)
       .update(updates)
-      .eq('id', businessId);
+      .eq('uid', businessId); // Use uid instead of id
 
     if (error) throw new Error(error.message);
   } catch (error: any) {
@@ -306,8 +307,9 @@ export const getRestaurantStats = async (): Promise<any> => {
 
     // Get count of pending restaurants
     const { count: pendingCount, error: pendingError } = await supabase
-      .from(PENDING_RESTAURANTS_TABLE)
-      .select('*', { count: 'exact' });
+      .from(SUBMISSIONS_TABLE)
+      .select('*', { count: 'exact' })
+      .eq('status', 'pending');
 
     if (pendingError) throw new Error(pendingError.message);
 
@@ -370,18 +372,45 @@ export const cleanupDuplicateRestaurants = async (): Promise<{ deleted: number, 
     const uniqueRestaurants: Restaurant[] = [];
     const duplicatesToDelete: string[] = [];
 
-    allRestaurants.forEach(restaurant => {
+  allRestaurants.forEach(restaurant => {
+      // Properly handle location field like getRestaurants() does
+      let location: { latitude: number; longitude: number };
+      if (restaurant.location && typeof restaurant.location === 'object' && 'latitude' in restaurant.location && 'longitude' in restaurant.location) {
+        // Location stored as JSON object
+        location = { latitude: Number(restaurant.location.latitude), longitude: Number(restaurant.location.longitude) };
+      } else if (restaurant.latitude != null && restaurant.longitude != null) {
+        // Location stored in separate columns
+        location = { latitude: Number(restaurant.latitude), longitude: Number(restaurant.longitude) };
+      } else {
+        // Default fallback location
+        location = { latitude: 40.7128, longitude: -74.0060 }; // NYC coordinates
+      }
+
       const existing = uniqueRestaurants.find(r => 
         r.name.toLowerCase().trim() === restaurant.name.toLowerCase().trim() &&
-        Math.abs(r.location.latitude - restaurant.location.latitude) < 0.0005 &&
-        Math.abs(r.location.longitude - restaurant.location.longitude) < 0.0005
+        Math.abs(r.location.latitude - location.latitude) < 0.0005 &&
+        Math.abs(r.location.longitude - location.longitude) < 0.0005
       );
 
       if (existing) {
         // Default: keep the first encountered, mark current as duplicate
         duplicatesToDelete.push(restaurant.id);
       } else {
-        uniqueRestaurants.push(restaurant);
+        // Add to unique list with properly formatted location
+        uniqueRestaurants.push({
+          id: restaurant.id,
+          name: restaurant.name,
+          location,
+          image: restaurant.image ?? undefined,
+          category: restaurant.category ?? undefined,
+          rating: typeof restaurant.rating === 'number' ? restaurant.rating : (restaurant.rating ? Number(restaurant.rating) : undefined),
+          editorialRating: typeof restaurant.editorial_rating === 'number' ? restaurant.editorial_rating : (restaurant.editorial_rating ? Number(restaurant.editorial_rating) : undefined),
+          priceRange: restaurant.price_range ?? undefined,
+          description: restaurant.description ?? undefined,
+          phone: restaurant.phone ?? undefined,
+          hours: restaurant.hours ?? undefined,
+          website: restaurant.website ?? undefined,
+        } as Restaurant);
       }
     });
 
@@ -414,22 +443,19 @@ export const addRestaurantsFromGoogleMaps = async (googleMapsUrls: string[]): Pr
   throw new Error('addRestaurantsFromGoogleMaps is not implemented with Supabase yet');
 };
 
-/**
- * Fetch all approved restaurants (owners)
- */
 export const fetchApprovedRestaurants = async (): Promise<RestaurantOwner[]> => {
   try {
-    // First get all approved restaurants, then sort in memory to avoid composite index requirement
+    // Use business_owners table instead of restaurant_owners
     const { data, error } = await supabase
-      .from(RESTAURANT_OWNERS_TABLE)
+      .from(TABLES.BUSINESS_OWNERS)
       .select('*')
-      .eq('status', 'approved');
+      .eq('is_verified', true);
 
     if (error) throw new Error(error.message);
-    const restaurants = data || [];
+    const businessOwners = data || [];
 
-    // Sort by createdAt descending in memory
-    return restaurants.sort((a, b) => b.createdAt - a.createdAt);
+    // Sort by created_at descending in memory
+    return businessOwners.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   } catch (error: any) {
     console.error('Error fetching approved restaurants:', error);
     throw new Error(error.message || 'Failed to fetch approved restaurants');

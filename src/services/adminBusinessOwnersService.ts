@@ -22,6 +22,7 @@ export interface BusinessOwnerAdminView {
   isVerified: boolean;
   createdAt: string;
   emailConfirmed: boolean;
+  supabaseAuthUrl: string;
 }
 
 const serviceSupabase = SUPABASE_CONFIG.serviceRoleKey
@@ -52,7 +53,8 @@ export async function getOwnerAdminView(uid: string): Promise<BusinessOwnerAdmin
     businessName: row.business_name ?? undefined,
     isVerified: row.is_verified,
     createdAt: row.created_at,
-    emailConfirmed
+    emailConfirmed,
+    supabaseAuthUrl: `https://supabase.com/dashboard/project/${SUPABASE_CONFIG.url.split('/').pop()}/auth/users`
   };
 }
 
@@ -71,8 +73,47 @@ export async function listBusinessOwners(filter: 'all' | 'pending' = 'pending'):
   const { data, error } = await query;
   if (error || !data) return [];
 
-  const views = await Promise.all(data.map((row) => getOwnerAdminView(row.uid)));
-  return views.filter((v): v is BusinessOwnerAdminView => !!v);
+  // Get auth data for all users
+  const uids = data.map(row => row.uid);
+  const authUsers: { [key: string]: any } = {};
+
+  if (uids.length > 0) {
+    try {
+      // Get user data in batches if needed
+      for (const uid of uids) {
+        try {
+          const { data: userData } = await serviceSupabase.auth.admin.getUserById(uid);
+          if (userData?.user) {
+            authUsers[uid] = userData.user;
+          }
+        } catch (err) {
+          console.warn(`Failed to get auth data for user ${uid}:`, err);
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching auth data:', err);
+    }
+  }
+
+  const views = data.map((row) => {
+    const authUser = authUsers[row.uid];
+    const emailConfirmed = Boolean(authUser?.email_confirmed_at);
+
+    return {
+      uid: row.uid,
+      email: row.email,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      phoneNumber: row.phone_number ?? undefined,
+      businessName: row.business_name ?? undefined,
+      isVerified: row.is_verified,
+      createdAt: row.created_at,
+      emailConfirmed,
+      supabaseAuthUrl: `https://supabase.com/dashboard/project/${SUPABASE_CONFIG.url.split('/').pop()}/auth/users`
+    } as BusinessOwnerAdminView;
+  });
+
+  return views;
 }
 
 export async function listOwnersFromAuth(filter: 'all' | 'pending' = 'all'): Promise<BusinessOwnerAdminView[]> {
@@ -118,6 +159,7 @@ export async function listOwnersFromAuth(filter: 'all' | 'pending' = 'all'): Pro
         isVerified: Boolean(row?.is_verified),
         createdAt: (row?.created_at ?? u.created_at) as string,
         emailConfirmed,
+        supabaseAuthUrl: `https://supabase.com/dashboard/project/${SUPABASE_CONFIG.url.split('/').pop()}/auth/users`
       } as BusinessOwnerAdminView;
     });
 
@@ -132,6 +174,18 @@ export async function confirmOwnerEmail(uid: string): Promise<void> {
     if (error) throw new Error(error.message ?? 'Failed to confirm email');
     return;
   }
+
+  // Check if email is already confirmed
+  try {
+    const { data: userData } = await serviceSupabase.auth.admin.getUserById(uid);
+    if (userData?.user?.email_confirmed_at) {
+      console.log('Email already confirmed for user:', uid);
+      return; // Already confirmed
+    }
+  } catch (err) {
+    console.warn('Could not check current email confirmation status:', err);
+  }
+
   const { error } = await serviceSupabase.auth.admin.updateUserById(uid, { email_confirm: true });
   if (error) throw new Error(error.message ?? 'Failed to confirm email');
 }
@@ -174,4 +228,27 @@ export async function verifyOwner(uid: string): Promise<void> {
 export async function confirmAndVerify(uid: string): Promise<void> {
   await confirmOwnerEmail(uid);
   await verifyOwner(uid);
+}
+
+/**
+ * Check if a user's email is confirmed in Supabase auth
+ */
+export async function checkEmailConfirmation(uid: string): Promise<boolean> {
+  if (!serviceSupabase) return false;
+
+  try {
+    const { data: userData } = await serviceSupabase.auth.admin.getUserById(uid);
+    return Boolean(userData?.user?.email_confirmed_at);
+  } catch (error) {
+    console.warn('Could not check email confirmation status:', error);
+    return false;
+  }
+}
+
+/**
+ * Get Supabase auth console URL for a specific user
+ */
+export function getSupabaseAuthUserUrl(uid: string): string {
+  const projectRef = SUPABASE_CONFIG.url.split('/').pop();
+  return `https://supabase.com/dashboard/project/${projectRef}/auth/users?search=${uid}`;
 }

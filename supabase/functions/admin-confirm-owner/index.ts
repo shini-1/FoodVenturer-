@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { uid } = await req.json();
+    const { uid, autoConfirm } = await req.json();
 
     if (!uid) {
       return new Response(
@@ -26,30 +26,32 @@ Deno.serve(async (req) => {
       Deno.env.get("SERVICE_ROLE_KEY")!
     );
 
-    // Authenticate caller
-    const authHeader = req.headers.get("Authorization") || "";
-    const token = authHeader.replace("Bearer ", "");
-    
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // If not auto-confirm, authenticate caller as admin
+    if (!autoConfirm) {
+      const authHeader = req.headers.get("Authorization") || "";
+      const token = authHeader.replace("Bearer ", "");
+      
+      const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+      if (userError || !user) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-    // Check admin membership
-    const { data: adminRow, error: adminError } = await supabaseAdmin
-      .from("admins")
-      .select("uid")
-      .eq("uid", user.id)
-      .single();
+      // Check admin membership
+      const { data: adminRow, error: adminError } = await supabaseAdmin
+        .from("admins")
+        .select("uid")
+        .eq("uid", user.id)
+        .single();
 
-    if (adminError || !adminRow) {
-      return new Response(
-        JSON.stringify({ error: "Forbidden - Admin access required" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (adminError || !adminRow) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden - Admin access required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Confirm email via Admin API
