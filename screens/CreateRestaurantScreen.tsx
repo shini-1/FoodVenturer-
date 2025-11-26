@@ -27,6 +27,8 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
+  console.log('🏪 CreateRestaurantScreen loaded - VERSION WITH LOCATION & IMAGE PICKER');
+
   // Form state
   const [restaurantName, setRestaurantName] = useState('');
   const [description, setDescription] = useState('');
