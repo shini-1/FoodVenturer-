@@ -274,7 +274,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   useEffect(() => {
     setServerPage(1);
     loadPage(1);
-  }, []);
+  }, [loadPage]);
 
   // Refresh restaurants when screen comes into focus (e.g., after rating a restaurant)
   useEffect(() => {
@@ -333,18 +333,24 @@ function HomeScreen({ navigation }: { navigation: any }) {
   }, [restaurants]);
 
   // Categorize restaurants using centralized config
-  const categorizedRestaurants = useMemo(() => restaurants.map((restaurant) => {
-    const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
+  const categorizedRestaurants = useMemo(() => {
+    if (!restaurants || restaurants.length === 0) return [];
+    
+    return restaurants
+      .filter((restaurant) => restaurant && restaurant.id && restaurant.name) // Filter out invalid entries
+      .map((restaurant) => {
+        const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
 
-    const categorized = {
-      ...restaurant,
-      category: categoryConfig.name
-    };
+        const categorized: CategorizedRestaurant = {
+          ...restaurant,
+          category: categoryConfig.name
+        };
 
-    console.log('🏷️ Categorized restaurant:', restaurant.name, '->', categoryConfig.name, 'color:', categoryConfig.color, 'emoji:', categoryConfig.emoji);
+        console.log('🏷️ Categorized restaurant:', restaurant.name, '->', categoryConfig.name, 'color:', categoryConfig.color, 'emoji:', categoryConfig.emoji);
 
-    return categorized;
-  }), [restaurants]);
+        return categorized;
+      });
+  }, [restaurants]);
 
   const parseAddressFromName = (fullName: string): string => {
     const parts = fullName.split(', ');
@@ -357,6 +363,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   const filteredRestaurants = useMemo(() => categorizedRestaurants.filter((restaurant) => {
+    // Safety check
+    if (!restaurant || !restaurant.name) return false;
+    
     // Text search filter
     const matchesSearch = restaurant.name.toLowerCase().includes(debouncedSearchText.toLowerCase());
 
@@ -414,6 +423,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   // RestaurantCard component that handles address display
   const RestaurantCard = useCallback(({ restaurant }: { restaurant: CategorizedRestaurant }) => {
+    // Safety checks
+    if (!restaurant || !restaurant.id || !restaurant.name) {
+      console.error('Invalid restaurant data:', restaurant);
+      return null;
+    }
+    
     const address = addressCache[restaurant.id] || '📍 Loading address...';
     const isFavorite = favorites.has(restaurant.id);
     const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
@@ -429,17 +444,17 @@ function HomeScreen({ navigation }: { navigation: any }) {
         <View style={styles.cardContent}>
           <Image
             source={{
-              uri: isValidHttpUrl(restaurant.image) ? (restaurant.image as string) : getPlaceholderImage(restaurant.category || 'casual')
+              uri: (restaurant.image && isValidHttpUrl(restaurant.image)) ? (restaurant.image as string) : getPlaceholderImage(restaurant.category || 'casual')
             }}
             style={styles.restaurantImage}
             contentFit="cover"
             transition={300}
             onError={() => {
-              console.log('Image load error for', restaurant.name);
+              console.log('Image load error for', restaurant.name || 'Unknown');
             }}
           />
           <View style={styles.cardTextContent}>
-            <Text style={styles.cardTitle}>{restaurant.name.split(', ')[0]}</Text>
+            <Text style={styles.cardTitle}>{restaurant.name ? restaurant.name.split(', ')[0] : 'Unknown Restaurant'}</Text>
             <Text style={styles.cardLocation}>
               {address}
             </Text>
