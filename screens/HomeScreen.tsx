@@ -453,6 +453,14 @@ function HomeScreen({ navigation }: { navigation: any }) {
     // Fall back to reverse geocoding
     try {
       setGeocodingInProgress(prev => new Set(prev).add(cacheKey));
+      
+      if (typeof reverseGeocode !== 'function') {
+        console.warn('⚠️ reverseGeocode is not available, using coordinates');
+        const coordAddress = `${restaurant.location.latitude.toFixed(4)}, ${restaurant.location.longitude.toFixed(4)}`;
+        setAddressCache(prev => ({ ...prev, [cacheKey]: `📍 ${coordAddress}` }));
+        return `📍 ${coordAddress}`;
+      }
+      
       const geocodedAddress = await reverseGeocode(
         restaurant.location.latitude,
         restaurant.location.longitude
@@ -475,7 +483,19 @@ function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   // Get restaurant categories from centralized config
-  const restaurantCategories = useMemo(() => getAllCategoryOptions(), []);
+  const restaurantCategories = useMemo(() => {
+    try {
+      if (typeof getAllCategoryOptions === 'function') {
+        return getAllCategoryOptions();
+      } else {
+        console.warn('⚠️ getAllCategoryOptions is not a function, using fallback');
+        return [{ value: 'all', label: 'All Types', emoji: '🍽️' }];
+      }
+    } catch (error) {
+      console.error('❌ Error getting category options:', error);
+      return [{ value: 'all', label: 'All Types', emoji: '🍽️' }];
+    }
+  }, []);
 
   const loadPage = useCallback(async (targetPage: number) => {
     if (isLoadingRef.current) {
@@ -575,7 +595,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         crashLogger.logComponentEvent('HomeScreen', 'load_page_end', { page: targetPage });
       }
     }
-  }, [crashLoggerReady, restaurants?.length, serverPage]);
+  }, [crashLoggerReady, serverPage]);
 
   const onRefresh = useCallback(async () => {
     if (isLoadingPage) return;
@@ -725,7 +745,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
       })
       .map((restaurant) => {
         try {
-          const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
+          const categoryConfig = typeof resolveCategoryConfig === 'function' 
+            ? resolveCategoryConfig(restaurant.category, restaurant.name)
+            : { name: restaurant.category || 'other', label: 'Other', emoji: '🍽️' };
 
           const categorized: CategorizedRestaurant = {
             id: restaurant.id,
@@ -881,7 +903,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
     try {
       const address = addressCache[restaurant.id] || '📍 Loading address...';
-      const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
+      const categoryConfig = typeof resolveCategoryConfig === 'function' 
+        ? resolveCategoryConfig(restaurant.category, restaurant.name)
+        : { name: restaurant.category || 'other', label: 'Other', emoji: '🍽️' };
 
       return (
         <TouchableOpacity

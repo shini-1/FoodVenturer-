@@ -350,16 +350,21 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
           const uploadedImageUrl = await uploadAndUpdateRestaurantImage(imageUri, restaurantId, 'logo');
 
-          setEditForm(prev => ({
-            ...prev,
-            image: uploadedImageUrl
-          }));
+          if (uploadedImageUrl) {
+            setEditForm(prev => ({
+              ...prev,
+              image: uploadedImageUrl
+            }));
 
-          setRestaurants(prev => prev.map(r =>
-            r.id === editingRestaurant.id ? { ...r, image: uploadedImageUrl } : r
-          ));
+            setRestaurants(prev => prev.map(r =>
+              r.id === editingRestaurant.id ? { ...r, image: uploadedImageUrl } : r
+            ));
 
-          Alert.alert('Success', 'Image uploaded and saved successfully!');
+            Alert.alert('Success', 'Image uploaded and saved successfully!');
+          } else {
+            console.warn('⚠️ Image upload failed but continuing without image');
+            Alert.alert('Warning', 'Image upload failed, but restaurant data was saved.');
+          }
 
         } catch (uploadError: any) {
           console.error('Image upload error:', uploadError);
