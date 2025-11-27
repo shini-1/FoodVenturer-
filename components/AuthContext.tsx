@@ -3,6 +3,7 @@ import { User } from '../types';
 import { supabase } from '../src/config/supabase';
 import { businessOwnerAuthService, BusinessOwnerProfile } from '../src/services/businessOwnerAuthService';
 import { adminAuthService, AdminProfile } from '../src/services/adminAuthService';
+import { offlineAuthService } from '../src/services/offlineAuthService';
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +22,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    // Initialize offline auth service
+    offlineAuthService.initialize().catch(error => {
+      console.error('Failed to initialize offline auth:', error);
+    });
+
     // Simplified: No automatic auth state listening to avoid initialization issues
     // Auth state will be managed manually through login/logout calls
     console.log('✅ AuthContext initialized (simplified mode)');

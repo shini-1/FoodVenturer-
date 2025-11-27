@@ -1,5 +1,18 @@
 import { supabase, TABLES } from '../config/supabase';
 import { MenuItem } from '../../types';
+import { networkService } from './networkService';
+import { localDatabase } from './localDatabase';
+import { syncService } from './syncService';
+import { offlineAuthService } from './offlineAuthService';
+
+/**
+ * Check if offline mode should be enabled for the current user
+ * Only food explorers (role: 'user') should have offline mode
+ */
+async function shouldUseOfflineMode(): Promise<boolean> {
+  const role = await offlineAuthService.getUserRole();
+  return role === 'user' && networkService.isOffline();
+}
 
 export interface CreateMenuItemData {
   restaurantId: string;
@@ -66,6 +79,30 @@ class MenuService {
     try {
       console.log('📋 Fetching menu items for restaurant:', restaurantId);
 
+      // Check if we should use offline mode (food explorers only)
+      const useOffline = await shouldUseOfflineMode();
+
+      if (useOffline) {
+        console.log('📱 Using offline mode for menu items');
+        await localDatabase.initialize();
+        const localMenuItems = await localDatabase.getMenuItemsByRestaurant(restaurantId);
+
+        // Transform local data to MenuItem interface
+        return localMenuItems.map(local => ({
+          id: local.id,
+          restaurantId: local.restaurant_id,
+          name: local.name,
+          description: local.description,
+          price: local.price,
+          category: local.category,
+          image: local.image,
+          isAvailable: local.is_available,
+          createdAt: local.created_at,
+          updatedAt: local.updated_at,
+        }));
+      }
+
+      // Online mode: fetch from Supabase
       const { data, error } = await supabase
         .from(this.MENU_ITEMS_TABLE)
         .select('*')
@@ -76,7 +113,7 @@ class MenuService {
       if (error) throw error;
 
       // Transform the data to match our MenuItem interface
-      const menuItems: MenuItem[] = data.map(item => ({
+      const menuItems: MenuItem[] = data.map((item: any) => ({
         id: item.id,
         restaurantId: item.restaurant_id,
         name: item.name,

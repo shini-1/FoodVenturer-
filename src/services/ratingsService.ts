@@ -1,4 +1,17 @@
 import { supabase, TABLES } from '../config/supabase';
+import { networkService } from './networkService';
+import { localDatabase } from './localDatabase';
+import { syncService } from './syncService';
+import { offlineAuthService } from './offlineAuthService';
+
+/**
+ * Check if offline mode should be enabled for the current user
+ * Only food explorers (role: 'user') should have offline mode
+ */
+async function shouldUseOfflineMode(): Promise<boolean> {
+  const role = await offlineAuthService.getUserRole();
+  return role === 'user' && networkService.isOffline();
+}
 
 export interface RestaurantRating {
   id: string;
@@ -25,6 +38,39 @@ export async function submitRating(
 ): Promise<void> {
   const clamped = clampStars(stars);
 
+  // Check if we should use offline mode (food explorers only)
+  const useOffline = await shouldUseOfflineMode();
+
+  if (useOffline) {
+    console.log('📱 Queueing rating submission for offline sync');
+    const ratingId = `rating_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    const localRatingData = {
+      id: ratingId,
+      restaurant_id: restaurantId,
+      user_id: userId,
+      stars: clamped,
+      comment: comment || '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      sync_status: 'pending' as const
+    };
+
+    // Save to local database
+    await localDatabase.initialize();
+    await localDatabase.insertRating(localRatingData);
+
+    // Queue the operation for when we come back online
+    await localDatabase.addPendingOperation({
+      table_name: 'restaurant_ratings',
+      operation: 'insert',
+      data: JSON.stringify(localRatingData)
+    });
+
+    return;
+  }
+
+  // Online mode: submit directly to Supabase
   const { error: insertError } = await supabase
     .from(TABLES.RESTAURANT_RATINGS)
     .insert({
@@ -58,6 +104,16 @@ export async function getUserRating(
   restaurantId: string,
   userId: string
 ): Promise<{ stars: number; comment?: string } | null> {
+  // Check if we should use offline mode (food explorers only)
+  const useOffline = await shouldUseOfflineMode();
+
+  if (useOffline) {
+    console.log('📱 Getting user rating from offline DB');
+    await localDatabase.initialize();
+    return await localDatabase.getUserRating(restaurantId, userId);
+  }
+
+  // Online mode: fetch from Supabase
   const { data, error } = await supabase
     .from(TABLES.RESTAURANT_RATINGS)
     .select('stars, comment')
