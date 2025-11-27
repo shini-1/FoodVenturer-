@@ -382,13 +382,13 @@ function isValidHttpUrl(value?: string): boolean {
 function HomeScreen({ navigation }: { navigation: any }) {
   console.log('🏠 HomeScreen: Component starting...');
   
-  let theme;
+  let theme: any;
   try {
     const themeResult = useTheme();
     theme = themeResult.theme;
   } catch (themeError) {
     console.warn('⚠️ Theme context not available, using default theme');
-    theme = { colors: { background: '#ffffff', text: '#000000' } }; // Fallback theme
+    theme = { colors: { background: '#ffffff', text: '#000000', cardBackground: '#ffffff', textSecondary: '#666666' } }; // Fallback theme
   }
   
   // const { isOnline } = useNetwork(); // Disabled - not using offline features for now
@@ -1288,9 +1288,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
       
       {/* Processing Indicator */}
       {isProcessingRatings && (
-        <View style={[styles.processingIndicator, { backgroundColor: theme.colors.cardBackground }]}>
+        <View style={[styles.processingIndicator, { backgroundColor: theme?.colors?.cardBackground || '#ffffff' }]}>
           <ActivityIndicator size="small" color="#4ECDC4" />
-          <Text style={[styles.processingText, { color: theme.colors.textSecondary }]}>
+          <Text style={[styles.processingText, { color: theme?.colors?.textSecondary || '#666666' }]}>
             Processing restaurant ratings...
           </Text>
         </View>
