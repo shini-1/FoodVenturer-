@@ -117,7 +117,13 @@ function HomeScreen({ navigation }: { navigation: any }) {
   useEffect(() => {
     const initialize = async () => {
       try {
-        await loadDeviceFavorites();
+        // Load favorites in background - don't block initialization
+        loadDeviceFavorites().catch(err => {
+          console.warn('⚠️ Favorites not available:', err);
+          // Silently fail - favorites are optional
+        });
+        
+        // Mark as initialized immediately - don't wait for favorites
         setIsInitialized(true);
       } catch (error) {
         console.error('❌ Failed to initialize HomeScreen:', error);
