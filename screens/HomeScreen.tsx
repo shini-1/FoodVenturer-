@@ -386,6 +386,21 @@ function HomeScreen({ navigation }: { navigation: any }) {
   try {
     const themeContext = useTheme();
     theme = themeContext.theme;
+    
+    // Additional safety check - ensure theme has required properties
+    if (!theme || typeof theme !== 'object') {
+      console.warn('⚠️ Theme is not a valid object, using fallback theme');
+      theme = { 
+        background: '#ffffff', 
+        surface: '#ffffff', 
+        text: '#000000', 
+        textSecondary: '#666666',
+        primary: '#FF00FF',
+        secondary: '#F0E68C',
+        border: '#E0E0E0',
+        inputBackground: '#F9F9F9'
+      };
+    }
   } catch (themeError) {
     console.warn('⚠️ Theme context not available, using default theme');
     theme = { 
@@ -1092,16 +1107,16 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 {address}
               </Text>
               <Text style={styles.cardCategory}>
-                {categoryConfig.emoji} {categoryConfig.label}
+                {`${categoryConfig.emoji} ${categoryConfig.label}`}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                 <Text style={{ color: '#FFD700' }}>
                   {(() => {
                     const rating = typeof restaurant.rating === 'number' ? restaurant.rating : 0;
-                    const r = Math.round(rating);
-                    const full = '★'.repeat(Math.max(0, Math.min(5, r)));
-                    const empty = '☆'.repeat(5 - Math.max(0, Math.min(5, r)));
-                    return full + empty;
+                    const roundedRating = Math.round(rating);
+                    const fullStars = '★'.repeat(Math.max(0, Math.min(5, roundedRating)));
+                    const emptyStars = '☆'.repeat(5 - Math.max(0, Math.min(5, roundedRating)));
+                    return fullStars + emptyStars;
                   })()}
                 </Text>
                 <Text style={{ marginLeft: 6, color: DESIGN_COLORS.textSecondary }}>
@@ -1141,7 +1156,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     }
 
     return null;
-  }, [hasMore, isLoadingPage, theme]);
+  }, [hasMore, isLoadingPage]);
 
   // Error boundary - show error screen if something went wrong
   if (hasError) {
