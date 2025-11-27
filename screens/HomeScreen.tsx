@@ -14,13 +14,9 @@ import { Image } from 'expo-image';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
-// import OfflineBanner from '../components/OfflineBanner'; // Disabled - may cause crashes
-import { OfflineService } from '../src/services/offlineService';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { resolveCategoryConfig, getAllCategoryOptions } from '../src/config/categoryConfig';
-import { toggleDeviceFavorite, getDeviceFavorites } from '../src/services/deviceFavoritesService';
-// import { OfflineQueueService } from '../src/services/offlineQueueService'; // Disabled - not using offline queue
-// import { useNetwork } from '../src/contexts/NetworkContext'; // Disabled - not needed without offline queue
+import { restaurantService } from '../src/services/restaurantService';
 
 import { Restaurant } from '../types';
 
@@ -98,44 +94,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const [isLoadingPage, setIsLoadingPage] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
-  // Load device favorites on mount
-  const loadDeviceFavorites = useCallback(async () => {
-    try {
-      const favoriteIds = await getDeviceFavorites();
-      setFavorites(new Set(favoriteIds));
-      console.log('❤️ Loaded', favoriteIds.length, 'device favorites');
-    } catch (error) {
-      console.error('❌ Failed to load favorites:', error);
-      // Don't crash - just use empty favorites
-      setFavorites(new Set());
-    }
-  }, []);
-
-  // Initialize component
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        // Load favorites in background - don't block initialization
-        loadDeviceFavorites().catch(err => {
-          console.warn('⚠️ Favorites not available:', err);
-          // Silently fail - favorites are optional
-        });
-        
-        // Mark as initialized immediately - don't wait for favorites
-        setIsInitialized(true);
-      } catch (error) {
-        console.error('❌ Failed to initialize HomeScreen:', error);
-        setIsInitialized(true); // Still mark as initialized to show UI
-      }
-    };
-    initialize();
-  }, [loadDeviceFavorites]);
-
-  // Toggle favorite status with device-based persistence
-  const toggleFavorite = useCallback(async (restaurantId: string) => {
-    // Optimistic UI update
+  // Toggle favorite status (UI only for now - no persistence)
+  const toggleFavorite = useCallback((restaurantId: string) => {
     setFavorites(prev => {
       const newFavorites = new Set(prev);
       if (newFavorites.has(restaurantId)) {
@@ -145,27 +107,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       }
       return newFavorites;
     });
-
-    try {
-      // Always try to save immediately - don't use offline queue for now
-      const isFavorited = await toggleDeviceFavorite(restaurantId);
-      console.log(isFavorited ? '❤️ Added to favorites' : '💔 Removed from favorites');
-    } catch (error) {
-      console.error('❌ Failed to toggle favorite:', error);
-      // Revert optimistic update on error
-      setFavorites(prev => {
-        const newFavorites = new Set(prev);
-        if (newFavorites.has(restaurantId)) {
-          newFavorites.delete(restaurantId);
-        } else {
-          newFavorites.add(restaurantId);
-        }
-        return newFavorites;
-      });
-      // Silently fail - don't show alert to avoid annoying users
-      console.warn('⚠️ Favorite not saved - table may not exist yet');
-    }
-  }, [favorites]);
+  }, []);
 
   // Clear address cache to refresh with new geocoding logic
   const clearAddressCache = () => {
@@ -244,7 +186,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
       setIsLoadingPage(true);
       console.log(`🏠 HomeScreen: Fetching restaurants page ${targetPage} (size ${SERVER_PAGE_SIZE})`);
       
-      const { restaurants: pageData, total } = await OfflineService.getRestaurantsPageWithOffline(targetPage, SERVER_PAGE_SIZE);
+      // Use restaurantService directly - no offline mode
+      const { items: pageData, total } = await restaurantService.getRestaurantsPageWithCount(targetPage, SERVER_PAGE_SIZE);
       
       // Safety check for pageData
       if (!Array.isArray(pageData)) {
@@ -295,11 +238,24 @@ function HomeScreen({ navigation }: { navigation: any }) {
     }
   }, [loadPage, isLoadingPage]);
 
+  // Load initial data on mount
   useEffect(() => {
-    if (!isInitialized) return; // Wait for initialization
-    setServerPage(1);
-    loadPage(1);
-  }, [loadPage, isInitialized]);
+    console.log('🏠 HomeScreen: Loading initial data...');
+    
+    const loadInitialData = async () => {
+      try {
+        setServerPage(1);
+        await loadPage(1);
+      } catch (error) {
+        console.error('❌ Failed to load initial data:', error);
+        setHasError(true);
+        setRestaurants([]);
+        setIsLoadingPage(false);
+      }
+    };
+    
+    loadInitialData();
+  }, [loadPage]);
 
   // Refresh restaurants when screen comes into focus (e.g., after rating a restaurant)
   useEffect(() => {
@@ -535,12 +491,68 @@ function HomeScreen({ navigation }: { navigation: any }) {
     return null;
   }, [hasMore, isLoadingPage, theme]);
 
-  // Show loading screen while initializing
-  if (!isInitialized) {
+  // Error boundary - show error screen if something went wrong
+  if (hasError) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+        <Text style={{ fontSize: 24, marginBottom: 16 }}>\u26a0\ufe0f</Text>
+        <Text style={{ fontSize: 18, color: '#666', textAlign: 'center', marginBottom: 8 }}>
+          Something went wrong
+        </Text>
+        <Text style={{ fontSize: 14, color: '#999', textAlign: 'center', marginBottom: 20 }}>
+          The app encountered an error. Please try again.
+        </Text>
+        <TouchableOpacity
+          onPress={() => {
+            setHasError(false);
+            setRestaurants([]);
+            setIsLoadingPage(false);
+            // Retry loading
+            loadPage(1);
+          }}
+          style={{ backgroundColor: '#4A90E2', padding: 12, borderRadius: 8 }}
+        >
+          <Text style={{ color: 'white', fontSize: 16 }}>Retry</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ marginTop: 12, padding: 12 }}
+        >
+          <Text style={{ color: '#666', fontSize: 14 }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Show loading screen if still loading first page
+  if (isLoadingPage && restaurants.length === 0) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color="#4A90E2" />
-        <Text style={{ marginTop: 16, color: '#666' }}>Loading...</Text>
+        <Text style={{ marginTop: 16, color: '#666' }}>Loading restaurants...</Text>
+      </View>
+    );
+  }
+  
+  // Safety check - if no restaurants and not loading, show empty state
+  if (!isLoadingPage && restaurants.length === 0) {
+    return (
+      <View style={styles.container}>
+        <Header />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Text style={styles.backText}>✕</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 18, color: '#666', textAlign: 'center' }}>
+            No restaurants found.
+          </Text>
+          <Text style={{ fontSize: 14, color: '#999', marginTop: 8, textAlign: 'center' }}>
+            Pull down to refresh or check your connection.
+          </Text>
+        </View>
       </View>
     );
   }
@@ -548,17 +560,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   return (
     <View style={styles.container}>
       <Header />
-      {/* Temporarily disabled OfflineBanner - may cause crashes in production */}
-      {/* <OfflineBanner onSyncPress={() => {
-        // Refresh data after sync
-        try {
-          setServerPage(1);
-          setRestaurants([]);
-          loadPage(1);
-        } catch (error) {
-          console.error('❌ Failed to refresh after sync:', error);
-        }
-      }} /> */}
+      {/* Offline mode removed for stability */}
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={styles.backButton}
