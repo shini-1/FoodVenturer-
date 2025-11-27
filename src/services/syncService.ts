@@ -482,7 +482,6 @@ class SyncService {
       pendingOperations: pendingOps
     };
   }
-}
 
   /**
    * Resolve conflicts between local and remote data
@@ -514,3 +513,7 @@ class SyncService {
     // If timestamps differ by more than 5 seconds, consider it a conflict
     return timeDiff > 5000;
   }
+}
+
+// Export singleton instance
+export const syncService = new SyncService();

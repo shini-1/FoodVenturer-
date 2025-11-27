@@ -68,7 +68,7 @@ class LocalDatabase {
   async initialize(): Promise<void> {
     if (this.db) return;
 
-    this.db = SQLite.openDatabase('foodventurer_offline.db');
+    this.db = SQLite.openDatabaseSync('foodventurer_offline.db');
 
     await this.createTables();
     console.log('✅ Local database initialized');
