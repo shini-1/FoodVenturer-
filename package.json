@@ -1,5 +1,6 @@
 {
   "name": "Foodventurer",
+  "description": "FoodVenturer - Restaurant Discovery App with Offline Support",
   "version": "1.11.0",
   "main": "index.ts",
   "scripts": {
