@@ -1356,8 +1356,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
           activeOpacity={1}
           onPress={() => setShowCategoryModal(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Filter by Type</Text>
+          <View style={[styles.modalContent, { backgroundColor: theme?.surface || DESIGN_COLORS.cardBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme?.text || DESIGN_COLORS.textPrimary }]}>Filter by Type</Text>
             <FlatList
               data={restaurantCategories}
               keyExtractor={(item) => item.value}
@@ -1369,15 +1369,15 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   }}
                   style={[
                     styles.categoryOption,
-                    selectedCategory === item.value && { backgroundColor: theme.primary + '20' }
+                    selectedCategory === item.value && { backgroundColor: (theme?.primary || DESIGN_COLORS.infoBg) + '20' }
                   ]}
                 >
                   <Text style={{ fontSize: 18, marginRight: 10 }}>{item.emoji}</Text>
-                  <Text style={[styles.categoryText, { color: theme.text }]}>
+                  <Text style={[styles.categoryText, { color: theme?.text || DESIGN_COLORS.textPrimary }]}>
                     {item.label}
                   </Text>
                   {selectedCategory === item.value && (
-                    <Text style={{ color: theme.primary, fontSize: 16 }}>✓</Text>
+                    <Text style={{ color: theme?.primary || DESIGN_COLORS.infoBg, fontSize: 16 }}>✓</Text>
                   )}
                 </TouchableOpacity>
               )}
@@ -1385,9 +1385,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
             />
             <TouchableOpacity
               onPress={() => setShowCategoryModal(false)}
-              style={[styles.closeButton, { backgroundColor: theme.primary }]}
+              style={[styles.closeButton, { backgroundColor: theme?.primary || DESIGN_COLORS.infoBg }]}
             >
-              <Text style={[styles.closeButtonText, { color: theme.background }]}>Done</Text>
+              <Text style={[styles.closeButtonText, { color: theme?.background || DESIGN_COLORS.infoText }]}>Done</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
