@@ -427,16 +427,60 @@ function HomeScreen({ navigation }: { navigation: any }) {
     if (!restaurants || restaurants.length === 0) return [];
 
     return restaurants
+      .filter((restaurant) => {
+        // Safety check - ensure restaurant has required fields
+        if (!restaurant || typeof restaurant !== 'object') {
+          console.warn('⚠️ Invalid restaurant object:', restaurant);
+          return false;
+        }
+        if (!restaurant.id || typeof restaurant.id !== 'string') {
+          console.warn('⚠️ Restaurant missing valid id:', restaurant);
+          return false;
+        }
+        if (!restaurant.name || typeof restaurant.name !== 'string') {
+          console.warn('⚠️ Restaurant missing valid name:', restaurant);
+          return false;
+        }
+        return true;
+      })
       .map((restaurant) => {
-        const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
+        try {
+          const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
 
-        const categorized: CategorizedRestaurant = {
-          ...restaurant,
-          category: categoryConfig.name
-        };
+          const categorized: CategorizedRestaurant = {
+            id: restaurant.id,
+            name: restaurant.name,
+            location: restaurant.location || { latitude: 0, longitude: 0 },
+            image: restaurant.image,
+            category: categoryConfig.name, // Override with resolved category
+            rating: restaurant.rating,
+            priceRange: restaurant.priceRange,
+            description: restaurant.description,
+            phone: restaurant.phone,
+            hours: restaurant.hours,
+            website: restaurant.website,
+          };
 
-        return categorized;
-      });
+          return categorized;
+        } catch (error) {
+          console.error('❌ Error categorizing restaurant:', restaurant.name, error);
+          // Return a safe fallback
+          return {
+            id: restaurant.id,
+            name: restaurant.name || 'Unknown Restaurant',
+            location: { latitude: 0, longitude: 0 },
+            image: undefined,
+            category: 'casual', // Fallback category
+            rating: undefined,
+            priceRange: undefined,
+            description: undefined,
+            phone: undefined,
+            hours: undefined,
+            website: undefined,
+          } as CategorizedRestaurant;
+        }
+      })
+      .filter((restaurant) => restaurant && restaurant.id && restaurant.name); // Final safety filter
   }, [restaurants]);
 
   const parseAddressFromName = (fullName: string): string => {
@@ -449,15 +493,29 @@ function HomeScreen({ navigation }: { navigation: any }) {
     return fullName; // Fallback to full name if parsing fails
   };
 
-  const filteredRestaurants = useMemo(() => categorizedRestaurants.filter((restaurant) => {
-    // Text search filter
-    const matchesSearch = restaurant.name.toLowerCase().includes(debouncedSearchText.toLowerCase());
+  const filteredRestaurants = useMemo(() => {
+    if (!categorizedRestaurants || !Array.isArray(categorizedRestaurants)) {
+      return [];
+    }
 
-    // Category filter
-    const matchesCategory = selectedCategory === 'all' || restaurant.category === selectedCategory;
+    return categorizedRestaurants.filter((restaurant) => {
+      // Safety check - ensure restaurant is valid
+      if (!restaurant || typeof restaurant !== 'object') {
+        return false;
+      }
+      if (!restaurant.name || typeof restaurant.name !== 'string') {
+        return false;
+      }
 
-    return matchesSearch && matchesCategory;
-  }), [categorizedRestaurants, debouncedSearchText, selectedCategory]);
+      // Text search filter
+      const matchesSearch = restaurant.name.toLowerCase().includes(debouncedSearchText.toLowerCase());
+
+      // Category filter
+      const matchesCategory = selectedCategory === 'all' || restaurant.category === selectedCategory;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [categorizedRestaurants, debouncedSearchText, selectedCategory]);
 
   const visibleRestaurants = useMemo(() => {
     // Safety check - ensure we always return an array
@@ -482,14 +540,26 @@ function HomeScreen({ navigation }: { navigation: any }) {
     const processQueue = () => {
       while (geocodeActiveRef.current < GEOCODE_CONCURRENCY && geocodeQueueRef.current.length > 0) {
         const id = geocodeQueueRef.current.shift() as string;
-        const restaurant = visibleRestaurants.find(r => r.id === id);
+        if (!id) continue;
+        
+        const restaurant = visibleRestaurants.find(r => r && r.id === id);
         if (!restaurant) {
           queuedRef.current.delete(id);
           continue;
         }
+        
+        // Additional safety check for restaurant location
+        if (!restaurant.location || typeof restaurant.location.latitude !== 'number' || typeof restaurant.location.longitude !== 'number') {
+          console.warn('⚠️ Restaurant missing valid location for geocoding:', restaurant.name);
+          queuedRef.current.delete(id);
+          continue;
+        }
+        
         geocodeActiveRef.current += 1;
         getRestaurantAddress(restaurant)
-          .catch(() => {})
+          .catch((error) => {
+            console.warn('⚠️ Geocoding failed for restaurant:', restaurant.name, error);
+          })
           .finally(() => {
             geocodeActiveRef.current -= 1;
             queuedRef.current.delete(id);
@@ -499,7 +569,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     };
 
     const toQueue = visibleRestaurants
-      .filter(r => !addressCache[r.id] && !geocodingInProgress.has(r.id) && !queuedRef.current.has(r.id))
+      .filter(r => r && r.id && !addressCache[r.id] && !geocodingInProgress.has(r.id) && !queuedRef.current.has(r.id))
       .map(r => r.id);
 
     if (toQueue.length > 0) {
@@ -513,64 +583,91 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   // RestaurantCard component that handles address display
   const RestaurantCard = useCallback(({ restaurant }: { restaurant: CategorizedRestaurant }) => {
-    // Safety checks
-    if (!restaurant || !restaurant.id || !restaurant.name) {
+    // Comprehensive safety checks
+    if (!restaurant) {
+      console.warn('⚠️ RestaurantCard received null restaurant');
+      return null;
+    }
+    
+    if (!restaurant.id || typeof restaurant.id !== 'string') {
+      console.warn('⚠️ RestaurantCard received restaurant with invalid id:', restaurant);
+      return null;
+    }
+    
+    if (!restaurant.name || typeof restaurant.name !== 'string') {
+      console.warn('⚠️ RestaurantCard received restaurant with invalid name:', restaurant);
       return null;
     }
 
-    const address = addressCache[restaurant.id] || '📍 Loading address...';
-    const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
+    try {
+      const address = addressCache[restaurant.id] || '📍 Loading address...';
+      const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
 
-    return (
-      <TouchableOpacity
-        onPress={() => navigation.navigate('RestaurantDetail', {
-          restaurantId: restaurant.id,
-          restaurant: restaurant
-        })}
-        style={styles.card}
-      >
-        <View style={styles.cardContent}>
-          <Image
-            source={{
-              uri: (restaurant.image && isValidHttpUrl(restaurant.image)) ? (restaurant.image as string) : getPlaceholderImage(restaurant.category || 'casual')
-            }}
-            style={styles.restaurantImage}
-            contentFit="cover"
-            transition={300}
-            onError={() => {
-              console.log('🖼️ Image load error for', restaurant.name || 'Unknown');
-            }}
-          />
-          <View style={styles.cardTextContent}>
-            <Text style={styles.cardTitle}>
-              {restaurant.name ? restaurant.name.split(', ')[0] : 'Unknown Restaurant'}
-            </Text>
-            <Text style={styles.cardLocation}>
-              {address}
-            </Text>
-            <Text style={styles.cardCategory}>
-              {categoryConfig.emoji} {categoryConfig.label}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-              <Text style={{ color: '#FFD700' }}>
-                {(() => {
-                  const r = Math.round(restaurant.rating || 0);
-                  const full = '★'.repeat(Math.max(0, Math.min(5, r)));
-                  const empty = '☆'.repeat(5 - Math.max(0, Math.min(5, r)));
-                  return full + empty;
-                })()}
+      return (
+        <TouchableOpacity
+          onPress={() => {
+            if (restaurant.id) {
+              navigation.navigate('RestaurantDetail', {
+                restaurantId: restaurant.id,
+                restaurant: restaurant
+              });
+            }
+          }}
+          style={styles.card}
+        >
+          <View style={styles.cardContent}>
+            <Image
+              source={{
+                uri: (restaurant.image && isValidHttpUrl(restaurant.image)) ? (restaurant.image as string) : getPlaceholderImage(restaurant.category || 'casual')
+              }}
+              style={styles.restaurantImage}
+              contentFit="cover"
+              transition={300}
+              onError={() => {
+                console.log('🖼️ Image load error for', restaurant.name || 'Unknown');
+              }}
+            />
+            <View style={styles.cardTextContent}>
+              <Text style={styles.cardTitle}>
+                {restaurant.name ? restaurant.name.split(', ')[0] : 'Unknown Restaurant'}
               </Text>
-              <Text style={{ marginLeft: 6, color: DESIGN_COLORS.textSecondary }}>
-                {typeof restaurant.rating === 'number' ? restaurant.rating.toFixed(1) : 'No ratings yet'}
+              <Text style={styles.cardLocation}>
+                {address}
               </Text>
-              <Text style={{ marginLeft: 10, color: DESIGN_COLORS.textPrimary }}>
-                {restaurant.priceRange || '₱'}
+              <Text style={styles.cardCategory}>
+                {categoryConfig.emoji} {categoryConfig.label}
               </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                <Text style={{ color: '#FFD700' }}>
+                  {(() => {
+                    const rating = typeof restaurant.rating === 'number' ? restaurant.rating : 0;
+                    const r = Math.round(rating);
+                    const full = '★'.repeat(Math.max(0, Math.min(5, r)));
+                    const empty = '☆'.repeat(5 - Math.max(0, Math.min(5, r)));
+                    return full + empty;
+                  })()}
+                </Text>
+                <Text style={{ marginLeft: 6, color: DESIGN_COLORS.textSecondary }}>
+                  {typeof restaurant.rating === 'number' ? restaurant.rating.toFixed(1) : 'No ratings yet'}
+                </Text>
+                <Text style={{ marginLeft: 10, color: DESIGN_COLORS.textPrimary }}>
+                  {restaurant.priceRange || '₱'}
+                </Text>
+              </View>
             </View>
           </View>
+        </TouchableOpacity>
+      );
+    } catch (error) {
+      console.error('❌ Error rendering RestaurantCard for restaurant:', restaurant.name, error);
+      return (
+        <View style={styles.card}>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>Error loading restaurant</Text>
+          </View>
         </View>
-      </TouchableOpacity>
-    );
+      );
+    }
   }, [addressCache, navigation]);
 
   const renderListFooter = useCallback(() => {
@@ -673,6 +770,17 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   // Final safety check before rendering
   try {
+    // Prevent rendering if we're in an invalid state
+    if (!restaurants || !Array.isArray(restaurants)) {
+      console.warn('⚠️ Invalid restaurants state, showing loading');
+      return (
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color="#4A90E2" />
+          <Text style={{ marginTop: 16, color: '#666' }}>Loading restaurants...</Text>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.container}>
         <Header />
@@ -759,7 +867,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       </Modal>
 
       <View style={styles.mapContainer}>
-        {visibleRestaurants && visibleRestaurants.length > 0 ? (
+        {visibleRestaurants && visibleRestaurants.length > 0 && visibleRestaurants.every(r => r && r.id && r.location) ? (
           <MapBoxWebView restaurants={visibleRestaurants} />
         ) : (
           <View style={styles.loadingContainer}>
@@ -773,10 +881,17 @@ function HomeScreen({ navigation }: { navigation: any }) {
       <FlatList
         style={styles.cardsContainer}
         data={visibleRestaurants || []}
-        keyExtractor={(item) => item?.id || Math.random().toString()}
-        renderItem={({ item }) => {
-          // Safety check - skip if item is invalid
+        keyExtractor={(item, index) => {
+          // Safety check - ensure we have a valid key
           if (!item || !item.id) {
+            return `fallback-key-${index}`;
+          }
+          return item.id;
+        }}
+        renderItem={({ item, index }) => {
+          // Safety check - skip if item is invalid
+          if (!item || !item.id || !item.name) {
+            console.warn('⚠️ Invalid restaurant item in FlatList:', item, 'at index:', index);
             return null;
           }
           return <RestaurantCard restaurant={item as CategorizedRestaurant} />;
