@@ -114,7 +114,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
     <Animated.View style={[styles.container, { transform: [{ scale: animatedScale }] }]}>
       <TouchableOpacity
         onPress={handlePress}
-        style={[styles.card, { backgroundColor: theme.colors.cardBackground }]}
+        style={[styles.card, { backgroundColor: theme.surface }]}
       >
         {/* Top Rated Badge */}
         {isTopRated && (
@@ -145,18 +145,18 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.name, { color: theme.colors.text }]} numberOfLines={1}>
+            <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
               {restaurant.name}
             </Text>
             {showRanking && rank && (
-              <View style={[styles.rankBadge, { backgroundColor: theme.colors.primary }]}>
+              <View style={[styles.rankBadge, { backgroundColor: theme.primary }]}>
                 <Text style={styles.rankBadgeText}>#{rank}</Text>
               </View>
             )}
           </View>
 
           {/* Category */}
-          <Text style={[styles.category, { color: theme.colors.textSecondary }]}>
+          <Text style={[styles.category, { color: theme.textSecondary }]}>
             {restaurant.category || 'Restaurant'}
           </Text>
 
@@ -165,10 +165,10 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
             <View style={styles.ratingSection}>
               <View style={styles.ratingRow}>
                 {renderStars(metrics.averageRating)}
-                <Text style={[styles.ratingValue, { color: theme.colors.text }]}>
+                <Text style={[styles.ratingValue, { color: theme.text }]}>
                   {metrics.averageRating}
                 </Text>
-                <Text style={[styles.ratingCount, { color: theme.colors.textSecondary }]}>
+                <Text style={[styles.ratingCount, { color: theme.textSecondary }]}>
                   ({metrics.totalRatings})
                 </Text>
               </View>
@@ -179,7 +179,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
                   styles.confidenceDot,
                   { backgroundColor: getConfidenceColor(metrics.confidence) }
                 ]} />
-                <Text style={[styles.confidenceText, { color: theme.colors.textSecondary }]}>
+                <Text style={[styles.confidenceText, { color: theme.textSecondary }]}>
                   {Math.round(metrics.confidence * 100)}% confidence
                 </Text>
                 
@@ -194,21 +194,21 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
                 <View style={styles.distributionRow}>
                   {Object.entries(metrics.ratingDistribution).map(([rating, count]) => (
                     <View key={rating} style={styles.distributionBar}>
-                      <Text style={[styles.distributionRating, { color: theme.colors.textSecondary }]}>
+                      <Text style={[styles.distributionRating, { color: theme.textSecondary }]}>
                         {rating}★
                       </Text>
-                      <View style={[styles.distributionTrack, { backgroundColor: theme.colors.border }]}>
+                      <View style={[styles.distributionTrack, { backgroundColor: theme.border }]}>
                         <View
                           style={[
                             styles.distributionFill,
                             {
                               width: `${(count / metrics.totalRatings) * 100}%`,
-                              backgroundColor: '#FFD700'
+                              backgroundColor: theme.primary
                             }
                           ]}
                         />
                       </View>
-                      <Text style={[styles.distributionCount, { color: theme.colors.textSecondary }]}>
+                      <Text style={[styles.distributionCount, { color: theme.textSecondary }]}>
                         {count}
                       </Text>
                     </View>
@@ -218,10 +218,10 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
             </View>
           ) : (
             <View style={styles.noRatingSection}>
-              <Text style={[styles.noRatingText, { color: theme.colors.textSecondary }]}>
+              <Text style={[styles.detailsText, { color: theme.textSecondary }]}>
                 No ratings yet
               </Text>
-              <Text style={[styles.beFirstText, { color: theme.colors.primary }]}>
+              <Text style={[styles.beFirstText, { color: theme.primary }]}>
                 Be the first to rate!
               </Text>
             </View>
@@ -229,14 +229,14 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
 
           {/* Price Range */}
           {restaurant.priceRange && (
-            <Text style={[styles.priceRange, { color: theme.colors.textSecondary }]}>
+            <Text style={[styles.priceRange, { color: theme.textSecondary }]}>
               {restaurant.priceRange}
             </Text>
           )}
 
           {/* Distance/Location (if available) */}
           {restaurant.location && (
-            <Text style={[styles.location, { color: theme.colors.textSecondary }]}>
+            <Text style={[styles.location, { color: theme.textSecondary }]}>
               📍 {restaurant.location.latitude.toFixed(4)}, {restaurant.location.longitude.toFixed(4)}
             </Text>
           )}

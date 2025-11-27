@@ -82,7 +82,7 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
 
   if (compact) {
     return (
-      <Container {...containerProps} style={[styles.compactContainer, { backgroundColor: theme.colors.cardBackground }]}>
+      <Container {...containerProps} style={[styles.compactContainer, { backgroundColor: theme.surface }]}>
         <Animated.View
           style={[
             styles.compactIcon,
@@ -108,7 +108,7 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
   }
 
   return (
-    <Container {...containerProps} style={[styles.container, { backgroundColor: theme.colors.cardBackground }]}>
+    <Container {...containerProps} style={[styles.container, { backgroundColor: theme.surface }]}>
       <View style={styles.statusRow}>
         <View style={styles.iconTextRow}>
           <Animated.View
@@ -131,7 +131,7 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
               {getStatusText()}
             </Text>
             {showDetails && (
-              <Text style={[styles.detailsText, { color: theme.colors.textSecondary }]}>
+              <Text style={[styles.detailsText, { color: theme.textSecondary }]}>
                 {syncStatus.queueLength} pending • {syncStatus.conflictsCount || 0} conflicts
                 {!syncStatus.isOnline && ' • Offline mode'}
               </Text>
@@ -147,7 +147,7 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
       {/* Sync Progress Bar */}
       {syncStatus.status === 'syncing' && syncStatus.queueLength > 0 && (
         <View style={styles.progressContainer}>
-          <Text style={[styles.progressText, { color: theme.colors.textSecondary }]}>
+          <Text style={[styles.progressText, { color: theme.textSecondary }]}>
             Syncing ratings...
           </Text>
         </View>

@@ -350,25 +350,35 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
           const uploadedImageUrl = await uploadAndUpdateRestaurantImage(imageUri, restaurantId, 'logo');
 
-          if (uploadedImageUrl) {
-            setEditForm(prev => ({
-              ...prev,
-              image: uploadedImageUrl
-            }));
+          // If we get here, the upload was successful
+          setEditForm(prev => ({
+            ...prev,
+            image: uploadedImageUrl
+          }));
 
-            setRestaurants(prev => prev.map(r =>
-              r.id === editingRestaurant.id ? { ...r, image: uploadedImageUrl } : r
-            ));
+          setRestaurants(prev => prev.map(r =>
+            r.id === editingRestaurant.id ? { ...r, image: uploadedImageUrl } : r
+          ));
 
-            Alert.alert('Success', 'Image uploaded and saved successfully!');
-          } else {
-            console.warn('⚠️ Image upload failed but continuing without image');
-            Alert.alert('Warning', 'Image upload failed, but restaurant data was saved.');
-          }
+          Alert.alert('Success', 'Image uploaded and saved successfully!');
 
         } catch (uploadError: any) {
           console.error('Image upload error:', uploadError);
-          Alert.alert('Error', `Failed to upload image: ${uploadError?.message || 'Unknown error'}`);
+          
+          // Provide more specific error messages
+          let errorMessage = 'Failed to upload image';
+          
+          if (uploadError.message.includes('Failed to process image for upload')) {
+            errorMessage = 'Failed to process the selected image. Please try a different image.';
+          } else if (uploadError.message.includes('Failed to upload image')) {
+            errorMessage = 'Failed to upload image to storage. Please check your internet connection.';
+          } else if (uploadError.message.includes('Failed to update restaurant')) {
+            errorMessage = 'Image uploaded but failed to update restaurant record. Please try again.';
+          } else if (uploadError.message) {
+            errorMessage = `Image upload failed: ${uploadError.message}`;
+          }
+          
+          Alert.alert('Image Upload Error', errorMessage + '\n\nThe restaurant data was not modified. Please try again.');
         } finally {
           setImageUploading(false);
         }
@@ -1175,11 +1185,6 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                       {item.createdAt && (
                         <Text style={{ color: theme.textSecondary, fontSize: 11, marginTop: 2 }}>
                           Created: {new Date(item.createdAt).toLocaleDateString()}
-                        </Text>
-                      )}
-                      {item.lastSignIn && (
-                        <Text style={{ color: theme.textSecondary, fontSize: 11 }}>
-                          Last sign in: {new Date(item.lastSignIn).toLocaleDateString()}
                         </Text>
                       )}
                     </View>

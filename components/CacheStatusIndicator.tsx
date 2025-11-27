@@ -74,7 +74,7 @@ const CacheStatusIndicator: React.FC<CacheStatusIndicatorProps> = ({
   const containerProps = onPress ? { onPress } : {};
 
   return (
-    <Container {...containerProps} style={[styles.container, { backgroundColor: theme.colors.cardBackground }]}>
+    <Container {...containerProps} style={[styles.container, { backgroundColor: theme.surface }]}>
       <View style={styles.statusRow}>
         <View style={styles.iconTextRow}>
           <Text style={styles.icon}>{getStatusIcon()}</Text>
@@ -83,7 +83,7 @@ const CacheStatusIndicator: React.FC<CacheStatusIndicatorProps> = ({
               {getStatusText()}
             </Text>
             {showDetails && (
-              <Text style={[styles.detailsText, { color: theme.colors.textSecondary }]}>
+              <Text style={[styles.detailsText, { color: theme.textSecondary }]}>
                 {cacheStatus.downloadedItems} / {cacheStatus.totalItems} items
                 {cacheStatus.cacheSize > 0 && ` • ${formatCacheSize(cacheStatus.cacheSize)}`}
               </Text>
@@ -93,7 +93,7 @@ const CacheStatusIndicator: React.FC<CacheStatusIndicatorProps> = ({
         
         {cacheStatus.isDownloading && (
           <View style={styles.progressContainer}>
-            <Text style={[styles.progressText, { color: theme.colors.textSecondary }]}>
+            <Text style={[styles.progressText, { color: theme.textSecondary }]}>
               {cacheStatus.downloadProgress}%
             </Text>
           </View>
@@ -103,7 +103,7 @@ const CacheStatusIndicator: React.FC<CacheStatusIndicatorProps> = ({
       {/* Progress Bar */}
       {cacheStatus.isDownloading && (
         <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBarBackground, { backgroundColor: theme.colors.border }]}>
+          <View style={[styles.progressBarBackground, { backgroundColor: theme.border }]}>
             <Animated.View
               style={[
                 styles.progressBarFill,

@@ -67,14 +67,14 @@ const RatingSortSelector: React.FC<RatingSortSelectorProps> = ({
   if (compact) {
     return (
       <TouchableOpacity
-        style={[styles.compactContainer, { backgroundColor: theme.colors.cardBackground }]}
+        style={[styles.compactContainer, { backgroundColor: theme.surface }]}
         onPress={() => setModalVisible(true)}
       >
         <Text style={styles.compactIcon}>{currentOption?.icon}</Text>
-        <Text style={[styles.compactText, { color: theme.colors.text }]}>
+        <Text style={[styles.compactText, { color: theme.text }]}>
           {currentOption?.label}
         </Text>
-        <Text style={[styles.compactArrow, { color: theme.colors.textSecondary }]}>▼</Text>
+        <Text style={[styles.compactArrow, { color: theme.textSecondary }]}>▼</Text>
       </TouchableOpacity>
     );
   }
@@ -82,21 +82,21 @@ const RatingSortSelector: React.FC<RatingSortSelectorProps> = ({
   return (
     <>
       <TouchableOpacity
-        style={[styles.container, { backgroundColor: theme.colors.cardBackground }]}
+        style={[styles.container, { backgroundColor: theme.surface }]}
         onPress={() => setModalVisible(true)}
       >
         <View style={styles.leftSection}>
           <Text style={styles.icon}>{currentOption?.icon}</Text>
           <View style={styles.textSection}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
+            <Text style={[styles.label, { color: theme.text }]}>
               Sort by: {currentOption?.label}
             </Text>
-            <Text style={[styles.description, { color: theme.colors.textSecondary }]}>
+            <Text style={[styles.description, { color: theme.textSecondary }]}>
               {currentOption?.description}
             </Text>
           </View>
         </View>
-        <Text style={[styles.arrow, { color: theme.colors.textSecondary }]}>▼</Text>
+        <Text style={[styles.arrow, { color: theme.textSecondary }]}>▼</Text>
       </TouchableOpacity>
 
       <Modal
@@ -106,9 +106,9 @@ const RatingSortSelector: React.FC<RatingSortSelectorProps> = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.background }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
                 Sort Restaurants
               </Text>
               <TouchableOpacity
@@ -126,8 +126,8 @@ const RatingSortSelector: React.FC<RatingSortSelectorProps> = ({
                   style={[
                     styles.optionItem,
                     {
-                      backgroundColor: selectedSort === option.value ? theme.colors.primary + '20' : 'transparent',
-                      borderColor: selectedSort === option.value ? theme.colors.primary : theme.colors.border
+                      backgroundColor: selectedSort === option.value ? theme.primary + '20' : 'transparent',
+                      borderColor: selectedSort === option.value ? theme.primary : theme.border
                     }
                   ]}
                   onPress={() => handleSortSelect(option.value)}
@@ -138,19 +138,19 @@ const RatingSortSelector: React.FC<RatingSortSelectorProps> = ({
                       <Text style={[
                         styles.optionLabel,
                         {
-                          color: selectedSort === option.value ? theme.colors.primary : theme.colors.text,
+                          color: selectedSort === option.value ? theme.primary : theme.text,
                           fontWeight: selectedSort === option.value ? '600' : '400'
                         }
                       ]}>
                         {option.label}
                       </Text>
-                      <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>
+                      <Text style={[styles.optionDescription, { color: theme.textSecondary }]}>
                         {option.description}
                       </Text>
                     </View>
                   </View>
                   {selectedSort === option.value && (
-                    <Text style={[styles.selectedIcon, { color: theme.colors.primary }]}>✓</Text>
+                    <Text style={[styles.selectedIcon, { color: theme.primary }]}>✓</Text>
                   )}
                 </TouchableOpacity>
               ))}

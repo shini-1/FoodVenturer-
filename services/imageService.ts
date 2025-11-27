@@ -1,7 +1,85 @@
 import { supabase, BUCKETS } from '../src/config/supabase';
+import * as FileSystem from 'expo-file-system';
 
 // Bucket name for storage
 const STORAGE_BUCKET = BUCKETS.RESTAURANT_IMAGES;
+
+/**
+ * Convert ImagePicker URI to a format suitable for upload
+ */
+const prepareImageForUpload = async (imageUri: string): Promise<{ blob: Blob; mimeType: string } | null> => {
+  try {
+    console.log('🔄 Preparing image for upload:', imageUri);
+
+    // Handle different URI formats
+    let processedUri = imageUri;
+    
+    // For Expo ImagePicker URIs, ensure they're in the correct format
+    if (imageUri.startsWith('file://')) {
+      processedUri = imageUri;
+    } else if (!imageUri.startsWith('http') && !imageUri.startsWith('content://')) {
+      processedUri = `file://${imageUri}`;
+    }
+
+    // For React Native, we need to read the file and convert to base64, then to blob
+    if (processedUri.startsWith('file://') || processedUri.startsWith('content://')) {
+      try {
+        // Read the file as base64
+        const base64 = await FileSystem.readAsStringAsync(processedUri, {
+          encoding: FileSystem.EncodingType.BASE64,
+        });
+
+        // Determine MIME type from file extension or default to JPEG
+        let mimeType = 'image/jpeg';
+        if (processedUri.toLowerCase().includes('.png')) {
+          mimeType = 'image/png';
+        } else if (processedUri.toLowerCase().includes('.jpg') || processedUri.toLowerCase().includes('.jpeg')) {
+          mimeType = 'image/jpeg';
+        } else if (processedUri.toLowerCase().includes('.webp')) {
+          mimeType = 'image/webp';
+        }
+
+        // Convert base64 to blob
+        const base64Data = `data:${mimeType};base64,${base64}`;
+        const response = await fetch(base64Data);
+        const blob = await response.blob();
+
+        console.log('✅ Successfully prepared image blob:', { size: blob.size, type: blob.type });
+        return { blob, mimeType };
+      } catch (fileReadError) {
+        console.error('❌ Failed to read image file:', fileReadError);
+        
+        // Try fallback method using fetch directly on the URI
+        try {
+          console.log('🔄 Trying fallback fetch method...');
+          const response = await fetch(processedUri);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const blob = await response.blob();
+          console.log('✅ Fallback method successful:', { size: blob.size, type: blob.type });
+          return { blob, mimeType: blob.type || 'image/jpeg' };
+        } catch (fallbackError) {
+          console.error('❌ Fallback method also failed:', fallbackError);
+          return null;
+        }
+      }
+    } else {
+      // For HTTP URLs, use regular fetch
+      const response = await fetch(processedUri);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const blob = await response.blob();
+      return { blob, mimeType: blob.type || 'image/jpeg' };
+    }
+  } catch (error) {
+    console.error('❌ Failed to prepare image for upload:', error);
+    return null;
+  }
+};
 
 /**
  * Upload an image to Supabase Storage and update the restaurant record with the image URL
@@ -23,69 +101,25 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
 
     console.log('🖼️ Starting image upload:', { imageUri, restaurantId, imageType });
 
-    // Handle different URI formats
-    let processedImageUri = imageUri;
+    // Prepare the image for upload
+    const imageData = await prepareImageForUpload(imageUri);
     
-    // Handle Expo ImagePicker URIs that might need special processing
-    if (imageUri.startsWith('file://') || imageUri.startsWith('content://') || imageUri.startsWith('data:')) {
-      processedImageUri = imageUri;
-    } else if (!imageUri.startsWith('http')) {
-      // Assume it's a local file path
-      processedImageUri = `file://${imageUri}`;
+    if (!imageData || !imageData.blob) {
+      console.error('❌ Failed to prepare image for upload');
+      throw new Error('Failed to process image for upload');
     }
 
-    // Fetch the image data as a blob with proper error handling
-    let response: Response;
-    let blob: Blob;
+    console.log('✅ Image prepared successfully:', { 
+      size: imageData.blob.size, 
+      type: imageData.blob.type,
+      mimeType: imageData.mimeType 
+    });
 
-    try {
-      console.log('🔄 Fetching image from URI:', processedImageUri);
-      response = await fetch(processedImageUri);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // Check if blob method exists
-      if (typeof response.blob !== 'function') {
-        throw new Error('Response does not have blob method');
-      }
-
-      blob = await response.blob();
-      
-      if (!blob) {
-        throw new Error('Failed to create blob from response');
-      }
-
-      console.log('✅ Successfully created blob:', { size: blob.size, type: blob.type });
-    } catch (fetchError) {
-      console.error('❌ Failed to fetch image blob:', fetchError);
-      
-      // Try alternative approach using FileReader if available
-      try {
-        console.log('🔄 Trying alternative image processing...');
-        
-        // For React Native, we might need to use a different approach
-        // Return a placeholder URL or skip upload
-        console.warn('⚠️ Image upload failed, continuing without image update');
-        return ''; // Return empty string to indicate no image was uploaded
-      } catch (altError) {
-        console.error('❌ Alternative image processing also failed:', altError);
-        throw new Error(`Failed to process image: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
-      }
-    }
-
-    // If we got an empty string, skip the upload and return
-    if (!blob) {
-      console.warn('⚠️ No blob created, skipping image upload');
-      return '';
-    }
-
-    // Upload to Supabase Storage
+    // Upload to Supabase Storage with the correct MIME type
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(filePath, blob, {
-        contentType: 'image/jpeg',
+      .upload(filePath, imageData.blob, {
+        contentType: imageData.mimeType,
         upsert: true
       });
 
@@ -93,6 +127,8 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
       console.error('Supabase storage upload error:', error);
       throw new Error(`Failed to upload image: ${error.message}`);
     }
+
+    console.log('✅ Image uploaded to storage successfully');
 
     // Get the public URL for the uploaded file
     const publicUrlData = await supabase.storage
@@ -118,10 +154,9 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
   } catch (error) {
     console.error('❌ Image upload failed:', error);
     
-    // Don't throw the error, just log it and return empty string
-    // This allows the restaurant update to continue even if image upload fails
-    console.warn('⚠️ Continuing without image update due to upload failure');
-    return '';
+    // Re-throw the error so the calling code can handle it properly
+    // This will prevent silent failures and provide better error messages
+    throw error;
   }
 };
 
@@ -138,12 +173,26 @@ export const uploadImageToRestaurantBucket = async (
     const fileName = `${filePrefix}-${Date.now()}.jpg`;
     const filePath = `${fileName}`;
 
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
+    // Prepare the image for upload
+    const imageData = await prepareImageForUpload(imageUri);
+    
+    if (!imageData || !imageData.blob) {
+      console.error('❌ Failed to prepare image for upload');
+      throw new Error('Failed to process image for upload');
+    }
+
+    console.log('✅ Image prepared for bucket upload:', { 
+      size: imageData.blob.size, 
+      type: imageData.blob.type,
+      mimeType: imageData.mimeType 
+    });
 
     const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(filePath, blob, { contentType, upsert: true });
+      .upload(filePath, imageData.blob, { 
+        contentType: imageData.mimeType, 
+        upsert: true 
+      });
 
     if (uploadError) {
       throw new Error(`Failed to upload image: ${uploadError.message}`);
@@ -154,6 +203,7 @@ export const uploadImageToRestaurantBucket = async (
       .getPublicUrl(filePath);
 
     const imageUrl = publicUrlData.data.publicUrl;
+    console.log('✅ Image uploaded to bucket successfully:', imageUrl);
     return imageUrl;
   } catch (error: any) {
     console.error('Error uploading image to storage:', error);
