@@ -30,10 +30,10 @@ import { ratingCalculationService, RestaurantRatingData } from '../src/services/
 
 import { Restaurant } from '../types';
 
-// Error boundary component
+// Enhanced error boundary component with detailed debugging
 class HomeScreenErrorBoundary extends React.Component<
   { children: React.ReactNode; navigation: any },
-  { hasError: boolean; error?: Error }
+  { hasError: boolean; error?: Error; errorInfo?: React.ErrorInfo; errorStack?: string }
 > {
   constructor(props: { children: React.ReactNode; navigation: any }) {
     super(props);
@@ -45,14 +45,44 @@ class HomeScreenErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('❌ HomeScreen Error Boundary caught an error:', error, errorInfo);
+    // Enhanced debugging for Text component errors
+    const isTextError = error.message?.includes('Text strings must be rendered within a <Text>') || 
+                       error.message?.includes('Text component');
+    
+    console.error('❌ HomeScreen Error Boundary caught an error:', {
+      message: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      isTextError,
+      timestamp: new Date().toISOString(),
+      errorType: isTextError ? 'TEXT_COMPONENT_ERROR' : 'GENERAL_ERROR'
+    });
+
+    // Detailed logging for Text component errors
+    if (isTextError) {
+      console.error('🔍 TEXT ERROR DEBUG INFO:', {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        componentStack: errorInfo.componentStack,
+        possibleCauses: [
+          'Raw text string outside Text component',
+          'JSX expression returning text without Text wrapper',
+          'Console.log with objects causing rendering issues',
+          'Template literal with undefined values in Alert',
+          'Array.map returning text without Text wrapper'
+        ]
+      });
+    }
+
     if (crashLogger && typeof crashLogger.logError === 'function') {
       crashLogger.logError(error, {
         component: 'HomeScreen',
         screen: 'HomeScreen',
         additionalContext: {
           errorBoundary: true,
-          errorInfo
+          errorInfo,
+          isTextError,
+          timestamp: new Date().toISOString()
         }
       });
     }
@@ -386,6 +416,22 @@ function isValidHttpUrl(value?: string): boolean {
 function HomeScreen({ navigation }: { navigation: any }) {
   console.log('🏠 HomeScreen: Component starting...');
   
+  // Render-time debugging system
+  const renderDebug = {
+    logJSX: (component: string, props: any) => {
+      if (props && typeof props === 'object' && Object.keys(props).length > 0) {
+        console.log(`🔍 JSX Debug - ${component}:`, { props, hasText: typeof props.children === 'string' });
+      }
+    },
+    logTextContent: (content: any, source: string) => {
+      if (typeof content === 'string' && content.length > 0) {
+        console.log(`📝 Text Debug - ${source}:`, { content, length: content.length, isWrapped: true });
+      } else if (typeof content === 'object') {
+        console.warn(`⚠️ Object Debug - ${source}:`, { content, type: typeof content, mightCauseError: true });
+      }
+    }
+  };
+
   let theme: any;
   try {
     const themeContext = useTheme();
@@ -1050,19 +1096,25 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   // RestaurantCard component that handles address display
   const RestaurantCard = useCallback(({ restaurant }: { restaurant: CategorizedRestaurant }) => {
-    // Comprehensive safety checks
+    // Comprehensive safety checks with enhanced debugging
+    console.log(`🔍 RestaurantCard Debug - Rendering:`, { 
+      restaurantId: restaurant?.id, 
+      restaurantName: restaurant?.name,
+      hasRestaurant: !!restaurant 
+    });
+
     if (!restaurant) {
-      console.warn('⚠️ RestaurantCard received null restaurant');
+      console.error('❌ RestaurantCard Error: null restaurant received');
       return null;
     }
     
     if (!restaurant.id || typeof restaurant.id !== 'string') {
-      console.warn('⚠️ RestaurantCard received restaurant with invalid id:', restaurant);
+      console.error('❌ RestaurantCard Error: invalid restaurant id:', { id: restaurant.id, restaurant });
       return null;
     }
     
     if (!restaurant.name || typeof restaurant.name !== 'string') {
-      console.warn('⚠️ RestaurantCard received restaurant with invalid name:', restaurant);
+      console.error('❌ RestaurantCard Error: invalid restaurant name:', { name: restaurant.name, restaurant });
       return null;
     }
 
@@ -1071,6 +1123,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
       const categoryConfig = typeof resolveCategoryConfig === 'function' 
         ? resolveCategoryConfig(restaurant.category, restaurant.name)
         : { name: restaurant.category || 'other', label: 'Other', emoji: '🍽️' };
+
+      // Debug logging for Text content
+      renderDebug.logTextContent(restaurant.name, 'restaurant.name');
+      renderDebug.logTextContent(address, 'address');
+      renderDebug.logTextContent(categoryConfig.label, 'categoryConfig.label');
+      renderDebug.logTextContent(categoryConfig.emoji, 'categoryConfig.emoji');
 
       return (
         <TouchableOpacity
@@ -1102,13 +1160,24 @@ function HomeScreen({ navigation }: { navigation: any }) {
             />
             <View style={styles.cardTextContent}>
               <Text style={styles.cardTitle}>
-                {restaurant.name ? restaurant.name.split(', ')[0] : 'Unknown Restaurant'}
+                {(() => {
+                  const displayName = restaurant.name ? restaurant.name.split(', ')[0] : 'Unknown Restaurant';
+                  renderDebug.logTextContent(displayName, 'cardTitle');
+                  return displayName;
+                })()}
               </Text>
               <Text style={styles.cardLocation}>
-                {address}
+                {(() => {
+                  renderDebug.logTextContent(address, 'cardLocation');
+                  return address;
+                })()}
               </Text>
               <Text style={styles.cardCategory}>
-                {`${categoryConfig.emoji} ${categoryConfig.label}`}
+                {(() => {
+                  const categoryText = `${categoryConfig.emoji} ${categoryConfig.label}`;
+                  renderDebug.logTextContent(categoryText, 'cardCategory');
+                  return categoryText;
+                })()}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                 <Text style={{ color: '#FFD700' }}>
@@ -1121,10 +1190,18 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   })()}
                 </Text>
                 <Text style={{ marginLeft: 6, color: DESIGN_COLORS.textSecondary }}>
-                  {typeof restaurant.rating === 'number' ? restaurant.rating.toFixed(1) : 'No ratings yet'}
+                  {(() => {
+                    const ratingText = typeof restaurant.rating === 'number' ? restaurant.rating.toFixed(1) : 'No ratings yet';
+                    renderDebug.logTextContent(ratingText, 'ratingText');
+                    return ratingText;
+                  })()}
                 </Text>
                 <Text style={{ marginLeft: 10, color: DESIGN_COLORS.textPrimary }}>
-                  {restaurant.priceRange || '₱'}
+                  {(() => {
+                    const priceText = restaurant.priceRange || '₱';
+                    renderDebug.logTextContent(priceText, 'priceText');
+                    return priceText;
+                  })()}
                 </Text>
               </View>
             </View>
@@ -1132,12 +1209,23 @@ function HomeScreen({ navigation }: { navigation: any }) {
         </TouchableOpacity>
       );
     } catch (error) {
-      console.error('❌ Error rendering RestaurantCard for restaurant:', restaurant.name, error);
+      console.error('❌ RestaurantCard Rendering Error:', {
+        restaurantName: restaurant?.name || 'Unknown',
+        restaurantId: restaurant?.id || 'Unknown',
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString()
+      });
       return (
         <View style={styles.card}>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>Error loading restaurant</Text>
-          </View>
+          <Text style={styles.cardTitle}>Error loading restaurant</Text>
+          <Text style={styles.cardLocation}>
+            {(() => {
+              const errorText = `Failed to load: ${restaurant?.name || 'Unknown'}`;
+              renderDebug.logTextContent(errorText, 'errorText');
+              return errorText;
+            })()}
+          </Text>
         </View>
       );
     }
