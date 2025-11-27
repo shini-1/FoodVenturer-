@@ -384,8 +384,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
   
   let theme: any;
   try {
-    const themeResult = useTheme();
-    theme = themeResult.theme;
+    const themeContext = useTheme();
+    theme = themeContext.theme;
   } catch (themeError) {
     console.warn('⚠️ Theme context not available, using default theme');
     theme = { 
