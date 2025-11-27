@@ -204,20 +204,22 @@ function HomeScreen({ navigation }: { navigation: any }) {
       // If we have local data and it's not the first page, use it
       if (localRestaurants.length > 0 && targetPage > 1) {
         console.log('🔄 Using local data for pagination');
-        // Convert RestaurantRow back to Restaurant format
-        const restaurantData: Restaurant[] = localRestaurants.map(r => ({
-          id: r.id,
-          name: r.name,
-          location: {
-            latitude: r.latitude || 0,
-            longitude: r.longitude || 0,
-          },
-          image: r.image_url || undefined,
-          category: r.category,
-          rating: r.rating || undefined,
-          priceRange: r.price_range || undefined,
-          description: r.description || undefined,
-        }));
+        // Convert RestaurantRow back to Restaurant format with null safety
+        const restaurantData: Restaurant[] = localRestaurants
+          .filter(r => r && r.id) // Filter out null/undefined entries first
+          .map(r => ({
+            id: r.id,
+            name: r.name || 'Unknown Restaurant',
+            location: {
+              latitude: r.latitude || 0,
+              longitude: r.longitude || 0,
+            },
+            image: r.image_url || undefined,
+            category: r.category || 'casual',
+            rating: r.rating || undefined,
+            priceRange: r.price_range || undefined,
+            description: r.description || undefined,
+          }));
 
         setRestaurants(prev => {
           const existing = new Set(prev.map((r: Restaurant) => r.id));
@@ -288,20 +290,22 @@ function HomeScreen({ navigation }: { navigation: any }) {
           // Fallback to local data if server fails
           if (localRestaurants.length > 0) {
             console.log('🔄 Falling back to local data');
-            // Convert RestaurantRow back to Restaurant format
-            const restaurantData: Restaurant[] = localRestaurants.map(r => ({
-              id: r.id,
-              name: r.name,
-              location: {
-                latitude: r.latitude || 0,
-                longitude: r.longitude || 0,
-              },
-              image: r.image_url || undefined,
-              category: r.category,
-              rating: r.rating || undefined,
-              priceRange: r.price_range || undefined,
-              description: r.description || undefined,
-            }));
+            // Convert RestaurantRow back to Restaurant format with null safety
+            const restaurantData: Restaurant[] = localRestaurants
+              .filter(r => r && r.id) // Filter out null/undefined entries first
+              .map(r => ({
+                id: r.id,
+                name: r.name || 'Unknown Restaurant',
+                location: {
+                  latitude: r.latitude || 0,
+                  longitude: r.longitude || 0,
+                },
+                image: r.image_url || undefined,
+                category: r.category || 'casual',
+                rating: r.rating || undefined,
+                priceRange: r.price_range || undefined,
+                description: r.description || undefined,
+              }));
 
             setRestaurants(restaurantData);
             setHasMore(localRestaurants.length === SERVER_PAGE_SIZE);
@@ -426,21 +430,48 @@ function HomeScreen({ navigation }: { navigation: any }) {
   }, [restaurants.length, hasMore, isLoadingPage, refreshing, serverPage, loadPage]);
 
   useEffect(() => {
-    console.log('🏠 HomeScreen: Restaurants state updated:', restaurants.length);
+    console.log('🏠 HomeScreen: Restaurants state updated:', restaurants?.length || 0);
+
+    // Safety check - ensure restaurants is an array
+    if (!Array.isArray(restaurants)) {
+      console.error('❌ Restaurants state is not an array:', restaurants);
+      return;
+    }
+
     console.log('📍 HomeScreen: Restaurant locations:', restaurants.map(r => ({
-      name: r.name,
-      lat: r.location?.latitude,
-      lng: r.location?.longitude,
-      valid: !!(r.location?.latitude && r.location?.longitude)
+      name: r?.name || 'Unknown',
+      lat: r?.location?.latitude,
+      lng: r?.location?.longitude,
+      valid: !!(r?.location?.latitude && r?.location?.longitude)
     })));
   }, [restaurants]);
 
   // Categorize restaurants using centralized config
   const categorizedRestaurants = useMemo(() => {
-    if (!restaurants || restaurants.length === 0) return [];
-    
+    if (!restaurants || !Array.isArray(restaurants) || restaurants.length === 0) {
+      console.log('📋 No restaurants to categorize');
+      return [];
+    }
+
+    console.log(`🏷️ Categorizing ${restaurants.length} restaurants`);
+
     return restaurants
-      .filter((restaurant) => restaurant && restaurant.id && restaurant.name) // Filter out invalid entries
+      .filter((restaurant): restaurant is Restaurant => {
+        // Extra safety check - ensure restaurant exists and has required fields
+        if (!restaurant) {
+          console.warn('⚠️ Filtering out null restaurant');
+          return false;
+        }
+        if (!restaurant.id) {
+          console.warn('⚠️ Filtering out restaurant without id:', restaurant);
+          return false;
+        }
+        if (!restaurant.name) {
+          console.warn('⚠️ Filtering out restaurant without name:', restaurant);
+          return false;
+        }
+        return true;
+      })
       .map((restaurant) => {
         const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
 
@@ -465,18 +496,41 @@ function HomeScreen({ navigation }: { navigation: any }) {
     return fullName; // Fallback to full name if parsing fails
   };
 
-  const filteredRestaurants = useMemo(() => categorizedRestaurants.filter((restaurant) => {
-    // Safety check
-    if (!restaurant || !restaurant.name) return false;
-    
-    // Text search filter
-    const matchesSearch = restaurant.name.toLowerCase().includes(debouncedSearchText.toLowerCase());
+  const filteredRestaurants = useMemo(() => {
+    // Safety check - ensure we always return an array
+    if (!categorizedRestaurants || !Array.isArray(categorizedRestaurants)) {
+      console.log('📋 categorizedRestaurants is not an array, returning empty');
+      return [];
+    }
 
-    // Category filter
-    const matchesCategory = selectedCategory === 'all' || restaurant.category === selectedCategory;
+    console.log(`🔍 Filtering ${categorizedRestaurants.length} categorized restaurants`);
 
-    return matchesSearch && matchesCategory;
-  }), [categorizedRestaurants, debouncedSearchText, selectedCategory]);
+    return categorizedRestaurants.filter((restaurant) => {
+      // Safety check
+      if (!restaurant) {
+        console.warn('⚠️ Filtering out null categorized restaurant');
+        return false;
+      }
+
+      if (!restaurant.id) {
+        console.warn('⚠️ Filtering out categorized restaurant without id:', restaurant);
+        return false;
+      }
+
+      if (!restaurant.name) {
+        console.warn('⚠️ Filtering out categorized restaurant without name:', restaurant);
+        return false;
+      }
+
+      // Text search filter
+      const matchesSearch = restaurant.name.toLowerCase().includes(debouncedSearchText.toLowerCase());
+
+      // Category filter
+      const matchesCategory = selectedCategory === 'all' || restaurant.category === selectedCategory;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [categorizedRestaurants, debouncedSearchText, selectedCategory]);
 
   const visibleRestaurants = useMemo(() => {
     // Safety check - ensure we always return an array
@@ -532,21 +586,40 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   // RestaurantCard component that handles address display
   const RestaurantCard = useCallback(({ restaurant }: { restaurant: CategorizedRestaurant }) => {
-    // Safety checks
-    if (!restaurant || !restaurant.id || !restaurant.name) {
-      console.error('Invalid restaurant data:', restaurant);
+    // Safety checks - comprehensive null checking
+    if (!restaurant) {
+      console.error('❌ RestaurantCard: restaurant prop is null/undefined');
       return null;
     }
-    
+
+    if (!restaurant.id) {
+      console.error('❌ RestaurantCard: restaurant missing id:', restaurant);
+      return null;
+    }
+
+    if (!restaurant.name) {
+      console.error('❌ RestaurantCard: restaurant missing name:', restaurant);
+      return null;
+    }
+
+    // Safe access to location
+    const latitude = restaurant.location?.latitude;
+    const longitude = restaurant.location?.longitude;
+
     const address = addressCache[restaurant.id] || '📍 Loading address...';
     const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
 
+    console.log('🍽️ Rendering restaurant card:', restaurant.name, 'address:', address);
+
     return (
       <TouchableOpacity
-        onPress={() => navigation.navigate('RestaurantDetail', {
-          restaurantId: restaurant.id,
-          restaurant: restaurant
-        })}
+        onPress={() => {
+          console.log('👆 Navigating to restaurant:', restaurant.id);
+          navigation.navigate('RestaurantDetail', {
+            restaurantId: restaurant.id,
+            restaurant: restaurant
+          });
+        }}
         style={styles.card}
       >
         <View style={styles.cardContent}>
@@ -558,11 +631,13 @@ function HomeScreen({ navigation }: { navigation: any }) {
             contentFit="cover"
             transition={300}
             onError={() => {
-              console.log('Image load error for', restaurant.name || 'Unknown');
+              console.log('🖼️ Image load error for', restaurant.name || 'Unknown');
             }}
           />
           <View style={styles.cardTextContent}>
-            <Text style={styles.cardTitle}>{restaurant.name ? restaurant.name.split(', ')[0] : 'Unknown Restaurant'}</Text>
+            <Text style={styles.cardTitle}>
+              {restaurant.name ? restaurant.name.split(', ')[0] : 'Unknown Restaurant'}
+            </Text>
             <Text style={styles.cardLocation}>
               {address}
             </Text>
@@ -794,9 +869,22 @@ function HomeScreen({ navigation }: { navigation: any }) {
         keyExtractor={(item) => item?.id || Math.random().toString()}
         renderItem={({ item }) => {
           // Safety check - skip if item is invalid
-          if (!item || !item.id) {
+          if (!item) {
+            console.warn('⚠️ FlatList renderItem: item is null/undefined');
             return null;
           }
+
+          if (!item.id) {
+            console.warn('⚠️ FlatList renderItem: item missing id:', item);
+            return null;
+          }
+
+          if (!item.name) {
+            console.warn('⚠️ FlatList renderItem: item missing name:', item);
+            return null;
+          }
+
+          console.log('📋 Rendering item:', item.name);
           return <RestaurantCard restaurant={item as CategorizedRestaurant} />;
         }}
         refreshing={refreshing}
