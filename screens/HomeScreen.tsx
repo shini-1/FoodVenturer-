@@ -23,6 +23,71 @@ import { crashLogger } from '../src/services/crashLogger';
 
 import { Restaurant } from '../types';
 
+// Error boundary component
+class HomeScreenErrorBoundary extends React.Component<
+  { children: React.ReactNode; navigation: any },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode; navigation: any }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('❌ HomeScreen Error Boundary caught an error:', error, errorInfo);
+    crashLogger.logError(error, {
+      component: 'HomeScreen',
+      screen: 'HomeScreen',
+      additionalContext: {
+        errorBoundary: true,
+        errorInfo
+      }
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 24, marginBottom: 16 }}>⚠️</Text>
+          <Text style={{ fontSize: 18, color: '#666', textAlign: 'center', marginBottom: 8 }}>
+            Unable to load screen
+          </Text>
+          <Text style={{ fontSize: 14, color: '#999', textAlign: 'center', marginBottom: 20 }}>
+            A critical error occurred. Please restart the app.
+          </Text>
+          <TouchableOpacity
+            onPress={() => this.props.navigation.goBack()}
+            style={{ backgroundColor: '#4A90E2', padding: 12, borderRadius: 8 }}
+          >
+            <Text style={{ color: 'white', fontSize: 16 }}>Go Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={async () => {
+              try {
+                const logs = await crashLogger.getLogs();
+                console.log('📋 Recent crash logs:', logs.slice(0, 3));
+                Alert.alert('Debug Info', `Recent errors: ${crashLogger.getErrorSummary()}`);
+              } catch (err) {
+                Alert.alert('Debug Info', 'Unable to retrieve error logs');
+              }
+            }}
+            style={{ marginTop: 12, padding: 12 }}
+          >
+            <Text style={{ color: '#666', fontSize: 14 }}>Show Error Logs</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 interface CategorizedRestaurant extends Restaurant {
   category: string; // Override to make category required
 }
@@ -74,29 +139,28 @@ function isValidHttpUrl(value?: string): boolean {
 }
 
 function HomeScreen({ navigation }: { navigation: any }) {
-  try {
-    console.log('🏠 HomeScreen: Component starting...');
-    
-    const { theme } = useTheme();
-    // const { isOnline } = useNetwork(); // Disabled - not using offline features for now
-    
-    // Initialize crash logger with fallback
-    const [crashLoggerReady, setCrashLoggerReady] = useState(false);
-    
-    // Initialize crash logger safely
-    useEffect(() => {
-      const initLogger = async () => {
-        try {
-          await crashLogger.initialize();
-          setCrashLoggerReady(true);
-          crashLogger.logComponentEvent('HomeScreen', 'mount_start');
-        } catch (error) {
-          console.error('❌ Failed to initialize crash logger:', error);
-          setCrashLoggerReady(false);
-        }
-      };
-      initLogger();
-    }, []);
+  console.log('🏠 HomeScreen: Component starting...');
+  
+  const { theme } = useTheme();
+  // const { isOnline } = useNetwork(); // Disabled - not using offline features for now
+  
+  // Initialize crash logger with fallback
+  const [crashLoggerReady, setCrashLoggerReady] = useState(false);
+  
+  // Initialize crash logger safely
+  useEffect(() => {
+    const initLogger = async () => {
+      try {
+        await crashLogger.initialize();
+        setCrashLoggerReady(true);
+        crashLogger.logComponentEvent('HomeScreen', 'mount_start');
+      } catch (error) {
+        console.error('❌ Failed to initialize crash logger:', error);
+        setCrashLoggerReady(false);
+      }
+    };
+    initLogger();
+  }, []);
     
     const [searchText, setSearchText] = useState('');
     const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -921,50 +985,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
       />
     </View>
   );
-  } catch (error) {
-    console.error('❌ Fatal error rendering HomeScreen:', error);
-    
-    // Log the crash for production debugging
-    crashLogger.logError(error as Error, {
-      component: 'HomeScreen',
-      screen: 'HomeScreen',
-      additionalContext: {
-        restaurantsLength: restaurants?.length,
-        isLoadingPage,
-        hasError,
-        searchText,
-        selectedCategory
-      }
-    });
-
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-        <Text style={{ fontSize: 24, marginBottom: 16 }}>⚠️</Text>
-        <Text style={{ fontSize: 18, color: '#666', textAlign: 'center', marginBottom: 8 }}>
-          Unable to load screen
-        </Text>
-        <Text style={{ fontSize: 14, color: '#999', textAlign: 'center', marginBottom: 20 }}>
-          A critical error occurred. Please restart the app.
-        </Text>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={{ backgroundColor: '#4A90E2', padding: 12, borderRadius: 8 }}
-        >
-          <Text style={{ color: 'white', fontSize: 16 }}>Go Back</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={async () => {
-            const logs = await crashLogger.getLogs();
-            console.log('📋 Recent crash logs:', logs.slice(0, 3));
-            Alert.alert('Debug Info', `Recent errors: ${crashLogger.getErrorSummary()}`);
-          }}
-          style={{ marginTop: 12, padding: 12 }}
-        >
-          <Text style={{ color: '#666', fontSize: 14 }}>Show Error Logs</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 }
 
 const styles = StyleSheet.create({
@@ -1177,4 +1197,10 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
+export default function HomeScreenWrapper({ navigation }: { navigation: any }) {
+  return (
+    <HomeScreenErrorBoundary navigation={navigation}>
+      <HomeScreen navigation={navigation} />
+    </HomeScreenErrorBoundary>
+  );
+}
