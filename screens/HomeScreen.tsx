@@ -14,13 +14,13 @@ import { Image } from 'expo-image';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
-import OfflineBanner from '../components/OfflineBanner';
+// import OfflineBanner from '../components/OfflineBanner'; // Disabled - may cause crashes
 import { OfflineService } from '../src/services/offlineService';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { resolveCategoryConfig, getAllCategoryOptions } from '../src/config/categoryConfig';
 import { toggleDeviceFavorite, getDeviceFavorites } from '../src/services/deviceFavoritesService';
-import { OfflineQueueService } from '../src/services/offlineQueueService';
-import { useNetwork } from '../src/contexts/NetworkContext';
+// import { OfflineQueueService } from '../src/services/offlineQueueService'; // Disabled - not using offline queue
+// import { useNetwork } from '../src/contexts/NetworkContext'; // Disabled - not needed without offline queue
 
 import { Restaurant } from '../types';
 
@@ -76,7 +76,7 @@ function isValidHttpUrl(value?: string): boolean {
 
 function HomeScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
-  const { isOnline } = useNetwork();
+  // const { isOnline } = useNetwork(); // Disabled - not using offline features for now
   const [searchText, setSearchText] = useState('');
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -147,18 +147,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
     });
 
     try {
-      if (isOnline) {
-        // Online: Save to database immediately
-        const isFavorited = await toggleDeviceFavorite(restaurantId);
-        console.log(isFavorited ? '❤️ Added to favorites' : '💔 Removed from favorites');
-      } else {
-        // Offline: Queue for later sync
-        await OfflineQueueService.enqueueAction('favorite', {
-          restaurantId,
-          action: favorites.has(restaurantId) ? 'remove' : 'add'
-        });
-        console.log('📥 Favorite action queued for sync');
-      }
+      // Always try to save immediately - don't use offline queue for now
+      const isFavorited = await toggleDeviceFavorite(restaurantId);
+      console.log(isFavorited ? '❤️ Added to favorites' : '💔 Removed from favorites');
     } catch (error) {
       console.error('❌ Failed to toggle favorite:', error);
       // Revert optimistic update on error
@@ -171,10 +162,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
         }
         return newFavorites;
       });
-      // Show user-friendly message
-      Alert.alert('Favorites', 'Could not save favorite. Please try again later.');
+      // Silently fail - don't show alert to avoid annoying users
+      console.warn('⚠️ Favorite not saved - table may not exist yet');
     }
-  }, [isOnline, favorites]);
+  }, [favorites]);
 
   // Clear address cache to refresh with new geocoding logic
   const clearAddressCache = () => {
@@ -557,7 +548,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
   return (
     <View style={styles.container}>
       <Header />
-      <OfflineBanner onSyncPress={() => {
+      {/* Temporarily disabled OfflineBanner - may cause crashes in production */}
+      {/* <OfflineBanner onSyncPress={() => {
         // Refresh data after sync
         try {
           setServerPage(1);
@@ -566,7 +558,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         } catch (error) {
           console.error('❌ Failed to refresh after sync:', error);
         }
-      }} />
+      }} /> */}
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={styles.backButton}
