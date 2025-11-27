@@ -105,6 +105,217 @@ const DESIGN_COLORS = {
   infoText: '#FFFFFF',        // White - info button text
 };
 
+// Styles moved before component to fix variable declaration issues
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 80, // Account for header
+    backgroundColor: DESIGN_COLORS.background,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    padding: 10,
+    zIndex: 90,
+  },
+  backText: {
+    fontSize: 35,
+    fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
+  },
+  searchContainer: {
+    position: 'absolute',
+    top: 27,
+    left: 80,
+    right: 20,
+    height: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 90,
+    gap: 8,
+  },
+  searchBar: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingRight: 40,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    color: DESIGN_COLORS.textPrimary,
+    borderColor: DESIGN_COLORS.border,
+  },
+  searchIcon: {
+    position: 'absolute',
+    right: 16,
+    fontSize: 18,
+  },
+  categoryButton: {
+    height: 40,
+    paddingHorizontal: 12,
+    backgroundColor: DESIGN_COLORS.buttonBackground,
+    borderWidth: 1,
+    borderColor: DESIGN_COLORS.border,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 100,
+  },
+  categoryButtonEmoji: {
+    fontSize: 16,
+  },
+  categoryButtonLabel: {
+    fontSize: 13,
+    color: DESIGN_COLORS.textPrimary,
+    fontWeight: '500',
+  },
+  dropdownIcon: {
+    fontSize: 10,
+    color: DESIGN_COLORS.textPrimary,
+    marginLeft: 2,
+  },
+  mapContainer: {
+    flex: 1,
+    marginTop: 10,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    overflow: 'hidden',
+    backgroundColor: DESIGN_COLORS.cardBackground,
+  },
+  cardsContainer: {
+    flex: 1,
+    paddingHorizontal: 0,
+    backgroundColor: DESIGN_COLORS.background,
+  },
+  card: {
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    padding: 16,
+    marginVertical: 8,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    position: 'relative',
+  },
+  restaurantImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 8,
+    marginRight: 16,
+    backgroundColor: '#f0f0f0',
+  },
+  cardTextContent: {
+    flex: 1,
+    justifyContent: 'flex-start',
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
+    marginBottom: 8,
+  },
+  cardLocation: {
+    fontSize: 14,
+    color: DESIGN_COLORS.textSecondary,
+    marginBottom: 4,
+  },
+  cardCategory: {
+    fontSize: 14,
+    color: DESIGN_COLORS.textPrimary,
+    fontWeight: '600',
+  },
+  favoriteButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    padding: 4,
+    zIndex: 10,
+  },
+  favoriteIcon: {
+    fontSize: 28,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    maxWidth: 300,
+    borderRadius: 10,
+    padding: 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  categoryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    marginVertical: 2,
+  },
+  categoryText: {
+    flex: 1,
+    fontSize: 16,
+  },
+  closeButton: {
+    marginTop: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: DESIGN_COLORS.cardBackground,
+  },
+  loadingText: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: DESIGN_COLORS.textPrimary,
+  },
+  footer: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: DESIGN_COLORS.background,
+  },
+  footerSpinner: {
+    marginBottom: 8,
+  },
+});
+
 // Placeholder image URLs based on category (using unsplash for consistent placeholders)
 const getPlaceholderImage = (category: string): string => {
   const placeholders: { [key: string]: string } = {
@@ -986,216 +1197,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 80, // Account for header
-    backgroundColor: DESIGN_COLORS.background,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    padding: 10,
-    zIndex: 90,
-  },
-  backText: {
-    fontSize: 35,
-    fontWeight: 'bold',
-    color: DESIGN_COLORS.textPrimary,
-  },
-  searchContainer: {
-    position: 'absolute',
-    top: 27,
-    left: 80,
-    right: 20,
-    height: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 90,
-    gap: 8,
-  },
-  searchBar: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingRight: 40,
-    backgroundColor: DESIGN_COLORS.cardBackground,
-    color: DESIGN_COLORS.textPrimary,
-    borderColor: DESIGN_COLORS.border,
-  },
-  searchIcon: {
-    position: 'absolute',
-    right: 16,
-    fontSize: 18,
-  },
-  categoryButton: {
-    height: 40,
-    paddingHorizontal: 12,
-    backgroundColor: DESIGN_COLORS.buttonBackground,
-    borderWidth: 1,
-    borderColor: DESIGN_COLORS.border,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    minWidth: 100,
-  },
-  categoryButtonEmoji: {
-    fontSize: 16,
-  },
-  categoryButtonLabel: {
-    fontSize: 13,
-    color: DESIGN_COLORS.textPrimary,
-    fontWeight: '500',
-  },
-  dropdownIcon: {
-    fontSize: 10,
-    color: DESIGN_COLORS.textPrimary,
-    marginLeft: 2,
-  },
-  mapContainer: {
-    flex: 1,
-    marginTop: 10,
-    marginHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: DESIGN_COLORS.border,
-    overflow: 'hidden',
-    backgroundColor: DESIGN_COLORS.cardBackground,
-  },
-  cardsContainer: {
-    flex: 1,
-    paddingHorizontal: 0,
-    backgroundColor: DESIGN_COLORS.background,
-  },
-  card: {
-    backgroundColor: DESIGN_COLORS.cardBackground,
-    padding: 16,
-    marginVertical: 8,
-    marginHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: DESIGN_COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    position: 'relative',
-  },
-  restaurantImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 8,
-    marginRight: 16,
-    backgroundColor: '#f0f0f0',
-  },
-  cardTextContent: {
-    flex: 1,
-    justifyContent: 'flex-start',
-  },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: DESIGN_COLORS.textPrimary,
-    marginBottom: 8,
-  },
-  cardLocation: {
-    fontSize: 14,
-    color: DESIGN_COLORS.textSecondary,
-    marginBottom: 4,
-  },
-  cardCategory: {
-    fontSize: 14,
-    color: DESIGN_COLORS.textPrimary,
-    fontWeight: '600',
-  },
-  favoriteButton: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    padding: 4,
-    zIndex: 10,
-  },
-  favoriteIcon: {
-    fontSize: 28,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '80%',
-    maxWidth: 300,
-    borderRadius: 10,
-    padding: 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  categoryOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    marginVertical: 2,
-  },
-  categoryText: {
-    flex: 1,
-    fontSize: 16,
-  },
-  closeButton: {
-    marginTop: 15,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: DESIGN_COLORS.cardBackground,
-  },
-  loadingText: {
-    fontSize: 16,
-    textAlign: 'center',
-    color: DESIGN_COLORS.textPrimary,
-  },
-  footer: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: DESIGN_COLORS.background,
-  },
-  footerSpinner: {
-    marginBottom: 8,
-  },
-});
 
 export default function HomeScreenWrapper({ navigation }: { navigation: any }) {
   return (
