@@ -69,10 +69,18 @@ class HomeScreenErrorBoundary extends React.Component<
           <TouchableOpacity
             onPress={async () => {
               try {
-                const logs = await crashLogger.getLogs();
-                console.log('📋 Recent crash logs:', logs.slice(0, 3));
-                Alert.alert('Debug Info', `Recent errors: ${crashLogger.getErrorSummary()}`);
+                if (crashLogger && typeof crashLogger.getLogs === 'function') {
+                  const logs = await crashLogger.getLogs();
+                  console.log('📋 Recent crash logs:', logs.slice(0, 3));
+                }
+                
+                if (crashLogger && typeof crashLogger.getErrorSummary === 'function') {
+                  Alert.alert('Debug Info', `Recent errors: ${crashLogger.getErrorSummary()}`);
+                } else {
+                  Alert.alert('Debug Info', 'Error summary not available');
+                }
               } catch (err) {
+                console.error('❌ Error getting crash logs:', err);
                 Alert.alert('Debug Info', 'Unable to retrieve error logs');
               }
             }}
@@ -352,7 +360,15 @@ function isValidHttpUrl(value?: string): boolean {
 function HomeScreen({ navigation }: { navigation: any }) {
   console.log('🏠 HomeScreen: Component starting...');
   
-  const { theme } = useTheme();
+  let theme;
+  try {
+    const themeResult = useTheme();
+    theme = themeResult.theme;
+  } catch (themeError) {
+    console.warn('⚠️ Theme context not available, using default theme');
+    theme = { colors: { background: '#ffffff', text: '#000000' } }; // Fallback theme
+  }
+  
   // const { isOnline } = useNetwork(); // Disabled - not using offline features for now
   
   // Initialize crash logger with fallback
@@ -515,6 +531,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
       console.log('🌐 Attempting to load from server...');
       
       try {
+        if (!restaurantService || typeof restaurantService.getRestaurantsPageWithCount !== 'function') {
+          throw new Error('Restaurant service not available');
+        }
+        
         const { items: serverData, total } = await restaurantService.getRestaurantsPageWithCount(targetPage, SERVER_PAGE_SIZE);
         console.log(`📊 Server returned ${serverData.length} restaurants, total: ${total}`);
 
@@ -522,8 +542,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
           setRestaurants(serverData || []);
         } else if (serverData && serverData.length > 0) {
           setRestaurants(prev => {
-            const existing = new Set(prev.map((r: Restaurant) => r.id));
-            const merged = [...prev, ...serverData.filter(r => r && r.id && !existing.has(r.id))];
+            const existing = new Set((prev || []).map((r: Restaurant) => r.id));
+            const merged = [...(prev || []), ...serverData.filter(r => r && r.id && !existing.has(r.id))];
             console.log(`📊 Set ${merged.length} restaurants (merged from server)`);
             return merged;
           });
@@ -668,15 +688,20 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   // Refresh restaurants when screen comes into focus (e.g., after rating a restaurant)
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      console.log('🏠 HomeScreen focused - refreshing restaurants');
-      // Refresh the first page to get updated ratings
-      setServerPage(1);
-      setRestaurants([]);
-      loadPage(1);
-    });
+    if (navigation && typeof navigation.addListener === 'function') {
+      const unsubscribe = navigation.addListener('focus', () => {
+        console.log('🏠 HomeScreen focused - refreshing restaurants');
+        // Refresh the first page to get updated ratings
+        setServerPage(1);
+        setRestaurants([]);
+        loadPage(1);
+      });
 
-    return unsubscribe;
+      return unsubscribe;
+    } else {
+      console.warn('⚠️ Navigation addListener not available');
+      return () => {};
+    }
   }, [navigation, loadPage]);
 
   useEffect(() => {
@@ -714,7 +739,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   useEffect(() => {
     console.log('🏠 HomeScreen: Restaurants state updated:', restaurants.length);
-    console.log('📍 HomeScreen: Restaurant locations:', restaurants.map(r => ({
+    console.log('📍 HomeScreen: Restaurant locations:', (restaurants || []).map(r => ({
       name: r.name,
       lat: r.location?.latitude,
       lng: r.location?.longitude,
@@ -910,11 +935,15 @@ function HomeScreen({ navigation }: { navigation: any }) {
       return (
         <TouchableOpacity
           onPress={() => {
-            if (restaurant.id) {
+            if (restaurant.id && navigation && typeof navigation.navigate === 'function') {
               navigation.navigate('RestaurantDetail', {
                 restaurantId: restaurant.id,
                 restaurant: restaurant
               });
+            } else if (!restaurant.id) {
+              console.warn('⚠️ Restaurant missing ID, cannot navigate');
+            } else {
+              console.warn('⚠️ Navigation not available, cannot navigate to restaurant details');
             }
           }}
           style={styles.card}
@@ -1089,7 +1118,13 @@ function HomeScreen({ navigation }: { navigation: any }) {
       <Header />
       {/* Offline mode removed for stability */}
       <TouchableOpacity
-        onPress={() => navigation.goBack()}
+        onPress={() => {
+          if (navigation && typeof navigation.goBack === 'function') {
+            navigation.goBack();
+          } else {
+            console.warn('⚠️ Navigation goBack not available');
+          }
+        }}
         style={styles.backButton}
       >
         <Text style={styles.backText}>✕</Text>
