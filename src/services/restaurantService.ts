@@ -1,5 +1,18 @@
 import { supabase, TABLES } from '../config/supabase';
 import { Restaurant } from '../../types';
+import { networkService } from './networkService';
+import { localDatabase } from './localDatabase';
+import { syncService } from './syncService';
+import { offlineAuthService } from './offlineAuthService';
+
+/**
+ * Check if offline mode should be enabled for the current user
+ * Only food explorers (role: 'user') should have offline mode
+ */
+async function shouldUseOfflineMode(): Promise<boolean> {
+  const role = await offlineAuthService.getUserRole();
+  return role === 'user' && networkService.isOffline();
+}
 
 export interface CreateRestaurantData {
   name: string;
@@ -28,7 +41,8 @@ class RestaurantService {
       if (userError || !user) {
         throw new Error('User not authenticated');
       }
-      // Check if user already has a restaurant
+
+      // Check if user already has a restaurant (check local DB if offline)
       const existingRestaurant = await this.getRestaurantByOwnerId(user.id);
       if (existingRestaurant) {
         throw new Error('You can only create one restaurant per account');
@@ -38,60 +52,64 @@ class RestaurantService {
       // In a real app, you'd use geocoding service
       const location = this.parseLocationString(restaurantData.location);
 
-      const restaurant: Omit<Restaurant, 'id'> = {
+      const restaurantId = `restaurant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      const localRestaurantData = {
+        id: restaurantId,
         name: restaurantData.name,
         description: restaurantData.description || '',
         category: restaurantData.category || '',
-        priceRange: restaurantData.priceRange || '$',
-        location,
+        price_range: restaurantData.priceRange || '$',
+        latitude: location.latitude,
+        longitude: location.longitude,
         image: restaurantData.imageUrl || '',
         phone: restaurantData.phone || '',
         website: restaurantData.website || '',
         hours: restaurantData.hours || '',
-        rating: 0, // Default rating
+        rating: 0,
+        owner_id: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        sync_status: 'pending' as const
       };
 
-      const { data, error } = await supabase
-        .from(this.RESTAURANTS_TABLE)
-        .insert({
-          name: restaurant.name,
-          description: restaurant.description,
-          category: restaurant.category,
-          price_range: restaurant.priceRange,
-          latitude: restaurant.location.latitude,
-          longitude: restaurant.location.longitude,
-          image: restaurant.image,
-          phone: restaurant.phone,
-          website: restaurant.website,
-          hours: restaurant.hours,
-          rating: restaurant.rating,
-          owner_id: user.id,
-        })
-        .select()
-        .single();
+      // Save to local database
+      await localDatabase.initialize();
+      await localDatabase.insertRestaurant(localRestaurantData);
 
-      if (error) throw error;
+      // If online, try to sync immediately, otherwise queue for later
+      if (networkService.isOnline()) {
+        try {
+          await syncService.sync({ syncRestaurants: true });
+        } catch (syncError) {
+          console.warn('Failed to sync immediately, operation queued:', syncError);
+        }
+      } else {
+        // Queue the operation for when we come back online
+        await localDatabase.addPendingOperation({
+          table_name: 'restaurants',
+          operation: 'insert',
+          data: JSON.stringify(localRestaurantData)
+        });
+      }
 
-      // Transform the data back to match our Restaurant interface
-      const createdRestaurant: Restaurant = {
-        id: data.id,
-        name: data.name,
-        location: {
-          latitude: parseFloat(data.latitude),
-          longitude: parseFloat(data.longitude),
-        },
-        image: data.image,
-        category: data.category,
-        rating: data.rating,
-        priceRange: data.price_range,
-        description: data.description,
-        phone: data.phone,
-        hours: data.hours,
-        website: data.website,
+      // Return the restaurant in the expected format
+      const restaurant: Restaurant = {
+        id: restaurantId,
+        name: restaurantData.name,
+        location,
+        image: restaurantData.imageUrl || '',
+        category: restaurantData.category || '',
+        rating: 0,
+        priceRange: restaurantData.priceRange || '$',
+        description: restaurantData.description || '',
+        phone: restaurantData.phone || '',
+        hours: restaurantData.hours || '',
+        website: restaurantData.website || '',
       };
 
-      console.log('✅ Restaurant created successfully:', createdRestaurant);
-      return createdRestaurant;
+      console.log('✅ Restaurant created successfully:', restaurant);
+      return restaurant;
     } catch (error: any) {
       console.error('❌ Error creating restaurant:', error);
       throw new Error(this.getErrorMessage(error));
@@ -171,6 +189,34 @@ class RestaurantService {
     try {
       console.log('📋 Fetching all restaurants...');
 
+      // Check if we should use offline mode (food explorers only)
+      const useOffline = await shouldUseOfflineMode();
+
+      if (useOffline) {
+        console.log('📱 Using offline mode for restaurants');
+        await localDatabase.initialize();
+        const localRestaurants = await localDatabase.getAllRestaurants();
+
+        // Transform local data to Restaurant interface
+        return localRestaurants.map(local => ({
+          id: local.id,
+          name: local.name,
+          location: {
+            latitude: local.latitude,
+            longitude: local.longitude,
+          },
+          image: local.image,
+          category: local.category,
+          rating: local.rating,
+          priceRange: local.price_range,
+          description: local.description,
+          phone: local.phone,
+          hours: local.hours,
+          website: local.website,
+        }));
+      }
+
+      // Online mode: fetch from Supabase
       const { data, error } = await supabase
         .from(this.RESTAURANTS_TABLE)
         .select('*')
@@ -179,7 +225,7 @@ class RestaurantService {
       if (error) throw error;
 
       // Transform the data to match our Restaurant interface
-      const restaurants: Restaurant[] = data.map(item => {
+      const restaurants: Restaurant[] = data.map((item: any) => {
         // Handle both location formats: JSONB object or separate lat/lng fields
         let location: { latitude: number; longitude: number };
         if (item.location && typeof item.location === 'object' && 'latitude' in item.location && 'longitude' in item.location) {
