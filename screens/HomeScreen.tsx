@@ -19,6 +19,7 @@ import { resolveCategoryConfig, getAllCategoryOptions } from '../src/config/cate
 import { restaurantService } from '../src/services/restaurantService';
 import { DatabaseService } from '../src/services/database';
 import { RestaurantRow } from '../src/types/database';
+import { crashLogger } from '../src/services/crashLogger';
 
 import { Restaurant } from '../types';
 
@@ -73,29 +74,56 @@ function isValidHttpUrl(value?: string): boolean {
 }
 
 function HomeScreen({ navigation }: { navigation: any }) {
-  const { theme } = useTheme();
-  // const { isOnline } = useNetwork(); // Disabled - not using offline features for now
-  const [searchText, setSearchText] = useState('');
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [addressCache, setAddressCache] = useState<{[key: string]: string}>({});
-  const [geocodingInProgress, setGeocodingInProgress] = useState<Set<string>>(new Set());
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [debouncedSearchText, setDebouncedSearchText] = useState('');
-  const GEOCODE_CONCURRENCY = 3;
-  const geocodeActiveRef = useRef(0);
-  const geocodeQueueRef = useRef<string[]>([]);
-  const queuedRef = useRef<Set<string>>(new Set());
-  const autoLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isLoadingRef = useRef(false);
-  const refreshingRef = useRef(false);
-  const hasMoreRef = useRef(true);
-  const SERVER_PAGE_SIZE = 20;
-  const [serverPage, setServerPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingPage, setIsLoadingPage] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  try {
+    console.log('🏠 HomeScreen: Component starting...');
+    
+    const { theme } = useTheme();
+    // const { isOnline } = useNetwork(); // Disabled - not using offline features for now
+    
+    // Initialize crash logger with fallback
+    const [crashLoggerReady, setCrashLoggerReady] = useState(false);
+    
+    // Initialize crash logger safely
+    useEffect(() => {
+      const initLogger = async () => {
+        try {
+          await crashLogger.initialize();
+          setCrashLoggerReady(true);
+          crashLogger.logComponentEvent('HomeScreen', 'mount_start');
+        } catch (error) {
+          console.error('❌ Failed to initialize crash logger:', error);
+          setCrashLoggerReady(false);
+        }
+      };
+      initLogger();
+    }, []);
+    
+    const [searchText, setSearchText] = useState('');
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [addressCache, setAddressCache] = useState<{[key: string]: string}>({});
+    const [geocodingInProgress, setGeocodingInProgress] = useState<Set<string>>(new Set());
+    const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+    const [debouncedSearchText, setDebouncedSearchText] = useState('');
+    const GEOCODE_CONCURRENCY = 3;
+    const geocodeActiveRef = useRef(0);
+    const geocodeQueueRef = useRef<string[]>([]);
+    const queuedRef = useRef<Set<string>>(new Set());
+    const autoLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isLoadingRef = useRef(false);
+    const refreshingRef = useRef(false);
+    const hasMoreRef = useRef(true);
+    const SERVER_PAGE_SIZE = 20;
+    const [serverPage, setServerPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoadingPage, setIsLoadingPage] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [hasError, setHasError] = useState(false);
+
+    console.log('🏠 HomeScreen: State initialized successfully');
+    if (crashLoggerReady) {
+      crashLogger.logComponentEvent('HomeScreen', 'state_initialized');
+    }
 
   // Favorites removed for stability
 
@@ -175,123 +203,59 @@ function HomeScreen({ navigation }: { navigation: any }) {
       isLoadingRef.current = true;
       setIsLoadingPage(true);
       console.log(`🏠 HomeScreen: Fetching restaurants page ${targetPage} (size ${SERVER_PAGE_SIZE})`);
-
-      // Check database readiness
-      const isDbReady = DatabaseService.isDatabaseReady();
-      console.log('📊 Database ready for loadPage:', isDbReady);
-
-      // Offline-first approach: Try local database first
-      let localRestaurants: RestaurantRow[] = [];
-      try {
-        console.log('📱 Attempting to load from local database...');
-        localRestaurants = await DatabaseService.getRestaurants(SERVER_PAGE_SIZE, (targetPage - 1) * SERVER_PAGE_SIZE);
-        console.log(`📱 Found ${localRestaurants.length} restaurants in local database`);
-      } catch (localError) {
-        console.error('❌ Local database error:', localError);
+      
+      if (crashLoggerReady) {
+        crashLogger.logComponentEvent('HomeScreen', 'load_page_start', { page: targetPage });
       }
 
-      // If we have local data and it's not the first page, use it
-      if (localRestaurants.length > 0 && targetPage > 1) {
-        console.log('🔄 Using local data for pagination');
-        // Convert RestaurantRow back to Restaurant format
-        const restaurantData: Restaurant[] = localRestaurants.map(r => ({
-          id: r.id,
-          name: r.name,
-          location: {
-            latitude: r.latitude || 0,
-            longitude: r.longitude || 0,
-          },
-          image: r.image_url || undefined,
-          category: r.category,
-          rating: r.rating || undefined,
-          priceRange: r.price_range || undefined,
-          description: r.description || undefined,
-        }));
+      // Simplified approach - just try to fetch from server
+      console.log('🌐 Attempting to load from server...');
+      
+      try {
+        const { items: serverData, total } = await restaurantService.getRestaurantsPageWithCount(targetPage, SERVER_PAGE_SIZE);
+        console.log(`📊 Server returned ${serverData.length} restaurants, total: ${total}`);
 
-        setRestaurants(prev => {
-          const existing = new Set(prev.map((r: Restaurant) => r.id));
-          const merged = [...prev, ...restaurantData.filter(r => r && r.id && !existing.has(r.id))];
-          console.log(`📊 Set ${merged.length} restaurants (merged from local)`);
-          return merged;
-        });
-        setHasMore(localRestaurants.length === SERVER_PAGE_SIZE);
-      } else {
-        console.log('🌐 Attempting to load from server...');
-        // For first page or no local data, fetch from server
-        try {
-          const { items: serverData, total } = await restaurantService.getRestaurantsPageWithCount(targetPage, SERVER_PAGE_SIZE);
-          console.log(`🌐 Server returned ${serverData.length} restaurants, total: ${total}`);
-
-          // Convert to local format and save to database
-          const localFormatData: RestaurantRow[] = serverData.map(r => ({
-            id: r.id,
-            name: r.name,
-            description: r.description || undefined,
-            address: null, // Will be derived from geocoding
-            latitude: r.location?.latitude || null,
-            longitude: r.location?.longitude || null,
-            category: r.category || 'casual',
-            price_range: r.priceRange || null,
-            rating: r.rating || null,
-            image_url: r.image || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            _sync_status: 'synced' as const,
-            _last_modified: new Date().toISOString(),
-          }));
-
-          console.log('💾 Saving to local database...');
-          // Save to local database
-          await DatabaseService.saveRestaurants(localFormatData);
-          console.log('✅ Saved to local database');
-
-          if (targetPage === 1) {
-            setRestaurants(serverData);
-            console.log(`📊 Set ${serverData.length} restaurants (from server)`);
-          } else if (serverData.length > 0) {
-            setRestaurants(prev => {
-              const existing = new Set(prev.map((r: Restaurant) => r.id));
-              const merged = [...prev, ...serverData.filter(r => r && r.id && !existing.has(r.id))];
-              console.log(`📊 Set ${merged.length} restaurants (merged from server)`);
-              return merged;
-            });
-          }
-          const more = typeof total === 'number'
-            ? (targetPage * SERVER_PAGE_SIZE) < total
-            : (serverData.length === SERVER_PAGE_SIZE);
-          setHasMore(more);
-          console.log(`✅ Loaded ${serverData.length} restaurants from server, hasMore: ${more}`);
-        } catch (serverError) {
-          console.error('❌ Server error:', serverError);
-
-          // Fallback to local data if server fails
-          if (localRestaurants.length > 0) {
-            console.log('🔄 Falling back to local data');
-            // Convert RestaurantRow back to Restaurant format
-            const restaurantData: Restaurant[] = localRestaurants.map(r => ({
-              id: r.id,
-              name: r.name,
-              location: {
-                latitude: r.latitude || 0,
-                longitude: r.longitude || 0,
-              },
-              image: r.image_url || undefined,
-              category: r.category,
-              rating: r.rating || undefined,
-              priceRange: r.price_range || undefined,
-              description: r.description || undefined,
-            }));
-
-            setRestaurants(restaurantData);
-            setHasMore(localRestaurants.length === SERVER_PAGE_SIZE);
-            console.log(`📱 Using ${localRestaurants.length} restaurants from local database`);
-          } else {
-            console.log('❌ No data available from any source');
-            // No data available - set empty array to prevent crashes
-            setRestaurants([]);
-            setHasMore(false);
-            console.log('❌ No restaurants available - showing empty state');
-          }
+        if (targetPage === 1) {
+          setRestaurants(serverData || []);
+        } else if (serverData && serverData.length > 0) {
+          setRestaurants(prev => {
+            const existing = new Set(prev.map((r: Restaurant) => r.id));
+            const merged = [...prev, ...serverData.filter(r => r && r.id && !existing.has(r.id))];
+            console.log(`📊 Set ${merged.length} restaurants (merged from server)`);
+            return merged;
+          });
+        }
+        
+        const more = typeof total === 'number' ? (targetPage * SERVER_PAGE_SIZE) < total : (serverData?.length === SERVER_PAGE_SIZE);
+        setHasMore(more);
+        console.log(`✅ Loaded ${serverData?.length || 0} restaurants from server, hasMore: ${more}`);
+        
+        if (crashLoggerReady) {
+          crashLogger.logComponentEvent('HomeScreen', 'load_page_success', { 
+            page: targetPage, 
+            restaurantsCount: serverData?.length || 0,
+            total 
+          });
+        }
+      } catch (serverError) {
+        console.error('❌ Server error:', serverError);
+        
+        if (crashLoggerReady) {
+          await crashLogger.logError(serverError as Error, {
+            component: 'HomeScreen',
+            screen: 'HomeScreen',
+            additionalContext: {
+              phase: 'load_page_server_error',
+              targetPage,
+              serverPage
+            }
+          });
+        }
+        
+        // Set empty state to prevent crashes
+        if (targetPage === 1) {
+          setRestaurants([]);
+          setHasMore(false);
         }
       }
     } catch (error) {
@@ -301,6 +265,21 @@ function HomeScreen({ navigation }: { navigation: any }) {
         stack: (error as Error).stack,
         name: (error as Error).name,
       });
+      
+      // Log the error for production debugging
+      if (crashLoggerReady) {
+        await crashLogger.logError(error as Error, {
+          component: 'HomeScreen',
+          screen: 'HomeScreen',
+          additionalContext: {
+            phase: 'load_page_error',
+            targetPage,
+            serverPage,
+            restaurantsLength: restaurants?.length
+          }
+        });
+      }
+      
       Alert.alert('Connection Error', 'Unable to load restaurants. Please check your internet connection and try again.');
       // Set empty array to prevent crashes
       if (targetPage === 1) {
@@ -309,8 +288,11 @@ function HomeScreen({ navigation }: { navigation: any }) {
     } finally {
       setIsLoadingPage(false);
       isLoadingRef.current = false;
+      if (crashLoggerReady) {
+        crashLogger.logComponentEvent('HomeScreen', 'load_page_end', { page: targetPage });
+      }
     }
-  }, []);
+  }, [crashLoggerReady, restaurants?.length, serverPage]);
 
   const onRefresh = useCallback(async () => {
     if (isLoadingPage) return;
@@ -334,19 +316,18 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
     const loadInitialData = async () => {
       try {
-        // Check if database is ready
-        console.log('🔍 Checking database readiness...');
-        const isDbReady = DatabaseService.isDatabaseReady();
-        console.log('📊 Database ready:', isDbReady);
-
-        if (!isDbReady) {
-          console.log('⏳ Waiting for database initialization...');
-          // Wait a bit for database to initialize
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('🔍 Starting simplified data load...');
+        
+        if (crashLoggerReady) {
+          crashLogger.logComponentEvent('HomeScreen', 'initial_data_load_start');
         }
 
         setServerPage(1);
         await loadPage(1);
+        
+        if (crashLoggerReady) {
+          crashLogger.logComponentEvent('HomeScreen', 'initial_data_load_success');
+        }
       } catch (error) {
         console.error('❌ Failed to load initial data:', error);
         console.error('❌ Initial load error details:', {
@@ -354,6 +335,17 @@ function HomeScreen({ navigation }: { navigation: any }) {
           stack: (error as Error).stack,
           name: (error as Error).name,
         });
+        
+        // Log the error for production debugging
+        if (crashLoggerReady) {
+          await crashLogger.logError(error as Error, {
+            component: 'HomeScreen',
+            screen: 'HomeScreen',
+            additionalContext: {
+              phase: 'initial_data_load'
+            }
+          });
+        }
         
         // Set empty state to prevent crashes
         setRestaurants([]);
@@ -363,8 +355,13 @@ function HomeScreen({ navigation }: { navigation: any }) {
       }
     };
 
-    loadInitialData();
-  }, [loadPage]);
+    // Add a small delay to ensure component is fully mounted
+    const timer = setTimeout(() => {
+      loadInitialData();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [loadPage, crashLoggerReady]);
 
   // Refresh restaurants when screen comes into focus (e.g., after rating a restaurant)
   useEffect(() => {
@@ -926,6 +923,20 @@ function HomeScreen({ navigation }: { navigation: any }) {
   );
   } catch (error) {
     console.error('❌ Fatal error rendering HomeScreen:', error);
+    
+    // Log the crash for production debugging
+    crashLogger.logError(error as Error, {
+      component: 'HomeScreen',
+      screen: 'HomeScreen',
+      additionalContext: {
+        restaurantsLength: restaurants?.length,
+        isLoadingPage,
+        hasError,
+        searchText,
+        selectedCategory
+      }
+    });
+
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
         <Text style={{ fontSize: 24, marginBottom: 16 }}>⚠️</Text>
@@ -940,6 +951,16 @@ function HomeScreen({ navigation }: { navigation: any }) {
           style={{ backgroundColor: '#4A90E2', padding: 12, borderRadius: 8 }}
         >
           <Text style={{ color: 'white', fontSize: 16 }}>Go Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={async () => {
+            const logs = await crashLogger.getLogs();
+            console.log('📋 Recent crash logs:', logs.slice(0, 3));
+            Alert.alert('Debug Info', `Recent errors: ${crashLogger.getErrorSummary()}`);
+          }}
+          style={{ marginTop: 12, padding: 12 }}
+        >
+          <Text style={{ color: '#666', fontSize: 14 }}>Show Error Logs</Text>
         </TouchableOpacity>
       </View>
     );
