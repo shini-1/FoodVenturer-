@@ -98,13 +98,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const [isLoadingPage, setIsLoadingPage] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Load device favorites on mount
-  useEffect(() => {
-    loadDeviceFavorites();
-  }, []);
-
-  const loadDeviceFavorites = async () => {
+  const loadDeviceFavorites = useCallback(async () => {
     try {
       const favoriteIds = await getDeviceFavorites();
       setFavorites(new Set(favoriteIds));
@@ -114,7 +111,21 @@ function HomeScreen({ navigation }: { navigation: any }) {
       // Don't crash - just use empty favorites
       setFavorites(new Set());
     }
-  };
+  }, []);
+
+  // Initialize component
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        await loadDeviceFavorites();
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('❌ Failed to initialize HomeScreen:', error);
+        setIsInitialized(true); // Still mark as initialized to show UI
+      }
+    };
+    initialize();
+  }, [loadDeviceFavorites]);
 
   // Toggle favorite status with device-based persistence
   const toggleFavorite = useCallback(async (restaurantId: string) => {
@@ -227,18 +238,29 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const restaurantCategories = useMemo(() => getAllCategoryOptions(), []);
 
   const loadPage = useCallback(async (targetPage: number) => {
-    if (isLoadingRef.current) return;
+    if (isLoadingRef.current) {
+      console.log('⏳ Already loading, skipping...');
+      return;
+    }
     try {
       isLoadingRef.current = true;
       setIsLoadingPage(true);
       console.log(`🏠 HomeScreen: Fetching restaurants page ${targetPage} (size ${SERVER_PAGE_SIZE})`);
+      
       const { restaurants: pageData, total } = await OfflineService.getRestaurantsPageWithOffline(targetPage, SERVER_PAGE_SIZE);
+      
+      // Safety check for pageData
+      if (!Array.isArray(pageData)) {
+        console.error('❌ Invalid pageData received:', pageData);
+        throw new Error('Invalid data received from server');
+      }
+      
       if (targetPage === 1) {
         setRestaurants(pageData);
       } else if (pageData.length > 0) {
         setRestaurants(prev => {
           const existing = new Set(prev.map((r: Restaurant) => r.id));
-          const merged = [...prev, ...pageData.filter(r => !existing.has(r.id))];
+          const merged = [...prev, ...pageData.filter(r => r && r.id && !existing.has(r.id))];
           return merged;
         });
       }
@@ -246,9 +268,14 @@ function HomeScreen({ navigation }: { navigation: any }) {
         ? (targetPage * SERVER_PAGE_SIZE) < total
         : (pageData.length === SERVER_PAGE_SIZE);
       setHasMore(more);
+      console.log(`✅ Loaded ${pageData.length} restaurants, hasMore: ${more}`);
     } catch (error) {
       console.error('❌ HomeScreen: Failed to load restaurants page:', error);
-      Alert.alert('Connection Error', 'Unable to load more restaurants. Check your internet and try again.');
+      Alert.alert('Connection Error', 'Unable to load restaurants. Please check your internet connection and try again.');
+      // Set empty array to prevent crashes
+      if (targetPage === 1) {
+        setRestaurants([]);
+      }
     } finally {
       setIsLoadingPage(false);
       isLoadingRef.current = false;
@@ -272,9 +299,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
   }, [loadPage, isLoadingPage]);
 
   useEffect(() => {
+    if (!isInitialized) return; // Wait for initialization
     setServerPage(1);
     loadPage(1);
-  }, [loadPage]);
+  }, [loadPage, isInitialized]);
 
   // Refresh restaurants when screen comes into focus (e.g., after rating a restaurant)
   useEffect(() => {
@@ -509,6 +537,16 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
     return null;
   }, [hasMore, isLoadingPage, theme]);
+
+  // Show loading screen while initializing
+  if (!isInitialized) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+        <Text style={{ marginTop: 16, color: '#666' }}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
