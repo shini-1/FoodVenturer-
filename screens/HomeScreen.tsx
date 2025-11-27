@@ -356,7 +356,13 @@ function HomeScreen({ navigation }: { navigation: any }) {
     return matchesSearch && matchesCategory;
   }), [categorizedRestaurants, debouncedSearchText, selectedCategory]);
 
-  const visibleRestaurants = useMemo(() => filteredRestaurants, [filteredRestaurants]);
+  const visibleRestaurants = useMemo(() => {
+    // Safety check - ensure we always return an array
+    if (!filteredRestaurants || !Array.isArray(filteredRestaurants)) {
+      return [];
+    }
+    return filteredRestaurants;
+  }, [filteredRestaurants]);
 
   useEffect(() => {
     const h = setTimeout(() => setDebouncedSearchText(searchText), 300);
@@ -557,16 +563,18 @@ function HomeScreen({ navigation }: { navigation: any }) {
     );
   }
 
-  return (
-    <View style={styles.container}>
-      <Header />
-      {/* Offline mode removed for stability */}
-      <TouchableOpacity
-        onPress={() => navigation.goBack()}
-        style={styles.backButton}
-      >
-        <Text style={styles.backText}>✕</Text>
-      </TouchableOpacity>
+  // Final safety check before rendering
+  try {
+    return (
+      <View style={styles.container}>
+        <Header />
+        {/* Offline mode removed for stability */}
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Text style={styles.backText}>✕</Text>
+        </TouchableOpacity>
       <View style={styles.searchContainer}>
         <TextInput
           placeholder="Search restaurants"
@@ -643,7 +651,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       </Modal>
 
       <View style={styles.mapContainer}>
-        {visibleRestaurants.length > 0 ? (
+        {visibleRestaurants && visibleRestaurants.length > 0 ? (
           <MapBoxWebView restaurants={visibleRestaurants} />
         ) : (
           <View style={styles.loadingContainer}>
@@ -656,11 +664,15 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
       <FlatList
         style={styles.cardsContainer}
-        data={visibleRestaurants}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <RestaurantCard restaurant={item as CategorizedRestaurant} />
-        )}
+        data={visibleRestaurants || []}
+        keyExtractor={(item) => item?.id || Math.random().toString()}
+        renderItem={({ item }) => {
+          // Safety check - skip if item is invalid
+          if (!item || !item.id) {
+            return null;
+          }
+          return <RestaurantCard restaurant={item as CategorizedRestaurant} />;
+        }}
         refreshing={refreshing}
         onRefresh={onRefresh}
         onEndReached={() => {
@@ -689,6 +701,26 @@ function HomeScreen({ navigation }: { navigation: any }) {
       />
     </View>
   );
+  } catch (error) {
+    console.error('❌ Fatal error rendering HomeScreen:', error);
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <Text style={{ fontSize: 24, marginBottom: 16 }}>⚠️</Text>
+        <Text style={{ fontSize: 18, color: '#666', textAlign: 'center', marginBottom: 8 }}>
+          Unable to load screen
+        </Text>
+        <Text style={{ fontSize: 14, color: '#999', textAlign: 'center', marginBottom: 20 }}>
+          A critical error occurred. Please restart the app.
+        </Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ backgroundColor: '#4A90E2', padding: 12, borderRadius: 8 }}
+        >
+          <Text style={{ color: 'white', fontSize: 16 }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
