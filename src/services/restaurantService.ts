@@ -10,8 +10,14 @@ import { offlineAuthService } from './offlineAuthService';
  * Only food explorers (role: 'user') should have offline mode
  */
 async function shouldUseOfflineMode(): Promise<boolean> {
-  const role = await offlineAuthService.getUserRole();
-  return role === 'user' && networkService.isOffline();
+  try {
+    const role = await offlineAuthService.getUserRole();
+    return role === 'user' && networkService.isOffline();
+  } catch (error) {
+    console.log('❌ Error checking offline mode:', error);
+    // If we can't determine role, assume online mode
+    return false;
+  }
 }
 
 export interface CreateRestaurantData {
@@ -322,16 +328,24 @@ class RestaurantService {
 
   async getRestaurantsPageWithCount(page: number, pageSize: number): Promise<{ items: Restaurant[]; total: number }>{
     try {
+      console.log(`📋 Fetching restaurants page ${page}, size ${pageSize}`);
+      
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
+      console.log('🔍 Querying Supabase for restaurants...');
       const { data, error, count } = await supabase
         .from(this.RESTAURANTS_TABLE)
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase query error:', error);
+        throw error;
+      }
+
+      console.log(`📊 Supabase returned ${data?.length || 0} restaurants, total count: ${count}`);
 
       const rows = (data || []) as any[];
       const items: Restaurant[] = rows.map((item: any) => {
@@ -362,9 +376,17 @@ class RestaurantService {
         } as Restaurant;
       });
 
-      return { items, total: count ?? rows.length };
+      const result = { items, total: count ?? rows.length };
+      console.log(`✅ Returning ${items.length} restaurants, total: ${result.total}`);
+      return result;
     } catch (error: any) {
       console.error('❌ Error fetching restaurants page with count:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       throw new Error(this.getErrorMessage(error));
     }
   }
@@ -470,9 +492,28 @@ class RestaurantService {
     if (error.message?.includes('violates check constraint')) {
       return 'Invalid data provided';
     }
-    if (error.message?.includes('permission denied')) {
-      return 'You do not have permission to perform this action';
+    if (error.message?.includes('permission denied') || error.code === '42501') {
+      return 'Permission denied - You may need to log in first';
     }
+    if (error.message?.includes('JWT') || error.code === '401') {
+      return 'Authentication required - Please log in to continue';
+    }
+    if (error.message?.includes('relation') && error.message?.includes('does not exist')) {
+      return 'Database table not found - Please check database setup';
+    }
+    if (error.message?.includes('No rows found') || error.code === 'PGRST116') {
+      return 'No restaurants found in database';
+    }
+    if (error.message?.includes('timeout') || error.message?.includes('network')) {
+      return 'Network error - Please check your internet connection';
+    }
+
+    console.error('❌ Restaurant service error:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint
+    });
 
     return error.message || 'An error occurred while managing restaurants';
   }

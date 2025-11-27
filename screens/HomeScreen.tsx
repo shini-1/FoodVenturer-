@@ -287,10 +287,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
             console.log(`📱 Using ${localRestaurants.length} restaurants from local database`);
           } else {
             console.log('❌ No data available from any source');
-            // No data available
+            // No data available - set empty array to prevent crashes
             setRestaurants([]);
             setHasMore(false);
-            console.log('❌ No restaurants available');
+            console.log('❌ No restaurants available - showing empty state');
           }
         }
       }
@@ -349,9 +349,17 @@ function HomeScreen({ navigation }: { navigation: any }) {
         await loadPage(1);
       } catch (error) {
         console.error('❌ Failed to load initial data:', error);
-        setHasError(true);
+        console.error('❌ Initial load error details:', {
+          message: (error as Error).message,
+          stack: (error as Error).stack,
+          name: (error as Error).name,
+        });
+        
+        // Set empty state to prevent crashes
         setRestaurants([]);
+        setHasError(true);
         setIsLoadingPage(false);
+        console.log('🛑 Set empty restaurant array to prevent crashes');
       }
     };
 
