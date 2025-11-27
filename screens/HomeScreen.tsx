@@ -14,12 +14,14 @@ import { Image } from 'expo-image';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
+import CacheStatusIndicator from '../components/CacheStatusIndicator';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { resolveCategoryConfig, getAllCategoryOptions } from '../src/config/categoryConfig';
 import { restaurantService } from '../src/services/restaurantService';
 import { DatabaseService } from '../src/services/database';
 import { RestaurantRow } from '../src/types/database';
 import { crashLogger } from '../src/services/crashLogger';
+import { cacheStatusService } from '../src/services/cacheStatusService';
 
 import { Restaurant } from '../types';
 
@@ -423,6 +425,32 @@ function HomeScreen({ navigation }: { navigation: any }) {
     if (crashLoggerReady && crashLogger && typeof crashLogger.logComponentEvent === 'function') {
       crashLogger.logComponentEvent('HomeScreen', 'state_initialized');
     }
+
+    // Initialize cache status service
+    useEffect(() => {
+      const initCache = async () => {
+        try {
+          await cacheStatusService.loadCacheStatus();
+          
+          // Check if cache needs refresh (older than 24 hours)
+          const status = cacheStatusService.getCurrentStatus();
+          const lastUpdate = new Date(status.lastUpdated);
+          const now = new Date();
+          const hoursSinceUpdate = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
+          
+          if (hoursSinceUpdate > 24 || !status.isComplete) {
+            console.log('🔄 Cache is stale or incomplete, starting refresh...');
+            await cacheStatusService.startCacheDownload();
+          } else {
+            console.log('✅ Cache is up to date');
+          }
+        } catch (error) {
+          console.error('❌ Error initializing cache status:', error);
+        }
+      };
+      
+      initCache();
+    }, []);
 
   // Favorites removed for stability
 
@@ -1116,6 +1144,40 @@ function HomeScreen({ navigation }: { navigation: any }) {
   return (
     <View style={styles.container}>
       <Header />
+      
+      {/* Cache Status Indicator */}
+      <CacheStatusIndicator 
+        showDetails={true}
+        onPress={() => {
+          // Show cache management modal or navigate to cache settings
+          Alert.alert(
+            'Cache Status',
+            'Manage your offline cache here. Would you like to refresh the cache?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: 'Refresh Cache', 
+                onPress: () => cacheStatusService.refreshCache() 
+              },
+              { 
+                text: 'Clear Cache', 
+                style: 'destructive',
+                onPress: () => {
+                  Alert.alert(
+                    'Clear Cache',
+                    'This will remove all offline data. Continue?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Clear', onPress: () => cacheStatusService.clearCache() }
+                    ]
+                  );
+                }
+              }
+            ]
+          );
+        }}
+      />
+      
       {/* Offline mode removed for stability */}
       <TouchableOpacity
         onPress={() => {
