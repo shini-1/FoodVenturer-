@@ -1041,28 +1041,27 @@ function HomeScreen({ navigation }: { navigation: any }) {
   }
 
   // Final safety check before rendering
-  try {
-    // Prevent rendering if we're in an invalid state
-    if (!restaurants || !Array.isArray(restaurants)) {
-      console.warn('⚠️ Invalid restaurants state, showing loading');
-      return (
-        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={{ marginTop: 16, color: '#666' }}>Loading restaurants...</Text>
-        </View>
-      );
-    }
-
+  // Prevent rendering if we're in an invalid state
+  if (!restaurants || !Array.isArray(restaurants)) {
+    console.warn('⚠️ Invalid restaurants state, showing loading');
     return (
-      <View style={styles.container}>
-        <Header />
-        {/* Offline mode removed for stability */}
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Text style={styles.backText}>✕</Text>
-        </TouchableOpacity>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+        <Text style={{ marginTop: 16, color: '#666' }}>Loading restaurants...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Header />
+      {/* Offline mode removed for stability */}
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={styles.backButton}
+      >
+        <Text style={styles.backText}>✕</Text>
+      </TouchableOpacity>
       <View style={styles.searchContainer}>
         <TextInput
           placeholder="Search restaurants"
