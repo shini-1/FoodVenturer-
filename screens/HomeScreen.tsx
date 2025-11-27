@@ -15,6 +15,9 @@ import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
 import CacheStatusIndicator from '../components/CacheStatusIndicator';
+import RatingSyncIndicator from '../components/RatingSyncIndicator';
+import EnhancedRestaurantCard from '../components/EnhancedRestaurantCard';
+import RatingSortSelector, { SortOption } from '../components/RatingSortSelector';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { resolveCategoryConfig, getAllCategoryOptions } from '../src/config/categoryConfig';
 import { restaurantService } from '../src/services/restaurantService';
@@ -22,6 +25,8 @@ import { DatabaseService } from '../src/services/database';
 import { RestaurantRow } from '../src/types/database';
 import { crashLogger } from '../src/services/crashLogger';
 import { cacheStatusService } from '../src/services/cacheStatusService';
+import { ratingSyncService } from '../src/services/ratingSyncService';
+import { ratingCalculationService, RestaurantRatingData } from '../src/services/ratingCalculationService';
 
 import { Restaurant } from '../types';
 
@@ -324,6 +329,21 @@ const styles = StyleSheet.create({
   footerSpinner: {
     marginBottom: 8,
   },
+  processingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  processingText: {
+    marginLeft: 8,
+    fontSize: 14,
+  },
 });
 
 // Placeholder image URLs based on category (using unsplash for consistent placeholders)
@@ -420,6 +440,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
     const [isLoadingPage, setIsLoadingPage] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [hasError, setHasError] = useState(false);
+    const [sortBy, setSortBy] = useState<SortOption>('highest');
+    const [restaurantRatings, setRestaurantRatings] = useState<Map<string, RestaurantRatingData>>(new Map());
+    const [isProcessingRatings, setIsProcessingRatings] = useState(false);
 
     console.log('🏠 HomeScreen: State initialized successfully');
     if (crashLoggerReady && crashLogger && typeof crashLogger.logComponentEvent === 'function') {
@@ -451,6 +474,55 @@ function HomeScreen({ navigation }: { navigation: any }) {
       
       initCache();
     }, []);
+
+    // Initialize rating services
+    useEffect(() => {
+      const initRatingServices = async () => {
+        try {
+          console.log('🔄 Initializing rating services...');
+          
+          // Initialize rating sync service
+          await ratingSyncService.initialize();
+          
+          // Set online status (simplified - could use network status)
+          ratingSyncService.setOnlineStatus(true);
+          
+          console.log('✅ Rating services initialized');
+        } catch (error) {
+          console.error('❌ Error initializing rating services:', error);
+        }
+      };
+      
+      initRatingServices();
+    }, []);
+
+    // Process restaurant ratings when restaurants change
+    useEffect(() => {
+      const processRatings = async () => {
+        if (!restaurants || restaurants.length === 0) return;
+        
+        try {
+          setIsProcessingRatings(true);
+          console.log('🔄 Processing restaurant ratings...');
+          
+          const ratingData = await ratingCalculationService.processRestaurantRankings(restaurants);
+          
+          const ratingsMap = new Map<string, RestaurantRatingData>();
+          ratingData.forEach(data => {
+            ratingsMap.set(data.restaurantId, data);
+          });
+          
+          setRestaurantRatings(ratingsMap);
+          console.log(`✅ Processed ratings for ${ratingData.length} restaurants`);
+        } catch (error) {
+          console.error('❌ Error processing restaurant ratings:', error);
+        } finally {
+          setIsProcessingRatings(false);
+        }
+      };
+      
+      processRatings();
+    }, [restaurants]);
 
   // Favorites removed for stability
 
@@ -877,8 +949,23 @@ function HomeScreen({ navigation }: { navigation: any }) {
     if (!filteredRestaurants || !Array.isArray(filteredRestaurants)) {
       return [];
     }
-    return filteredRestaurants;
-  }, [filteredRestaurants]);
+
+    // Apply rating-based sorting
+    let sortedRestaurants = [...filteredRestaurants];
+    
+    if (sortBy === 'highest' || sortBy === 'lowest' || sortBy === 'trending' || sortBy === 'mostReviewed') {
+      // Use rating calculation service for sorting
+      sortedRestaurants = ratingCalculationService.sortRestaurantsByRating(filteredRestaurants, sortBy);
+    } else if (sortBy === 'newest') {
+      // Sort by newest (would need timestamp data - using reverse order for now)
+      sortedRestaurants.reverse();
+    } else if (sortBy === 'name') {
+      // Sort alphabetically
+      sortedRestaurants.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return sortedRestaurants;
+  }, [filteredRestaurants, sortBy]);
 
   useEffect(() => {
     const h = setTimeout(() => setDebouncedSearchText(searchText), 300);
@@ -1178,6 +1265,37 @@ function HomeScreen({ navigation }: { navigation: any }) {
         }}
       />
       
+      {/* Rating Sync Indicator */}
+      <RatingSyncIndicator 
+        showDetails={true}
+        onPress={() => {
+          Alert.alert(
+            'Rating Sync Status',
+            'Manage your rating synchronization here.',
+            [
+              { text: 'OK', style: 'default' }
+            ]
+          );
+        }}
+      />
+      
+      {/* Rating Sort Selector */}
+      <RatingSortSelector
+        selectedSort={sortBy}
+        onSortChange={setSortBy}
+        compact={false}
+      />
+      
+      {/* Processing Indicator */}
+      {isProcessingRatings && (
+        <View style={[styles.processingIndicator, { backgroundColor: theme.colors.cardBackground }]}>
+          <ActivityIndicator size="small" color="#4ECDC4" />
+          <Text style={[styles.processingText, { color: theme.colors.textSecondary }]}>
+            Processing restaurant ratings...
+          </Text>
+        </View>
+      )}
+      
       {/* Offline mode removed for stability */}
       <TouchableOpacity
         onPress={() => {
@@ -1288,13 +1406,29 @@ function HomeScreen({ navigation }: { navigation: any }) {
           }
           return item.id;
         }}
-        renderItem={({ item, index }) => {
-          // Safety check - skip if item is invalid
-          if (!item || !item.id || !item.name) {
-            console.warn('⚠️ Invalid restaurant item in FlatList:', item, 'at index:', index);
-            return null;
-          }
-          return <RestaurantCard restaurant={item as CategorizedRestaurant} />;
+        renderItem={({ item }) => {
+          const ratingData = restaurantRatings.get(item.id);
+          return (
+            <EnhancedRestaurantCard
+              restaurant={item as CategorizedRestaurant}
+              ratingData={ratingData}
+              onPress={() => {
+                if (item.id && navigation && typeof navigation.navigate === 'function') {
+                  navigation.navigate('RestaurantDetail', {
+                    restaurantId: item.id,
+                    restaurant: item
+                  });
+                } else if (!item.id) {
+                  console.warn('⚠️ Restaurant missing ID, cannot navigate');
+                } else {
+                  console.warn('⚠️ Navigation not available, cannot navigate to restaurant details');
+                }
+              }}
+              showSyncStatus={true}
+              showRanking={true}
+              navigation={navigation}
+            />
+          );
         }}
         refreshing={refreshing}
         onRefresh={onRefresh}
