@@ -46,14 +46,16 @@ class HomeScreenErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('❌ HomeScreen Error Boundary caught an error:', error, errorInfo);
-    crashLogger.logError(error, {
-      component: 'HomeScreen',
-      screen: 'HomeScreen',
-      additionalContext: {
-        errorBoundary: true,
-        errorInfo
-      }
-    });
+    if (crashLogger && typeof crashLogger.logError === 'function') {
+      crashLogger.logError(error, {
+        component: 'HomeScreen',
+        screen: 'HomeScreen',
+        additionalContext: {
+          errorBoundary: true,
+          errorInfo
+        }
+      });
+    }
   }
 
   render() {
@@ -78,11 +80,13 @@ class HomeScreenErrorBoundary extends React.Component<
               try {
                 if (crashLogger && typeof crashLogger.getLogs === 'function') {
                   const logs = await crashLogger.getLogs();
-                  console.log('📋 Recent crash logs:', logs.slice(0, 3));
+                  const recentLogs = Array.isArray(logs) ? logs.slice(0, 3) : [];
+                  console.log('📋 Recent crash logs:', recentLogs);
                 }
                 
                 if (crashLogger && typeof crashLogger.getErrorSummary === 'function') {
-                  Alert.alert('Debug Info', `Recent errors: ${crashLogger.getErrorSummary()}`);
+                  const errorSummary = crashLogger.getErrorSummary();
+                  Alert.alert('Debug Info', `Recent errors: ${errorSummary || 'No errors recorded'}`);
                 } else {
                   Alert.alert('Debug Info', 'Error summary not available');
                 }
@@ -863,12 +867,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   useEffect(() => {
     console.log('🏠 HomeScreen: Restaurants state updated:', restaurants.length);
-    console.log('📍 HomeScreen: Restaurant locations:', (restaurants || []).map(r => ({
-      name: r.name,
-      lat: r.location?.latitude,
-      lng: r.location?.longitude,
-      valid: !!(r.location?.latitude && r.location?.longitude)
-    })));
+    // Log restaurant count and validity instead of full objects to prevent rendering issues
+    const validLocations = (restaurants || []).filter(r => r?.location?.latitude && r?.location?.longitude).length;
+    console.log('📍 HomeScreen: Restaurant locations:', `${validLocations}/${restaurants.length} have valid coordinates`);
   }, [restaurants]);
 
   // Categorize restaurants using centralized config

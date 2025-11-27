@@ -7,7 +7,7 @@ const STORAGE_BUCKET = BUCKETS.RESTAURANT_IMAGES;
 /**
  * Convert ImagePicker URI to a format suitable for upload
  */
-const prepareImageForUpload = async (imageUri: string): Promise<{ blob: Blob; mimeType: string } | null> => {
+const prepareImageForUpload = async (imageUri: string): Promise<{ blob: Blob; mimeType: string }> => {
   try {
     console.log('🔄 Preparing image for upload:', imageUri);
 
@@ -26,7 +26,7 @@ const prepareImageForUpload = async (imageUri: string): Promise<{ blob: Blob; mi
       try {
         // Read the file as base64
         const base64 = await FileSystem.readAsStringAsync(processedUri, {
-          encoding: FileSystem.EncodingType.BASE64,
+          encoding: 'base64',
         });
 
         // Determine MIME type from file extension or default to JPEG
@@ -44,6 +44,10 @@ const prepareImageForUpload = async (imageUri: string): Promise<{ blob: Blob; mi
         const response = await fetch(base64Data);
         const blob = await response.blob();
 
+        if (!blob) {
+          throw new Error('Failed to create blob from base64 data');
+        }
+
         console.log('✅ Successfully prepared image blob:', { size: blob.size, type: blob.type });
         return { blob, mimeType };
       } catch (fileReadError) {
@@ -59,11 +63,16 @@ const prepareImageForUpload = async (imageUri: string): Promise<{ blob: Blob; mi
           }
 
           const blob = await response.blob();
+          
+          if (!blob) {
+            throw new Error('Failed to create blob from fetch response');
+          }
+          
           console.log('✅ Fallback method successful:', { size: blob.size, type: blob.type });
           return { blob, mimeType: blob.type || 'image/jpeg' };
         } catch (fallbackError) {
           console.error('❌ Fallback method also failed:', fallbackError);
-          return null;
+          throw new Error(`Failed to process image: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
         }
       }
     } else {
@@ -73,11 +82,16 @@ const prepareImageForUpload = async (imageUri: string): Promise<{ blob: Blob; mi
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const blob = await response.blob();
+      
+      if (!blob) {
+        throw new Error('Failed to create blob from HTTP response');
+      }
+      
       return { blob, mimeType: blob.type || 'image/jpeg' };
     }
   } catch (error) {
     console.error('❌ Failed to prepare image for upload:', error);
-    return null;
+    throw new Error(`Failed to prepare image for upload: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
@@ -104,11 +118,7 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
     // Prepare the image for upload
     const imageData = await prepareImageForUpload(imageUri);
     
-    if (!imageData || !imageData.blob) {
-      console.error('❌ Failed to prepare image for upload');
-      throw new Error('Failed to process image for upload');
-    }
-
+    // The blob is now guaranteed to exist due to the changes in prepareImageForUpload
     console.log('✅ Image prepared successfully:', { 
       size: imageData.blob.size, 
       type: imageData.blob.type,
@@ -176,11 +186,7 @@ export const uploadImageToRestaurantBucket = async (
     // Prepare the image for upload
     const imageData = await prepareImageForUpload(imageUri);
     
-    if (!imageData || !imageData.blob) {
-      console.error('❌ Failed to prepare image for upload');
-      throw new Error('Failed to process image for upload');
-    }
-
+    // The blob is now guaranteed to exist due to the changes in prepareImageForUpload
     console.log('✅ Image prepared for bucket upload:', { 
       size: imageData.blob.size, 
       type: imageData.blob.type,
