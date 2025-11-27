@@ -388,7 +388,16 @@ function HomeScreen({ navigation }: { navigation: any }) {
     theme = themeResult.theme;
   } catch (themeError) {
     console.warn('⚠️ Theme context not available, using default theme');
-    theme = { colors: { background: '#ffffff', text: '#000000', cardBackground: '#ffffff', textSecondary: '#666666' } }; // Fallback theme
+    theme = { 
+      background: '#ffffff', 
+      surface: '#ffffff', 
+      text: '#000000', 
+      textSecondary: '#666666',
+      primary: '#FF00FF',
+      secondary: '#F0E68C',
+      border: '#E0E0E0',
+      inputBackground: '#F9F9F9'
+    }; // Fallback theme
   }
   
   // const { isOnline } = useNetwork(); // Disabled - not using offline features for now
@@ -1288,9 +1297,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
       
       {/* Processing Indicator */}
       {isProcessingRatings && (
-        <View style={[styles.processingIndicator, { backgroundColor: theme?.colors?.cardBackground || '#ffffff' }]}>
+        <View style={[styles.processingIndicator, { backgroundColor: theme?.surface || DESIGN_COLORS.cardBackground }]}>
           <ActivityIndicator size="small" color="#4ECDC4" />
-          <Text style={[styles.processingText, { color: theme?.colors?.textSecondary || '#666666' }]}>
+          <Text style={[styles.processingText, { color: theme?.textSecondary || DESIGN_COLORS.textSecondary }]}>
             Processing restaurant ratings...
           </Text>
         </View>
