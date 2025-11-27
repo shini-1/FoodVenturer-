@@ -6,6 +6,7 @@ import { AuthProvider } from './components/AuthContext';
 import { NetworkProvider } from './src/contexts/NetworkContext';
 import * as Linking from 'expo-linking';
 import { supabase } from './src/config/supabase';
+import { DatabaseService } from './src/services/database';
 import RoleSelectionScreen from './screens/RoleSelectionScreen';
 import HomeScreen from './screens/HomeScreen';
 import BusinessPanelScreen from './screens/BusinessPanelScreen';
@@ -32,6 +33,28 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('RoleSelection');
   const [screenParams, setScreenParams] = useState<NavigationParams>({});
   const [navigationHistory, setNavigationHistory] = useState<Screen[]>(['RoleSelection']);
+
+  // Initialize database on app start
+  useEffect(() => {
+    console.log('🚀 Initializing FoodVenturer app...');
+
+    const initializeApp = async () => {
+      try {
+        console.log('💾 Initializing database...');
+        await DatabaseService.getDatabase();
+        console.log('✅ Database ready');
+
+        // Log database stats for debugging
+        const stats = await DatabaseService.getDatabaseStats();
+        console.log('📊 Database stats:', stats);
+
+      } catch (error) {
+        console.error('❌ App initialization failed:', error);
+      }
+    };
+
+    initializeApp();
+  }, []);
 
   // Handle deep links for email confirmation
   useEffect(() => {

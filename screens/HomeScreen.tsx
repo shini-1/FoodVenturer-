@@ -17,6 +17,8 @@ import MapBoxWebView from '../components/MapBoxWebView';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { resolveCategoryConfig, getAllCategoryOptions } from '../src/config/categoryConfig';
 import { restaurantService } from '../src/services/restaurantService';
+import { DatabaseService } from '../src/services/database';
+import { RestaurantRow } from '../src/types/database';
 
 import { Restaurant } from '../types';
 
@@ -173,32 +175,153 @@ function HomeScreen({ navigation }: { navigation: any }) {
       isLoadingRef.current = true;
       setIsLoadingPage(true);
       console.log(`🏠 HomeScreen: Fetching restaurants page ${targetPage} (size ${SERVER_PAGE_SIZE})`);
-      
-      // Use restaurantService directly - no offline mode
-      const { items: pageData, total } = await restaurantService.getRestaurantsPageWithCount(targetPage, SERVER_PAGE_SIZE);
-      
-      // Safety check for pageData
-      if (!Array.isArray(pageData)) {
-        console.error('❌ Invalid pageData received:', pageData);
-        throw new Error('Invalid data received from server');
+
+      // Check database readiness
+      const isDbReady = DatabaseService.isDatabaseReady();
+      console.log('📊 Database ready for loadPage:', isDbReady);
+
+      // Offline-first approach: Try local database first
+      let localRestaurants: RestaurantRow[] = [];
+      try {
+        console.log('📱 Attempting to load from local database...');
+        localRestaurants = await DatabaseService.getRestaurants(SERVER_PAGE_SIZE, (targetPage - 1) * SERVER_PAGE_SIZE);
+        console.log(`📱 Found ${localRestaurants.length} restaurants in local database`);
+
+        // Log some sample data for debugging
+        if (localRestaurants.length > 0) {
+          console.log('📋 Sample local restaurant:', {
+            id: localRestaurants[0].id,
+            name: localRestaurants[0].name,
+            category: localRestaurants[0].category,
+            latitude: localRestaurants[0].latitude,
+            longitude: localRestaurants[0].longitude,
+          });
+        }
+      } catch (localError) {
+        console.error('❌ Local database error:', localError);
       }
-      
-      if (targetPage === 1) {
-        setRestaurants(pageData);
-      } else if (pageData.length > 0) {
+
+      // If we have local data and it's not the first page, use it
+      if (localRestaurants.length > 0 && targetPage > 1) {
+        console.log('🔄 Using local data for pagination');
+        // Convert RestaurantRow back to Restaurant format
+        const restaurantData: Restaurant[] = localRestaurants.map(r => ({
+          id: r.id,
+          name: r.name,
+          location: {
+            latitude: r.latitude || 0,
+            longitude: r.longitude || 0,
+          },
+          image: r.image_url || undefined,
+          category: r.category,
+          rating: r.rating || undefined,
+          priceRange: r.price_range || undefined,
+          description: r.description || undefined,
+        }));
+
         setRestaurants(prev => {
           const existing = new Set(prev.map((r: Restaurant) => r.id));
-          const merged = [...prev, ...pageData.filter(r => r && r.id && !existing.has(r.id))];
+          const merged = [...prev, ...restaurantData.filter(r => r && r.id && !existing.has(r.id))];
+          console.log(`📊 Set ${merged.length} restaurants (merged from local)`);
           return merged;
         });
+        setHasMore(localRestaurants.length === SERVER_PAGE_SIZE);
+      } else {
+        console.log('🌐 Attempting to load from server...');
+        // For first page or no local data, fetch from server
+        try {
+          const { items: serverData, total } = await restaurantService.getRestaurantsPageWithCount(targetPage, SERVER_PAGE_SIZE);
+          console.log(`🌐 Server returned ${serverData.length} restaurants, total: ${total}`);
+
+          // Log sample server data
+          if (serverData.length > 0) {
+            console.log('📋 Sample server restaurant:', {
+              id: serverData[0].id,
+              name: serverData[0].name,
+              category: serverData[0].category,
+              location: serverData[0].location,
+            });
+          }
+
+          // Convert to local format and save to database
+          const localFormatData: RestaurantRow[] = serverData.map(r => ({
+            id: r.id,
+            name: r.name,
+            description: r.description || undefined,
+            address: null, // Will be derived from geocoding
+            latitude: r.location?.latitude || null,
+            longitude: r.location?.longitude || null,
+            category: r.category || 'casual',
+            price_range: r.priceRange || null,
+            rating: r.rating || null,
+            image_url: r.image || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            _sync_status: 'synced' as const,
+            _last_modified: new Date().toISOString(),
+          }));
+
+          console.log('💾 Saving to local database...');
+          // Save to local database
+          await DatabaseService.saveRestaurants(localFormatData);
+          console.log('✅ Saved to local database');
+
+          if (targetPage === 1) {
+            setRestaurants(serverData);
+            console.log(`📊 Set ${serverData.length} restaurants (from server)`);
+          } else if (serverData.length > 0) {
+            setRestaurants(prev => {
+              const existing = new Set(prev.map((r: Restaurant) => r.id));
+              const merged = [...prev, ...serverData.filter(r => r && r.id && !existing.has(r.id))];
+              console.log(`📊 Set ${merged.length} restaurants (merged from server)`);
+              return merged;
+            });
+          }
+          const more = typeof total === 'number'
+            ? (targetPage * SERVER_PAGE_SIZE) < total
+            : (serverData.length === SERVER_PAGE_SIZE);
+          setHasMore(more);
+          console.log(`✅ Loaded ${serverData.length} restaurants from server, hasMore: ${more}`);
+        } catch (serverError) {
+          console.error('❌ Server error:', serverError);
+
+          // Fallback to local data if server fails
+          if (localRestaurants.length > 0) {
+            console.log('🔄 Falling back to local data');
+            // Convert RestaurantRow back to Restaurant format
+            const restaurantData: Restaurant[] = localRestaurants.map(r => ({
+              id: r.id,
+              name: r.name,
+              location: {
+                latitude: r.latitude || 0,
+                longitude: r.longitude || 0,
+              },
+              image: r.image_url || undefined,
+              category: r.category,
+              rating: r.rating || undefined,
+              priceRange: r.price_range || undefined,
+              description: r.description || undefined,
+            }));
+
+            setRestaurants(restaurantData);
+            setHasMore(localRestaurants.length === SERVER_PAGE_SIZE);
+            console.log(`📱 Using ${localRestaurants.length} restaurants from local database`);
+          } else {
+            console.log('❌ No data available from any source');
+            // No data available
+            setRestaurants([]);
+            setHasMore(false);
+            console.log('❌ No restaurants available');
+          }
+        }
       }
-      const more = typeof total === 'number'
-        ? (targetPage * SERVER_PAGE_SIZE) < total
-        : (pageData.length === SERVER_PAGE_SIZE);
-      setHasMore(more);
-      console.log(`✅ Loaded ${pageData.length} restaurants, hasMore: ${more}`);
     } catch (error) {
       console.error('❌ HomeScreen: Failed to load restaurants page:', error);
+      console.error('❌ Error details:', {
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        name: (error as Error).name,
+      });
       Alert.alert('Connection Error', 'Unable to load restaurants. Please check your internet connection and try again.');
       // Set empty array to prevent crashes
       if (targetPage === 1) {
@@ -229,9 +352,20 @@ function HomeScreen({ navigation }: { navigation: any }) {
   // Load initial data on mount
   useEffect(() => {
     console.log('🏠 HomeScreen: Loading initial data...');
-    
+
     const loadInitialData = async () => {
       try {
+        // Check if database is ready
+        console.log('🔍 Checking database readiness...');
+        const isDbReady = DatabaseService.isDatabaseReady();
+        console.log('📊 Database ready:', isDbReady);
+
+        if (!isDbReady) {
+          console.log('⏳ Waiting for database initialization...');
+          // Wait a bit for database to initialize
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
         setServerPage(1);
         await loadPage(1);
       } catch (error) {
@@ -241,7 +375,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         setIsLoadingPage(false);
       }
     };
-    
+
     loadInitialData();
   }, [loadPage]);
 
@@ -534,6 +668,22 @@ function HomeScreen({ navigation }: { navigation: any }) {
           <Text style={{ fontSize: 14, color: '#999', marginTop: 8, textAlign: 'center' }}>
             Pull down to refresh or check your connection.
           </Text>
+          <TouchableOpacity
+            onPress={async () => {
+              console.log('🔄 Force refresh triggered');
+              const isDbReady = DatabaseService.isDatabaseReady();
+              console.log('📊 Database ready:', isDbReady);
+
+              const stats = await DatabaseService.getDatabaseStats();
+              console.log('📊 Database stats:', stats);
+
+              // Force reload page 1
+              await loadPage(1);
+            }}
+            style={{ marginTop: 16, padding: 12, backgroundColor: '#4A90E2', borderRadius: 8 }}
+          >
+            <Text style={{ color: 'white', fontSize: 16 }}>🔄 Force Refresh</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
