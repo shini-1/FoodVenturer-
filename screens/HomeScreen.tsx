@@ -362,9 +362,17 @@ function HomeScreen({ navigation }: { navigation: any }) {
   useEffect(() => {
     const initLogger = async () => {
       try {
-        await crashLogger.initialize();
-        setCrashLoggerReady(true);
-        crashLogger.logComponentEvent('HomeScreen', 'mount_start');
+        // Check if crashLogger exists and has initialize method
+        if (crashLogger && typeof crashLogger.initialize === 'function') {
+          await crashLogger.initialize();
+          setCrashLoggerReady(true);
+          if (typeof crashLogger.logComponentEvent === 'function') {
+            crashLogger.logComponentEvent('HomeScreen', 'mount_start');
+          }
+        } else {
+          console.warn('⚠️ Crash logger not available, skipping initialization');
+          setCrashLoggerReady(false);
+        }
       } catch (error) {
         console.error('❌ Failed to initialize crash logger:', error);
         setCrashLoggerReady(false);
@@ -396,7 +404,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     const [hasError, setHasError] = useState(false);
 
     console.log('🏠 HomeScreen: State initialized successfully');
-    if (crashLoggerReady) {
+    if (crashLoggerReady && crashLogger && typeof crashLogger.logComponentEvent === 'function') {
       crashLogger.logComponentEvent('HomeScreen', 'state_initialized');
     }
 
@@ -479,7 +487,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       setIsLoadingPage(true);
       console.log(`🏠 HomeScreen: Fetching restaurants page ${targetPage} (size ${SERVER_PAGE_SIZE})`);
       
-      if (crashLoggerReady) {
+      if (crashLoggerReady && crashLogger && typeof crashLogger.logComponentEvent === 'function') {
         crashLogger.logComponentEvent('HomeScreen', 'load_page_start', { page: targetPage });
       }
 
@@ -505,7 +513,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         setHasMore(more);
         console.log(`✅ Loaded ${serverData?.length || 0} restaurants from server, hasMore: ${more}`);
         
-        if (crashLoggerReady) {
+        if (crashLoggerReady && crashLogger && typeof crashLogger.logComponentEvent === 'function') {
           crashLogger.logComponentEvent('HomeScreen', 'load_page_success', { 
             page: targetPage, 
             restaurantsCount: serverData?.length || 0,
@@ -515,7 +523,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       } catch (serverError) {
         console.error('❌ Server error:', serverError);
         
-        if (crashLoggerReady) {
+        if (crashLoggerReady && crashLogger && typeof crashLogger.logError === 'function') {
           await crashLogger.logError(serverError as Error, {
             component: 'HomeScreen',
             screen: 'HomeScreen',
@@ -542,7 +550,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       });
       
       // Log the error for production debugging
-      if (crashLoggerReady) {
+      if (crashLoggerReady && crashLogger && typeof crashLogger.logError === 'function') {
         await crashLogger.logError(error as Error, {
           component: 'HomeScreen',
           screen: 'HomeScreen',
@@ -563,7 +571,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     } finally {
       setIsLoadingPage(false);
       isLoadingRef.current = false;
-      if (crashLoggerReady) {
+      if (crashLoggerReady && crashLogger && typeof crashLogger.logComponentEvent === 'function') {
         crashLogger.logComponentEvent('HomeScreen', 'load_page_end', { page: targetPage });
       }
     }
@@ -593,14 +601,14 @@ function HomeScreen({ navigation }: { navigation: any }) {
       try {
         console.log('🔍 Starting simplified data load...');
         
-        if (crashLoggerReady) {
+        if (crashLoggerReady && crashLogger && typeof crashLogger.logComponentEvent === 'function') {
           crashLogger.logComponentEvent('HomeScreen', 'initial_data_load_start');
         }
 
         setServerPage(1);
         await loadPage(1);
         
-        if (crashLoggerReady) {
+        if (crashLoggerReady && crashLogger && typeof crashLogger.logComponentEvent === 'function') {
           crashLogger.logComponentEvent('HomeScreen', 'initial_data_load_success');
         }
       } catch (error) {
@@ -612,7 +620,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         });
         
         // Log the error for production debugging
-        if (crashLoggerReady) {
+        if (crashLoggerReady && crashLogger && typeof crashLogger.logError === 'function') {
           await crashLogger.logError(error as Error, {
             component: 'HomeScreen',
             screen: 'HomeScreen',
