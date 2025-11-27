@@ -93,21 +93,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingPage, setIsLoadingPage] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [hasError, setHasError] = useState(false);
 
-  // Toggle favorite status (UI only for now - no persistence)
-  const toggleFavorite = useCallback((restaurantId: string) => {
-    setFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(restaurantId)) {
-        newFavorites.delete(restaurantId);
-      } else {
-        newFavorites.add(restaurantId);
-      }
-      return newFavorites;
-    });
-  }, []);
+  // Favorites removed for stability
 
   // Clear address cache to refresh with new geocoding logic
   const clearAddressCache = () => {
@@ -417,7 +405,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
     }
     
     const address = addressCache[restaurant.id] || '📍 Loading address...';
-    const isFavorite = favorites.has(restaurant.id);
     const categoryConfig = resolveCategoryConfig(restaurant.category, restaurant.name);
 
     return (
@@ -465,21 +452,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
               </Text>
             </View>
           </View>
-          {/* Favorite button in top-right */}
-          <TouchableOpacity
-            style={styles.favoriteButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              toggleFavorite(restaurant.id);
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.favoriteIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
-          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
-  }, [addressCache, navigation, favorites, toggleFavorite]);
+  }, [addressCache, navigation]);
 
   const renderListFooter = useCallback(() => {
     if (!hasMore && !isLoadingPage) {
