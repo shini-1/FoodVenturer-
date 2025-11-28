@@ -1418,8 +1418,11 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
     <View style={styles.container}>
       <Header />
       
-      {/* Sectors removed for error isolation - Cache Status Indicator */}
-      {/* Sectors removed for error isolation - Rating Sync Indicator */}
+      {/* Cache Status Indicator - RESTORED */}
+      <CacheStatusIndicator />
+      
+      {/* Rating Sync Indicator - RESTORED */}
+      <RatingSyncIndicator />
       
       {/* Rating Sort Selector - KEPT for testing ratings functionality */}
       <RatingSortSelector
@@ -1428,14 +1431,126 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
         compact={false}
       />
       
-      {/* Sectors removed for error isolation - Processing Indicator */}
+      {/* Processing Indicator - RESTORED */}
+      {isProcessingRatings && (
+        <View style={styles.processingIndicator}>
+          <ActivityIndicator size="small" color="#4A90E2" />
+          <Text style={styles.processingText}>Processing ratings...</Text>
+        </View>
+      )}
       
-      {/* Offline mode removed for stability */}
-      {/* Sectors removed for error isolation - Search and Category Filter */}
+      {/* Search and Category Filter - RESTORED */}
+      <TouchableOpacity
+        onPress={() => {
+          if (navigation && typeof navigation.goBack === 'function') {
+            navigation.goBack();
+          } else {
+            console.warn('⚠️ Navigation goBack not available');
+          }
+        }}
+        style={styles.backButton}
+      >
+        <Text style={styles.backText}>✕</Text>
+      </TouchableOpacity>
+      <View style={styles.searchContainer}>
+        <TextInput
+          placeholder="Search restaurants"
+          value={searchText}
+          onChangeText={setSearchText}
+          style={styles.searchBar}
+          placeholderTextColor={DESIGN_COLORS.textPlaceholder}
+        />
+        <Text style={styles.searchIcon}>🔍</Text>
+        
+        {/* Category Filter Button */}
+        <TouchableOpacity
+          style={styles.categoryButton}
+          onPress={() => setShowCategoryModal(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.categoryButtonEmoji}>
+            {(() => {
+              const category = restaurantCategories.find(c => c.value === selectedCategory);
+              const emoji = category?.emoji || '🍽️';
+              return validateTextValue(emoji, 'HomeScreen.categoryButtonEmoji');
+            })()}
+          </Text>
+          <Text style={styles.categoryButtonLabel}>
+            {(() => {
+              const category = restaurantCategories.find(c => c.value === selectedCategory);
+              const label = category?.label || 'All';
+              return validateTextValue(label, 'HomeScreen.categoryButtonLabel');
+            })()}
+          </Text>
+          <Text style={styles.dropdownIcon}>▼</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Category Filter Modal */}
+      <Modal
+        visible={showCategoryModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowCategoryModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCategoryModal(false)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: theme?.surface || DESIGN_COLORS.cardBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme?.text || DESIGN_COLORS.textPrimary }]}>Filter by Type</Text>
+            <FlatList
+              data={restaurantCategories}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedCategory(item.value);
+                    setShowCategoryModal(false);
+                  }}
+                  style={[
+                    styles.categoryOption,
+                    selectedCategory === item.value && { backgroundColor: (theme?.primary || DESIGN_COLORS.infoBg) + '20' }
+                  ]}
+                >
+                  <Text style={{ fontSize: 18, marginRight: 10 }}>
+                    {validateTextValue(item.emoji, `HomeScreen.categoryModal.emoji[${item.value}]`)}
+                  </Text>
+                  <Text style={[styles.categoryText, { color: theme?.text || DESIGN_COLORS.textPrimary }]}>
+                    {validateTextValue(item.label, `HomeScreen.categoryModal.label[${item.value}]`)}
+                  </Text>
+                  {selectedCategory === item.value && (
+                    <Text style={{ color: theme?.primary || DESIGN_COLORS.infoBg, fontSize: 16 }}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              style={{ maxHeight: 300 }}
+            />
+            <TouchableOpacity
+              onPress={() => setShowCategoryModal(false)}
+              style={[styles.closeButton, { backgroundColor: theme?.primary || DESIGN_COLORS.infoBg }]}
+            >
+              <Text style={[styles.closeButtonText, { color: theme?.background || DESIGN_COLORS.infoText }]}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Map Container - RESTORED */}
+      <View style={styles.mapContainer}>
+        {visibleRestaurants && visibleRestaurants.length > 0 && visibleRestaurants.every(r => r && r.id && r.location) ? (
+          <MapBoxWebView restaurants={visibleRestaurants} />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>
+              {restaurants.length === 0 ? '🔄 Loading restaurants...' : '🔍 No restaurants match your search'}
+            </Text>
+          </View>
+        )}
+      </View>
       
-      {/* Sectors removed for error isolation - Map Container */}
-      
-      {/* FlatList with EnhancedRestaurantCards - KEPT for testing ratings */}
+      {/* FlatList with EnhancedRestaurantCards */}
 
       <FlatList
         style={styles.cardsContainer}
