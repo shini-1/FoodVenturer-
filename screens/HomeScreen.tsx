@@ -1427,179 +1427,24 @@ function HomeScreen({ navigation }: { navigation: any }) {
     <View style={styles.container}>
       <Header />
       
-      {/* Cache Status Indicator */}
-      <CacheStatusIndicator 
-        showDetails={true}
-        onPress={() => {
-          // Show cache management modal or navigate to cache settings
-          Alert.alert(
-            'Cache Status',
-            'Manage your offline cache here. Would you like to refresh the cache?',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { 
-                text: 'Refresh Cache', 
-                onPress: () => cacheStatusService.refreshCache() 
-              },
-              { 
-                text: 'Clear Cache', 
-                style: 'destructive',
-                onPress: () => {
-                  Alert.alert(
-                    'Clear Cache',
-                    'This will remove all offline data. Continue?',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Clear', onPress: () => cacheStatusService.clearCache() }
-                    ]
-                  );
-                }
-              }
-            ]
-          );
-        }}
-      />
+      {/* Sectors removed for error isolation - Cache Status Indicator */}
+      {/* Sectors removed for error isolation - Rating Sync Indicator */}
       
-      {/* Rating Sync Indicator */}
-      <RatingSyncIndicator 
-        showDetails={true}
-        onPress={() => {
-          Alert.alert(
-            'Rating Sync Status',
-            'Manage your rating synchronization here.',
-            [
-              { text: 'OK', style: 'default' }
-            ]
-          );
-        }}
-      />
-      
-      {/* Rating Sort Selector */}
+      {/* Rating Sort Selector - KEPT for testing ratings functionality */}
       <RatingSortSelector
         selectedSort={sortBy}
         onSortChange={setSortBy}
         compact={false}
       />
       
-      {/* Processing Indicator */}
-      {isProcessingRatings && (
-        <View style={[styles.processingIndicator, { backgroundColor: theme?.surface || DESIGN_COLORS.cardBackground }]}>
-          <ActivityIndicator size="small" color="#4ECDC4" />
-          <Text style={[styles.processingText, { color: theme?.textSecondary || DESIGN_COLORS.textSecondary }]}>
-            Processing restaurant ratings...
-          </Text>
-        </View>
-      )}
+      {/* Sectors removed for error isolation - Processing Indicator */}
       
       {/* Offline mode removed for stability */}
-      <TouchableOpacity
-        onPress={() => {
-          if (navigation && typeof navigation.goBack === 'function') {
-            navigation.goBack();
-          } else {
-            console.warn('⚠️ Navigation goBack not available');
-          }
-        }}
-        style={styles.backButton}
-      >
-        <Text style={styles.backText}>✕</Text>
-      </TouchableOpacity>
-      <View style={styles.searchContainer}>
-        <TextInput
-          placeholder="Search restaurants"
-          value={searchText}
-          onChangeText={setSearchText}
-          style={styles.searchBar}
-          placeholderTextColor={DESIGN_COLORS.textPlaceholder}
-        />
-        <Text style={styles.searchIcon}>🔍</Text>
-        
-        {/* Category Filter Button */}
-        <TouchableOpacity
-          style={styles.categoryButton}
-          onPress={() => setShowCategoryModal(true)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.categoryButtonEmoji}>
-            {(() => {
-              const category = restaurantCategories.find(c => c.value === selectedCategory);
-              const emoji = category?.emoji || '🍽️';
-              return validateTextValue(emoji, 'HomeScreen.categoryButtonEmoji');
-            })()}
-          </Text>
-          <Text style={styles.categoryButtonLabel}>
-            {(() => {
-              const category = restaurantCategories.find(c => c.value === selectedCategory);
-              const label = category?.label || 'All';
-              return validateTextValue(label, 'HomeScreen.categoryButtonLabel');
-            })()}
-          </Text>
-          <Text style={styles.dropdownIcon}>▼</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Category Filter Modal */}
-      <Modal
-        visible={showCategoryModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowCategoryModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCategoryModal(false)}
-        >
-          <View style={[styles.modalContent, { backgroundColor: theme?.surface || DESIGN_COLORS.cardBackground }]}>
-            <Text style={[styles.modalTitle, { color: theme?.text || DESIGN_COLORS.textPrimary }]}>Filter by Type</Text>
-            <FlatList
-              data={restaurantCategories}
-              keyExtractor={(item) => item.value}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedCategory(item.value);
-                    setShowCategoryModal(false);
-                  }}
-                  style={[
-                    styles.categoryOption,
-                    selectedCategory === item.value && { backgroundColor: (theme?.primary || DESIGN_COLORS.infoBg) + '20' }
-                  ]}
-                >
-                  <Text style={{ fontSize: 18, marginRight: 10 }}>
-                    {validateTextValue(item.emoji, `HomeScreen.categoryModal.emoji[${item.value}]`)}
-                  </Text>
-                  <Text style={[styles.categoryText, { color: theme?.text || DESIGN_COLORS.textPrimary }]}>
-                    {validateTextValue(item.label, `HomeScreen.categoryModal.label[${item.value}]`)}
-                  </Text>
-                  {selectedCategory === item.value && (
-                    <Text style={{ color: theme?.primary || DESIGN_COLORS.infoBg, fontSize: 16 }}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-              style={{ maxHeight: 300 }}
-            />
-            <TouchableOpacity
-              onPress={() => setShowCategoryModal(false)}
-              style={[styles.closeButton, { backgroundColor: theme?.primary || DESIGN_COLORS.infoBg }]}
-            >
-              <Text style={[styles.closeButtonText, { color: theme?.background || DESIGN_COLORS.infoText }]}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      <View style={styles.mapContainer}>
-        {visibleRestaurants && visibleRestaurants.length > 0 && visibleRestaurants.every(r => r && r.id && r.location) ? (
-          <MapBoxWebView restaurants={visibleRestaurants} />
-        ) : (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>
-              {restaurants.length === 0 ? '🔄 Loading restaurants...' : '🔍 No restaurants match your search'}
-            </Text>
-          </View>
-        )}
-      </View>
+      {/* Sectors removed for error isolation - Search and Category Filter */}
+      
+      {/* Sectors removed for error isolation - Map Container */}
+      
+      {/* FlatList with EnhancedRestaurantCards - KEPT for testing ratings */}
 
       <FlatList
         style={styles.cardsContainer}
