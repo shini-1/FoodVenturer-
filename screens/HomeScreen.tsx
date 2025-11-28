@@ -240,8 +240,76 @@ const DESIGN_COLORS = {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 80, // Account for header
+    paddingTop: 50, // Account for status bar
     backgroundColor: DESIGN_COLORS.background,
+  },
+  // New Top Navigation Bar styles matching target design
+  topNavBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: DESIGN_COLORS.background,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonIcon: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
+  },
+  searchInputContainer: {
+    flex: 1,
+    marginHorizontal: 12,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: DESIGN_COLORS.border,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  searchInput: {
+    fontSize: 14,
+    color: DESIGN_COLORS.textPrimary,
+  },
+  categoryDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: DESIGN_COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  categoryDropdownEmoji: {
+    fontSize: 16,
+    marginRight: 4,
+  },
+  categoryDropdownText: {
+    fontSize: 14,
+    color: DESIGN_COLORS.textPrimary,
+    fontWeight: '500',
+  },
+  categoryDropdownArrow: {
+    fontSize: 10,
+    color: DESIGN_COLORS.textPrimary,
+    marginLeft: 4,
+  },
+  modalCloseButton: {
+    marginTop: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   backButton: {
     position: 'absolute',
@@ -412,17 +480,6 @@ const styles = StyleSheet.create({
   categoryText: {
     flex: 1,
     fontSize: 16,
-  },
-  closeButton: {
-    marginTop: 15,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,
@@ -1416,73 +1473,49 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <Header />
-      
-      {/* Cache Status Indicator - RESTORED */}
-      <CacheStatusIndicator />
-      
-      {/* Rating Sync Indicator - RESTORED */}
-      <RatingSyncIndicator />
-      
-      {/* Rating Sort Selector - KEPT for testing ratings functionality */}
-      <RatingSortSelector
-        selectedSort={sortBy}
-        onSortChange={setSortBy}
-        compact={false}
-      />
-      
-      {/* Processing Indicator - RESTORED */}
-      {isProcessingRatings && (
-        <View style={styles.processingIndicator}>
-          <ActivityIndicator size="small" color="#4A90E2" />
-          <Text style={styles.processingText}>Processing ratings...</Text>
-        </View>
-      )}
-      
-      {/* Search and Category Filter - RESTORED */}
-      <TouchableOpacity
-        onPress={() => {
-          if (navigation && typeof navigation.goBack === 'function') {
-            navigation.goBack();
-          } else {
-            console.warn('⚠️ Navigation goBack not available');
-          }
-        }}
-        style={styles.backButton}
-      >
-        <Text style={styles.backText}>✕</Text>
-      </TouchableOpacity>
-      <View style={styles.searchContainer}>
-        <TextInput
-          placeholder="Search restaurants"
-          value={searchText}
-          onChangeText={setSearchText}
-          style={styles.searchBar}
-          placeholderTextColor={DESIGN_COLORS.textPlaceholder}
-        />
-        <Text style={styles.searchIcon}>🔍</Text>
-        
-        {/* Category Filter Button */}
+      {/* Top Navigation Bar - X button, Search, Category Filter */}
+      <View style={styles.topNavBar}>
         <TouchableOpacity
-          style={styles.categoryButton}
+          onPress={() => {
+            if (navigation && typeof navigation.goBack === 'function') {
+              navigation.goBack();
+            } else {
+              console.warn('⚠️ Navigation goBack not available');
+            }
+          }}
+          style={styles.closeButton}
+        >
+          <Text style={styles.closeButtonIcon}>✕</Text>
+        </TouchableOpacity>
+        
+        <View style={styles.searchInputContainer}>
+          <TextInput
+            placeholder="Search resta..."
+            value={searchText}
+            onChangeText={setSearchText}
+            style={styles.searchInput}
+            placeholderTextColor="#999"
+          />
+        </View>
+        
+        <TouchableOpacity
+          style={styles.categoryDropdown}
           onPress={() => setShowCategoryModal(true)}
           activeOpacity={0.7}
         >
-          <Text style={styles.categoryButtonEmoji}>
+          <Text style={styles.categoryDropdownEmoji}>
             {(() => {
               const category = restaurantCategories.find(c => c.value === selectedCategory);
-              const emoji = category?.emoji || '🍽️';
-              return validateTextValue(emoji, 'HomeScreen.categoryButtonEmoji');
+              return category?.emoji || '🍽️';
             })()}
           </Text>
-          <Text style={styles.categoryButtonLabel}>
+          <Text style={styles.categoryDropdownText}>
             {(() => {
               const category = restaurantCategories.find(c => c.value === selectedCategory);
-              const label = category?.label || 'All';
-              return validateTextValue(label, 'HomeScreen.categoryButtonLabel');
+              return category?.label || 'All Types';
             })()}
           </Text>
-          <Text style={styles.dropdownIcon}>▼</Text>
+          <Text style={styles.categoryDropdownArrow}>▼</Text>
         </TouchableOpacity>
       </View>
 
@@ -1529,15 +1562,15 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
             />
             <TouchableOpacity
               onPress={() => setShowCategoryModal(false)}
-              style={[styles.closeButton, { backgroundColor: theme?.primary || DESIGN_COLORS.infoBg }]}
+              style={[styles.modalCloseButton, { backgroundColor: theme?.primary || DESIGN_COLORS.infoBg }]}
             >
-              <Text style={[styles.closeButtonText, { color: theme?.background || DESIGN_COLORS.infoText }]}>Done</Text>
+              <Text style={[styles.modalCloseButtonText, { color: theme?.background || DESIGN_COLORS.infoText }]}>Done</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
 
-      {/* Map Container - RESTORED */}
+      {/* Map Container */}
       <View style={styles.mapContainer}>
         {visibleRestaurants && visibleRestaurants.length > 0 && visibleRestaurants.every(r => r && r.id && r.location) ? (
           <MapBoxWebView restaurants={visibleRestaurants} />
@@ -1550,7 +1583,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
         )}
       </View>
       
-      {/* FlatList with EnhancedRestaurantCards */}
+      {/* Restaurant Cards List */}
 
       <FlatList
         style={styles.cardsContainer}
