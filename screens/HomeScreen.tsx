@@ -392,49 +392,82 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: DESIGN_COLORS.cardBackground,
-    padding: 16,
-    marginVertical: 8,
+    padding: 12,
+    marginVertical: 6,
     marginHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: DESIGN_COLORS.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   cardContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    position: 'relative',
   },
   restaurantImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 8,
-    marginRight: 16,
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    marginRight: 12,
     backgroundColor: '#f0f0f0',
   },
   cardTextContent: {
     flex: 1,
     justifyContent: 'flex-start',
+    paddingTop: 4,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: DESIGN_COLORS.textPrimary,
-    marginBottom: 8,
+    marginBottom: 4,
+    flex: 1,
+  },
+  heartIcon: {
+    fontSize: 20,
+    color: '#E0E0E0',
+    marginLeft: 8,
   },
   cardLocation: {
-    fontSize: 14,
+    fontSize: 13,
     color: DESIGN_COLORS.textSecondary,
     marginBottom: 4,
+    lineHeight: 18,
   },
   cardCategory: {
-    fontSize: 14,
+    fontSize: 13,
     color: DESIGN_COLORS.textPrimary,
-    fontWeight: '600',
+    marginBottom: 4,
+  },
+  cardRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  cardStars: {
+    fontSize: 12,
+    color: '#FFD700',
+    letterSpacing: 1,
+  },
+  cardRating: {
+    fontSize: 13,
+    color: DESIGN_COLORS.textSecondary,
+    marginLeft: 4,
+  },
+  cardPrice: {
+    fontSize: 13,
+    color: DESIGN_COLORS.textPrimary,
+    marginLeft: 8,
+    fontWeight: '500',
   },
   favoriteButton: {
     position: 'absolute',
@@ -519,27 +552,10 @@ const styles = StyleSheet.create({
   },
 });
 
-// Placeholder image URLs based on category (using unsplash for consistent placeholders)
-const getPlaceholderImage = (category: string): string => {
-  const placeholders: { [key: string]: string } = {
-    italian: 'https://images.unsplash.com/photo-1571997478779-2adcbbe9ab2f?w=100&h=100&fit=crop&crop=center',
-    cafe: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=100&h=100&fit=crop&crop=center',
-    fast_food: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=100&h=100&fit=crop&crop=center',
-    asian: 'https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=100&h=100&fit=crop&crop=center',
-    japanese: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=100&h=100&fit=crop&crop=center',
-    bakery: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=100&h=100&fit=crop&crop=center',
-    grill: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=100&h=100&fit=crop&crop=center',
-    seafood: 'https://images.unsplash.com/photo-1559847844-5315695dadae?w=100&h=100&fit=crop&crop=center',
-    mexican: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=100&h=100&fit=crop&crop=center',
-    thai: 'https://images.unsplash.com/photo-1559847844-d413744b7da0?w=100&h=100&fit=crop&crop=center',
-    buffet: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=100&h=100&fit=crop&crop=center',
-    fine_dining: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=100&h=100&fit=crop&crop=center',
-    fast_casual: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=100&h=100&fit=crop&crop=center',
-    family: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=100&h=100&fit=crop&crop=center',
-    diner: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=100&h=100&fit=crop&crop=center',
-    casual: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=100&h=100&fit=crop&crop=center'
-  };
-  return placeholders[category] || placeholders.casual;
+// Default FoodVenturer placeholder image when no restaurant image is available
+const getPlaceholderImage = (): string => {
+  // Use FoodVenturer logo/branding as default placeholder
+  return 'https://raw.githubusercontent.com/shini-1/FoodVenturer-Expo/main/assets/icon.png';
 };
 
 function isValidHttpUrl(value?: string): boolean {
@@ -647,7 +663,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
     const isLoadingRef = useRef(false);
     const refreshingRef = useRef(false);
     const hasMoreRef = useRef(true);
-    const SERVER_PAGE_SIZE = 20;
+    const SERVER_PAGE_SIZE = 5;
     const [serverPage, setServerPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isLoadingPage, setIsLoadingPage] = useState(false);
@@ -1288,7 +1304,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
           <View style={styles.cardContent}>
             <Image
               source={{
-                uri: (restaurant.image && isValidHttpUrl(restaurant.image)) ? (restaurant.image as string) : getPlaceholderImage(restaurant.category || 'casual')
+                uri: (restaurant.image && isValidHttpUrl(restaurant.image)) ? (restaurant.image as string) : getPlaceholderImage()
               }}
               style={styles.restaurantImage}
               contentFit="cover"
@@ -1298,40 +1314,40 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
               }}
             />
             <View style={styles.cardTextContent}>
-              <Text style={styles.cardTitle}>
-                {(() => {
-                  const displayName = restaurant.name ? restaurant.name.split(', ')[0] : 'Unknown Restaurant';
-                  renderDebug.logTextContent(displayName, 'cardTitle');
-                  return displayName;
-                })()}
-              </Text>
+              <View style={styles.cardTitleRow}>
+                <Text style={styles.cardTitle}>
+                  {(() => {
+                    const displayName = restaurant.name ? restaurant.name.split(', ')[0] : 'Unknown Restaurant';
+                    return displayName;
+                  })()}
+                </Text>
+                <Text style={styles.heartIcon}>🤍</Text>
+              </View>
               <Text style={styles.cardLocation}>
                 {(() => {
-                  renderDebug.logTextContent(address, 'cardLocation');
-                  return address;
+                  return `📍 ${address.replace('📍 ', '')}`;
                 })()}
               </Text>
               <Text style={styles.cardCategory}>
                 {(() => {
                   const categoryText = `${categoryConfig.emoji} ${categoryConfig.label}`;
-                  renderDebug.logTextContent(categoryText, 'cardCategory');
                   return categoryText;
                 })()}
               </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                <Text style={{ marginLeft: 6, color: DESIGN_COLORS.textSecondary }}>
+              <View style={styles.cardRatingRow}>
+                <Text style={styles.cardStars}>
                   {(() => {
-                    const ratingText = typeof restaurant.rating === 'number' && !isNaN(restaurant.rating) ? restaurant.rating.toFixed(1) : 'No ratings yet';
-                    renderDebug.logTextContent(ratingText, 'ratingText');
-                    return ratingText;
+                    const rating = typeof restaurant.rating === 'number' && !isNaN(restaurant.rating) ? restaurant.rating : 0;
+                    const fullStars = Math.floor(rating);
+                    const emptyStars = 5 - fullStars;
+                    return '★'.repeat(fullStars) + '☆'.repeat(emptyStars);
                   })()}
                 </Text>
-                <Text style={{ marginLeft: 10, color: DESIGN_COLORS.textPrimary }}>
-                  {(() => {
-                    const priceText = restaurant.priceRange || '₱';
-                    renderDebug.logTextContent(priceText, 'priceText');
-                    return priceText;
-                  })()}
+                <Text style={styles.cardRating}>
+                  {typeof restaurant.rating === 'number' && !isNaN(restaurant.rating) ? restaurant.rating.toFixed(1) : 'No ratings yet'}
+                </Text>
+                <Text style={styles.cardPrice}>
+                  {restaurant.priceRange || '₱₱'}
                 </Text>
               </View>
             </View>
@@ -1656,9 +1672,9 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
           }
         }}
         onEndReachedThreshold={0.5}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={3}
         removeClippedSubviews={true}
         ListEmptyComponent={
           <View style={styles.card}>

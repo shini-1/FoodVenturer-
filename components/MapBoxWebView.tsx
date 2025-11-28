@@ -473,47 +473,70 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
                 return DEFAULT_CATEGORY;
               }
 
-              restaurants.forEach((restaurant, index) => {
-                const { location, name, category: restaurantCategory } = restaurant;
+              // Slow load feature - load markers in batches of 20
+              const BATCH_SIZE = 20;
+              const BATCH_DELAY = 500; // 500ms delay between batches
+              let loadedCount = 0;
+              
+              function loadMarkerBatch(startIndex) {
+                const endIndex = Math.min(startIndex + BATCH_SIZE, restaurants.length);
                 
-                // Use new category resolution logic
-                const categoryConfig = getCategoryForRestaurant(restaurantCategory, name);
+                for (let i = startIndex; i < endIndex; i++) {
+                  const restaurant = restaurants[i];
+                  const { location, name, category: restaurantCategory } = restaurant;
+                  
+                  // Use new category resolution logic
+                  const categoryConfig = getCategoryForRestaurant(restaurantCategory, name);
 
-                console.log('🗺️ Creating marker for:', name, 'category:', categoryConfig.name, 'emoji:', categoryConfig.emoji, 'color:', categoryConfig.color);
+                  const markerEl = document.createElement('div');
+                  markerEl.className = 'marker';
+                  markerEl.style.backgroundColor = categoryConfig.color;
+                  markerEl.innerHTML = categoryConfig.emoji;
+                  markerEl.title = name;
 
-                const markerEl = document.createElement('div');
-                markerEl.className = 'marker';
-                markerEl.style.backgroundColor = categoryConfig.color;
-                markerEl.innerHTML = categoryConfig.emoji;
-                markerEl.title = name;
+                  const popup = new mapboxgl.Popup({
+                    offset: 25,
+                    closeButton: true,
+                    closeOnClick: false
+                  }).setHTML('<div style="font-size: 14px; line-height: 1.4;"><strong>' + name + '</strong><br>' +
+                    '<span style="color:' + categoryConfig.color + '; font-weight: bold;">' + categoryConfig.emoji + ' ' + categoryConfig.name.replace('_', ' ').toUpperCase() + '</span>' +
+                    '<br><small>📍 ' + (typeof location.latitude === 'number' ? location.latitude.toFixed(4) : '0.0000') + ', ' + (typeof location.longitude === 'number' ? location.longitude.toFixed(4) : '0.0000') + '</small></div>');
 
-                const popup = new mapboxgl.Popup({
-                  offset: 25,
-                  closeButton: true,
-                  closeOnClick: false
-                }).setHTML('<div style="font-size: 14px; line-height: 1.4;"><strong>' + name + '</strong><br>' +
-                  '<span style="color:' + categoryConfig.color + '; font-weight: bold;">' + categoryConfig.emoji + ' ' + categoryConfig.name.replace('_', ' ').toUpperCase() + '</span>' +
-                  '<br><small>📍 ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4) + '</small></div>');
-
-                const marker = new mapboxgl.Marker(markerEl)
-                  .setLngLat([location.longitude, location.latitude])
-                  .setPopup(popup)
-                  .addTo(map);
-
-                console.log('🗺️ Marker added for', name);
-              });
-
+                  const marker = new mapboxgl.Marker(markerEl)
+                    .setLngLat([location.longitude, location.latitude])
+                    .setPopup(popup)
+                    .addTo(map);
+                }
+                
+                loadedCount = endIndex;
+                updateStatus('✅ Map ready with ' + loadedCount + ' markers');
+                
+                // Load next batch if there are more restaurants
+                if (endIndex < restaurants.length) {
+                  setTimeout(function() {
+                    loadMarkerBatch(endIndex);
+                  }, BATCH_DELAY);
+                } else {
+                  console.log('🗺️ All ' + restaurants.length + ' markers loaded');
+                }
+              }
+              
+              // Start loading markers in batches
               if (restaurants.length > 0) {
+                loadMarkerBatch(0);
+                
+                // Fit bounds to all restaurants
                 const bounds = new mapboxgl.LngLatBounds();
                 restaurants.forEach(restaurant => {
                   bounds.extend([restaurant.location.longitude, restaurant.location.latitude]);
                 });
                 map.fitBounds(bounds, { padding: 50 });
                 console.log('🗺️ Map fitted to bounds');
+              } else {
+                updateStatus('✅ Map ready with 0 markers');
               }
 
-              updateStatus('✅ Map ready with ' + restaurants.length + ' markers');
-              console.log('🗺️ Map initialization completed with', restaurants.length, 'markers');
+              console.log('🗺️ Map initialization completed, loading', restaurants.length, 'markers in batches of', BATCH_SIZE);
             });
 
             map.on('error', function(e) {
