@@ -495,7 +495,7 @@ function isValidHttpUrl(value?: string): boolean {
   }
 }
 
-function HomeScreen({ navigation }: { navigation: any }) {
+function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
   console.log('🏠 HomeScreen: Component starting...');
   
   // Render-time debugging system
@@ -1510,7 +1510,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={5}
-        removeClippedSubviews
+        removeClippedSubviews={true}
         ListEmptyComponent={
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
