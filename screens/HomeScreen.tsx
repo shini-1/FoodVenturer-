@@ -53,21 +53,34 @@ class HomeScreenErrorBoundary extends React.Component<
     const componentStackLines = errorInfo.componentStack?.split('\n').filter(line => line.trim()) || [];
     const topComponent = componentStackLines[0] || 'Unknown';
     
+    // Try to extract the problematic value from error message
+    let problematicValue = 'Unknown';
+    const valueMatch = error.message?.match(/Text strings must be rendered.*?([\w\s]+)/);
+    if (valueMatch) {
+      problematicValue = valueMatch[1];
+    }
+    
     console.error('\n\n========================================');
     console.error('❌ HOMESCREEN ERROR BOUNDARY - DETAILED ERROR LOG');
     console.error('========================================');
     console.error('Error Type:', isTextError ? 'TEXT_COMPONENT_ERROR' : 'GENERAL_ERROR');
     console.error('Timestamp:', new Date().toISOString());
-    console.error('\n--- ERROR MESSAGE ---');
+    console.error('\n--- ERROR MESSAGE (FULL) ---');
     console.error(error.message);
-    console.error('\n--- ERROR STACK ---');
+    console.error('\n--- ERROR NAME ---');
+    console.error(error.name);
+    console.error('\n--- PROBLEMATIC VALUE ---');
+    console.error('Value that caused error:', problematicValue);
+    console.error('\n--- ERROR STACK (FULL) ---');
     console.error(error.stack);
-    console.error('\n--- COMPONENT STACK (Top 10 components) ---');
-    componentStackLines.slice(0, 10).forEach((line, index) => {
+    console.error('\n--- COMPONENT STACK (ALL COMPONENTS) ---');
+    componentStackLines.forEach((line, index) => {
       console.error(`  ${index + 1}. ${line.trim()}`);
     });
     console.error('\n--- TOP COMPONENT WHERE ERROR OCCURRED ---');
     console.error(topComponent);
+    console.error('\n--- FULL COMPONENT STACK STRING ---');
+    console.error(errorInfo.componentStack);
     
     // Detailed logging for Text component errors
     if (isTextError) {
@@ -79,10 +92,17 @@ class HomeScreenErrorBoundary extends React.Component<
       console.error('  3. Objects or arrays rendered directly');
       console.error('  4. Boolean values rendered without conversion');
       console.error('  5. Optional chaining (?.) returning undefined');
+      console.error('  6. Template literals with non-string interpolations');
       console.error('\nComponent hierarchy where error occurred:');
       componentStackLines.slice(0, 5).forEach((line, index) => {
         console.error(`  Level ${index + 1}: ${line.trim()}`);
       });
+      console.error('\n--- SEARCH FOR THESE PATTERNS IN YOUR CODE ---');
+      console.error('Look for in', topComponent, ':');
+      console.error('  - {someNumber} without .toString()');
+      console.error('  - {someValue?.property} without fallback');
+      console.error('  - {condition && value} where value might be non-string');
+      console.error('  - Template literals: `${value}` where value is not string');
     }
     console.error('========================================\n\n');
 
@@ -152,6 +172,50 @@ class HomeScreenErrorBoundary extends React.Component<
 interface CategorizedRestaurant extends Restaurant {
   category: string; // Override to make category required
 }
+
+// Runtime value validator for Text components
+const validateTextValue = (value: any, context: string): string => {
+  const timestamp = new Date().toISOString();
+  
+  if (value === null || value === undefined) {
+    console.warn(`⚠️ [${timestamp}] NULL/UNDEFINED in Text component at ${context}:`, value);
+    return '';
+  }
+  
+  if (typeof value === 'number') {
+    console.warn(`⚠️ [${timestamp}] NUMBER in Text component at ${context}:`, value, '(type:', typeof value, ')');
+    console.warn(`   → Converting to string: "${value.toString()}"`);
+    return value.toString();
+  }
+  
+  if (typeof value === 'boolean') {
+    console.warn(`⚠️ [${timestamp}] BOOLEAN in Text component at ${context}:`, value);
+    console.warn(`   → Converting to string: "${value.toString()}"`);
+    return value.toString();
+  }
+  
+  if (typeof value === 'object') {
+    console.error(`❌ [${timestamp}] OBJECT in Text component at ${context}:`, value);
+    console.error(`   → This will cause an error! Object keys:`, Object.keys(value || {}));
+    console.error(`   → Stack trace:`, new Error().stack);
+    return '[Object]';
+  }
+  
+  if (Array.isArray(value)) {
+    console.error(`❌ [${timestamp}] ARRAY in Text component at ${context}:`, value);
+    console.error(`   → This will cause an error! Array length:`, value.length);
+    console.error(`   → Stack trace:`, new Error().stack);
+    return '[Array]';
+  }
+  
+  if (typeof value !== 'string') {
+    console.error(`❌ [${timestamp}] UNKNOWN TYPE in Text component at ${context}:`, value, '(type:', typeof value, ')');
+    console.error(`   → Stack trace:`, new Error().stack);
+    return String(value);
+  }
+  
+  return value;
+};
 
 // Design colors matching the mockup exactly
 const DESIGN_COLORS = {
@@ -1454,14 +1518,14 @@ function HomeScreen({ navigation }: { navigation: any }) {
             {(() => {
               const category = restaurantCategories.find(c => c.value === selectedCategory);
               const emoji = category?.emoji || '🍽️';
-              return typeof emoji === 'string' ? emoji : '🍽️';
+              return validateTextValue(emoji, 'HomeScreen.categoryButtonEmoji');
             })()}
           </Text>
           <Text style={styles.categoryButtonLabel}>
             {(() => {
               const category = restaurantCategories.find(c => c.value === selectedCategory);
               const label = category?.label || 'All';
-              return typeof label === 'string' ? label : 'All';
+              return validateTextValue(label, 'HomeScreen.categoryButtonLabel');
             })()}
           </Text>
           <Text style={styles.dropdownIcon}>▼</Text>
@@ -1497,10 +1561,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   ]}
                 >
                   <Text style={{ fontSize: 18, marginRight: 10 }}>
-                    {typeof item.emoji === 'string' ? item.emoji : '🍽️'}
+                    {validateTextValue(item.emoji, `HomeScreen.categoryModal.emoji[${item.value}]`)}
                   </Text>
                   <Text style={[styles.categoryText, { color: theme?.text || DESIGN_COLORS.textPrimary }]}>
-                    {typeof item.label === 'string' ? item.label : 'Category'}
+                    {validateTextValue(item.label, `HomeScreen.categoryModal.label[${item.value}]`)}
                   </Text>
                   {selectedCategory === item.value && (
                     <Text style={{ color: theme?.primary || DESIGN_COLORS.infoBg, fontSize: 16 }}>✓</Text>
