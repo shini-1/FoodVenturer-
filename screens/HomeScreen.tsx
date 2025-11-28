@@ -33,7 +33,7 @@ import { Restaurant } from '../types';
 // Enhanced error boundary component with detailed debugging
 class HomeScreenErrorBoundary extends React.Component<
   { children: React.ReactNode; navigation: any },
-  { hasError: boolean; error?: Error; errorInfo?: React.ErrorInfo; errorStack?: string }
+  { hasError: boolean; error?: Error; errorInfo?: React.ErrorInfo; errorStack?: string; errorMessage?: string }
 > {
   constructor(props: { children: React.ReactNode; navigation: any }) {
     super(props);
@@ -41,7 +41,7 @@ class HomeScreenErrorBoundary extends React.Component<
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
+    return { hasError: true, error, errorMessage: error.message };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -131,6 +131,12 @@ class HomeScreenErrorBoundary extends React.Component<
           <Text style={{ fontSize: 14, color: '#999', textAlign: 'center', marginBottom: 20 }}>
             A critical error occurred. Please restart the app.
           </Text>
+          {this.state.errorMessage && (
+            <View style={{ backgroundColor: '#FFE5E5', padding: 12, borderRadius: 8, marginBottom: 16, maxWidth: '90%' }}>
+              <Text style={{ fontSize: 12, color: '#D32F2F', fontWeight: 'bold', marginBottom: 4 }}>Error Details:</Text>
+              <Text style={{ fontSize: 11, color: '#D32F2F' }}>{this.state.errorMessage}</Text>
+            </View>
+          )}
           <TouchableOpacity
             onPress={() => this.props.navigation.goBack()}
             style={{ backgroundColor: '#4A90E2', padding: 12, borderRadius: 8 }}
@@ -1606,28 +1612,52 @@ function HomeScreen({ navigation }: { navigation: any }) {
           return item.id;
         }}
         renderItem={({ item }) => {
-          const ratingData = restaurantRatings.get(item.id);
-          return (
-            <EnhancedRestaurantCard
-              restaurant={item as CategorizedRestaurant}
-              ratingData={ratingData}
-              onPress={() => {
-                if (item.id && navigation && typeof navigation.navigate === 'function') {
-                  navigation.navigate('RestaurantDetail', {
-                    restaurantId: item.id,
-                    restaurant: item
-                  });
-                } else if (!item.id) {
-                  console.warn('⚠️ Restaurant missing ID, cannot navigate');
-                } else {
-                  console.warn('⚠️ Navigation not available, cannot navigate to restaurant details');
-                }
-              }}
-              showSyncStatus={true}
-              showRanking={true}
-              navigation={navigation}
-            />
-          );
+          try {
+            // Validate item data before rendering
+            if (!item || !item.id) {
+              console.error('❌ Invalid restaurant item:', item);
+              return null;
+            }
+
+            const ratingData = restaurantRatings.get(item.id);
+            
+            return (
+              <EnhancedRestaurantCard
+                restaurant={item as CategorizedRestaurant}
+                ratingData={ratingData}
+                onPress={() => {
+                  if (item.id && navigation && typeof navigation.navigate === 'function') {
+                    navigation.navigate('RestaurantDetail', {
+                      restaurantId: item.id,
+                      restaurant: item
+                    });
+                  } else if (!item.id) {
+                    console.warn('⚠️ Restaurant missing ID, cannot navigate');
+                  } else {
+                    console.warn('⚠️ Navigation not available, cannot navigate to restaurant details');
+                  }
+                }}
+                showSyncStatus={true}
+                showRanking={true}
+                navigation={navigation}
+              />
+            );
+          } catch (error) {
+            console.error('❌ Error rendering restaurant card:', {
+              restaurantId: item?.id,
+              restaurantName: item?.name,
+              error: error instanceof Error ? error.message : error,
+              stack: error instanceof Error ? error.stack : undefined
+            });
+            return (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Error loading restaurant</Text>
+                <Text style={styles.cardLocation}>
+                  {item?.name || 'Unknown restaurant'}
+                </Text>
+              </View>
+            );
+          }
         }}
         refreshing={refreshing}
         onRefresh={onRefresh}
