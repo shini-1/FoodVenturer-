@@ -805,7 +805,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
           });
         }
         
-        const more = typeof total === 'number' ? (targetPage * SERVER_PAGE_SIZE) < total : (serverData?.length === SERVER_PAGE_SIZE);
+        const more = (serverData?.length === SERVER_PAGE_SIZE);
         setHasMore(more);
         console.log(`✅ Loaded ${serverData?.length || 0} restaurants from server, hasMore: ${more}`);
         
