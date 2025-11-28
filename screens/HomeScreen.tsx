@@ -495,7 +495,7 @@ function isValidHttpUrl(value?: string): boolean {
   }
 }
 
-function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
+function HomeScreen({ navigation }: { navigation: any }): JSX.Element {
   console.log('🏠 HomeScreen: Component starting...');
   
   // Render-time debugging system
