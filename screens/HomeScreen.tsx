@@ -49,30 +49,42 @@ class HomeScreenErrorBoundary extends React.Component<
     const isTextError = error.message?.includes('Text strings must be rendered within a <Text>') || 
                        error.message?.includes('Text component');
     
-    console.error('❌ HomeScreen Error Boundary caught an error:', {
-      message: error.message,
-      stack: error.stack,
-      componentStack: errorInfo.componentStack,
-      isTextError,
-      timestamp: new Date().toISOString(),
-      errorType: isTextError ? 'TEXT_COMPONENT_ERROR' : 'GENERAL_ERROR'
+    // Extract component stack to find exact location
+    const componentStackLines = errorInfo.componentStack?.split('\n').filter(line => line.trim()) || [];
+    const topComponent = componentStackLines[0] || 'Unknown';
+    
+    console.error('\n\n========================================');
+    console.error('❌ HOMESCREEN ERROR BOUNDARY - DETAILED ERROR LOG');
+    console.error('========================================');
+    console.error('Error Type:', isTextError ? 'TEXT_COMPONENT_ERROR' : 'GENERAL_ERROR');
+    console.error('Timestamp:', new Date().toISOString());
+    console.error('\n--- ERROR MESSAGE ---');
+    console.error(error.message);
+    console.error('\n--- ERROR STACK ---');
+    console.error(error.stack);
+    console.error('\n--- COMPONENT STACK (Top 10 components) ---');
+    componentStackLines.slice(0, 10).forEach((line, index) => {
+      console.error(`  ${index + 1}. ${line.trim()}`);
     });
-
+    console.error('\n--- TOP COMPONENT WHERE ERROR OCCURRED ---');
+    console.error(topComponent);
+    
     // Detailed logging for Text component errors
     if (isTextError) {
-      console.error('🔍 TEXT ERROR DEBUG INFO:', {
-        errorMessage: error.message,
-        errorStack: error.stack,
-        componentStack: errorInfo.componentStack,
-        possibleCauses: [
-          'Raw text string outside Text component',
-          'JSX expression returning text without Text wrapper',
-          'Console.log with objects causing rendering issues',
-          'Template literal with undefined values in Alert',
-          'Array.map returning text without Text wrapper'
-        ]
+      console.error('\n--- TEXT ERROR ANALYSIS ---');
+      console.error('This error occurs when non-string values are rendered as children of <Text> components.');
+      console.error('\nPossible causes in this stack:');
+      console.error('  1. Numbers rendered without .toString() or .toFixed()');
+      console.error('  2. Undefined/null values rendered without fallback');
+      console.error('  3. Objects or arrays rendered directly');
+      console.error('  4. Boolean values rendered without conversion');
+      console.error('  5. Optional chaining (?.) returning undefined');
+      console.error('\nComponent hierarchy where error occurred:');
+      componentStackLines.slice(0, 5).forEach((line, index) => {
+        console.error(`  Level ${index + 1}: ${line.trim()}`);
       });
     }
+    console.error('========================================\n\n');
 
     if (crashLogger && typeof crashLogger.logError === 'function') {
       crashLogger.logError(error, {
@@ -1439,10 +1451,18 @@ function HomeScreen({ navigation }: { navigation: any }) {
           activeOpacity={0.7}
         >
           <Text style={styles.categoryButtonEmoji}>
-            {restaurantCategories.find(c => c.value === selectedCategory)?.emoji || '🍽️'}
+            {(() => {
+              const category = restaurantCategories.find(c => c.value === selectedCategory);
+              const emoji = category?.emoji || '🍽️';
+              return typeof emoji === 'string' ? emoji : '🍽️';
+            })()}
           </Text>
           <Text style={styles.categoryButtonLabel}>
-            {restaurantCategories.find(c => c.value === selectedCategory)?.label || 'All'}
+            {(() => {
+              const category = restaurantCategories.find(c => c.value === selectedCategory);
+              const label = category?.label || 'All';
+              return typeof label === 'string' ? label : 'All';
+            })()}
           </Text>
           <Text style={styles.dropdownIcon}>▼</Text>
         </TouchableOpacity>
@@ -1476,9 +1496,11 @@ function HomeScreen({ navigation }: { navigation: any }) {
                     selectedCategory === item.value && { backgroundColor: (theme?.primary || DESIGN_COLORS.infoBg) + '20' }
                   ]}
                 >
-                  <Text style={{ fontSize: 18, marginRight: 10 }}>{item.emoji}</Text>
+                  <Text style={{ fontSize: 18, marginRight: 10 }}>
+                    {typeof item.emoji === 'string' ? item.emoji : '🍽️'}
+                  </Text>
                   <Text style={[styles.categoryText, { color: theme?.text || DESIGN_COLORS.textPrimary }]}>
-                    {item.label}
+                    {typeof item.label === 'string' ? item.label : 'Category'}
                   </Text>
                   {selectedCategory === item.value && (
                     <Text style={{ color: theme?.primary || DESIGN_COLORS.infoBg, fontSize: 16 }}>✓</Text>

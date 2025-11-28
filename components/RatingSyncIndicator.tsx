@@ -62,8 +62,8 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
   const getStatusText = (): string => {
     if (syncStatus.status === 'error') return 'Sync Error';
     if (syncStatus.status === 'syncing') return 'Syncing...';
-    if (syncStatus.queueLength > 0) return `${syncStatus.queueLength} Pending`;
-    if (syncStatus.conflictsCount && syncStatus.conflictsCount > 0) return `${syncStatus.conflictsCount} Conflicts`;
+    if (syncStatus.queueLength > 0) return `${(syncStatus.queueLength || 0).toString()} Pending`;
+    if (syncStatus.conflictsCount && syncStatus.conflictsCount > 0) return `${(syncStatus.conflictsCount || 0).toString()} Conflicts`;
     if (!syncStatus.isOnline) return 'Offline';
     return 'Synced';
   };
@@ -100,7 +100,7 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
         </Animated.View>
         {syncStatus.queueLength > 0 && (
           <View style={[styles.compactBadge, { backgroundColor: getStatusColor() }]}>
-            <Text style={styles.compactBadgeText}>{syncStatus.queueLength}</Text>
+            <Text style={styles.compactBadgeText}>{(syncStatus.queueLength || 0).toString()}</Text>
           </View>
         )}
       </Container>
@@ -132,8 +132,8 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
             </Text>
             {showDetails && (
               <Text style={[styles.detailsText, { color: theme.textSecondary }]}>
-                {syncStatus.queueLength} pending • {syncStatus.conflictsCount || 0} conflicts
-                {!syncStatus.isOnline && ' • Offline mode'}
+                {(syncStatus.queueLength || 0).toString()} pending • {(syncStatus.conflictsCount || 0).toString()} conflicts
+                {!syncStatus.isOnline ? ' • Offline mode' : ''}
               </Text>
             )}
           </View>

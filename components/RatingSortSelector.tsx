@@ -70,9 +70,9 @@ const RatingSortSelector: React.FC<RatingSortSelectorProps> = ({
         style={[styles.compactContainer, { backgroundColor: theme.surface }]}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={styles.compactIcon}>{currentOption?.icon}</Text>
+        <Text style={styles.compactIcon}>{currentOption?.icon || '⭐'}</Text>
         <Text style={[styles.compactText, { color: theme.text }]}>
-          {currentOption?.label}
+          {currentOption?.label || 'Sort'}
         </Text>
         <Text style={[styles.compactArrow, { color: theme.textSecondary }]}>▼</Text>
       </TouchableOpacity>
@@ -86,13 +86,13 @@ const RatingSortSelector: React.FC<RatingSortSelectorProps> = ({
         onPress={() => setModalVisible(true)}
       >
         <View style={styles.leftSection}>
-          <Text style={styles.icon}>{currentOption?.icon}</Text>
+          <Text style={styles.icon}>{currentOption?.icon || '⭐'}</Text>
           <View style={styles.textSection}>
             <Text style={[styles.label, { color: theme.text }]}>
-              Sort by: {currentOption?.label}
+              Sort by: {currentOption?.label || 'Rating'}
             </Text>
             <Text style={[styles.description, { color: theme.textSecondary }]}>
-              {currentOption?.description}
+              {currentOption?.description || 'Sort restaurants'}
             </Text>
           </View>
         </View>
