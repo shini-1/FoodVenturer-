@@ -495,7 +495,7 @@ function isValidHttpUrl(value?: string): boolean {
   }
 }
 
-function HomeScreen({ navigation }: { navigation: any }): JSX.Element {
+function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
   console.log('🏠 HomeScreen: Component starting...');
   
   // Render-time debugging system
@@ -1522,6 +1522,9 @@ function HomeScreen({ navigation }: { navigation: any }): JSX.Element {
       />
     </View>
   );
+  
+  // Fallback return - this should never be reached but satisfies TypeScript
+  return <View style={styles.container} />;
 }
 
 export default function HomeScreenWrapper({ navigation }: { navigation: any }) {
