@@ -1261,6 +1261,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
                   return categoryText;
                 })()}
               </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                 <Text style={{ marginLeft: 6, color: DESIGN_COLORS.textSecondary }}>
                   {(() => {
                     const ratingText = typeof restaurant.rating === 'number' && !isNaN(restaurant.rating) ? restaurant.rating.toFixed(1) : 'No ratings yet';
