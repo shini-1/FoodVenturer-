@@ -119,7 +119,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
         {isTopRated && (
           <View style={[styles.topRatedBadge, { backgroundColor: '#FFD700' }]}>
             <Text style={styles.topRatedText}>TOP RATED</Text>
-            <Text style={styles.rankText}>#{rank?.toString() || ''}</Text>
+            <Text style={styles.rankText}>#{rank || ''}</Text>
           </View>
         )}
 
@@ -149,7 +149,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
             </Text>
             {showRanking && rank && (
               <View style={[styles.rankBadge, { backgroundColor: theme.primary }]}>
-                <Text style={styles.rankBadgeText}>#{rank.toString()}</Text>
+                <Text style={styles.rankBadgeText}>#{rank}</Text>
               </View>
             )}
           </View>
@@ -165,10 +165,10 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
               <View style={styles.ratingRow}>
                 {renderStars(metrics.averageRating)}
                 <Text style={[styles.ratingValue, { color: theme.text }]}>
-                  {metrics.averageRating.toFixed(1)}
+                  {typeof metrics.averageRating === 'number' && !isNaN(metrics.averageRating) ? metrics.averageRating.toFixed(1) : '0.0'}
                 </Text>
                 <Text style={[styles.ratingCount, { color: theme.textSecondary }]}>
-                  ({metrics.totalRatings.toString()})
+                  ({metrics.totalRatings})
                 </Text>
               </View>
 
@@ -179,7 +179,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
                   { backgroundColor: getConfidenceColor(metrics.confidence) }
                 ]} />
                 <Text style={[styles.confidenceText, { color: theme.textSecondary }]}>
-                  {Math.round(metrics.confidence * 100).toString()}% confidence
+                  {typeof metrics.confidence === 'number' && !isNaN(metrics.confidence) ? Math.round(metrics.confidence * 100) : 0}% confidence
                 </Text>
                 
                 {/* Trend Indicator */}
@@ -208,7 +208,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
                         />
                       </View>
                       <Text style={[styles.distributionCount, { color: theme.textSecondary }]}>
-                        {count.toString()}
+                        {count}
                       </Text>
                     </View>
                   ))}
@@ -236,7 +236,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
           {/* Distance/Location (if available) */}
           {restaurant.location && restaurant.location.latitude != null && restaurant.location.longitude != null && (
             <Text style={[styles.location, { color: theme.textSecondary }]}>
-              📍 {restaurant.location.latitude.toFixed(4)}, {restaurant.location.longitude.toFixed(4)}
+              📍 {typeof restaurant.location.latitude === 'number' && !isNaN(restaurant.location.latitude) ? restaurant.location.latitude.toFixed(4) : '0.0000'}, {typeof restaurant.location.longitude === 'number' && !isNaN(restaurant.location.longitude) ? restaurant.location.longitude.toFixed(4) : '0.0000'}
             </Text>
           )}
         </View>

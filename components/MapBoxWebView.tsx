@@ -661,7 +661,7 @@ function NativeMapFallback({ restaurants, isOnline }: { restaurants: Restaurant[
 
             <View style={styles.locationInfo}>
               <Text style={styles.coordinates}>
-                📍 {restaurant.location.latitude.toFixed(4)}, {restaurant.location.longitude.toFixed(4)}
+                📍 {typeof restaurant.location.latitude === 'number' && !isNaN(restaurant.location.latitude) ? restaurant.location.latitude.toFixed(4) : '0.0000'}, {typeof restaurant.location.longitude === 'number' && !isNaN(restaurant.location.longitude) ? restaurant.location.longitude.toFixed(4) : '0.0000'}
               </Text>
               <Text style={styles.distance}>
                 🗺️ View on map (opens in browser)

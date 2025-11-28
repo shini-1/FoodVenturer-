@@ -59,10 +59,10 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
 
         try {
           const address = await reverseGeocode(location.latitude, location.longitude);
-          Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4)}`);
+          Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + (typeof location.latitude === 'number' && !isNaN(location.latitude) ? location.latitude.toFixed(4) : '0.0000') + ', ' + (typeof location.longitude === 'number' && !isNaN(location.longitude) ? location.longitude.toFixed(4) : '0.0000')}`);
         } catch (geocodeError) {
           console.warn('📍 Reverse geocoding failed:', geocodeError);
-          Alert.alert('Success', `Location updated!\nCoordinates: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+          Alert.alert('Success', `Location updated!\nCoordinates: ${(typeof location.latitude === 'number' && !isNaN(location.latitude) ? location.latitude.toFixed(4) : '0.0000')}, ${(typeof location.longitude === 'number' && !isNaN(location.longitude) ? location.longitude.toFixed(4) : '0.0000')}`);
         }
       } else {
         console.warn('📍 Failed to get location');

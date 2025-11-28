@@ -1273,7 +1273,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 </Text>
                 <Text style={{ marginLeft: 6, color: DESIGN_COLORS.textSecondary }}>
                   {(() => {
-                    const ratingText = typeof restaurant.rating === 'number' ? restaurant.rating.toFixed(1) : 'No ratings yet';
+                    const ratingText = typeof restaurant.rating === 'number' && !isNaN(restaurant.rating) ? restaurant.rating.toFixed(1) : 'No ratings yet';
                     renderDebug.logTextContent(ratingText, 'ratingText');
                     return ratingText;
                   })()}
