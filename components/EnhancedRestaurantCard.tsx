@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Image } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { RatingSyncIndicator } from './RatingSyncIndicator';
+import RatingSyncIndicator from './RatingSyncIndicator';
 import { ratingCalculationService, RestaurantRatingData } from '../src/services/ratingCalculationService';
 import { Restaurant } from '../types';
 
@@ -40,7 +40,6 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
   useEffect(() => {
     Animated.spring(animatedScale, {
       toValue: 1,
-      fromValue: 0.95,
       useNativeDriver: true,
       tension: 100,
       friction: 8,
@@ -52,7 +51,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
   const isTopRated = currentRatingData?.isTopRated || false;
   const rank = currentRatingData?.rank;
 
-  const renderStars = (rating: number, size: number = 12): JSX.Element => {
+  const renderStars = (rating: number, size: number = 12): React.ReactElement => {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
     const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
@@ -120,7 +119,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
         {isTopRated && (
           <View style={[styles.topRatedBadge, { backgroundColor: '#FFD700' }]}>
             <Text style={styles.topRatedText}>TOP RATED</Text>
-            <Text style={styles.rankText}>#{rank}</Text>
+            <Text style={styles.rankText}>#{rank?.toString() || ''}</Text>
           </View>
         )}
 
@@ -150,7 +149,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
             </Text>
             {showRanking && rank && (
               <View style={[styles.rankBadge, { backgroundColor: theme.primary }]}>
-                <Text style={styles.rankBadgeText}>#{rank}</Text>
+                <Text style={styles.rankBadgeText}>#{rank.toString()}</Text>
               </View>
             )}
           </View>
@@ -166,10 +165,10 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
               <View style={styles.ratingRow}>
                 {renderStars(metrics.averageRating)}
                 <Text style={[styles.ratingValue, { color: theme.text }]}>
-                  {metrics.averageRating}
+                  {metrics.averageRating.toFixed(1)}
                 </Text>
                 <Text style={[styles.ratingCount, { color: theme.textSecondary }]}>
-                  ({metrics.totalRatings})
+                  ({metrics.totalRatings.toString()})
                 </Text>
               </View>
 
@@ -180,7 +179,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
                   { backgroundColor: getConfidenceColor(metrics.confidence) }
                 ]} />
                 <Text style={[styles.confidenceText, { color: theme.textSecondary }]}>
-                  {Math.round(metrics.confidence * 100)}% confidence
+                  {Math.round(metrics.confidence * 100).toString()}% confidence
                 </Text>
                 
                 {/* Trend Indicator */}
@@ -209,7 +208,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
                         />
                       </View>
                       <Text style={[styles.distributionCount, { color: theme.textSecondary }]}>
-                        {count}
+                        {count.toString()}
                       </Text>
                     </View>
                   ))}
@@ -235,7 +234,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
           )}
 
           {/* Distance/Location (if available) */}
-          {restaurant.location && (
+          {restaurant.location && restaurant.location.latitude != null && restaurant.location.longitude != null && (
             <Text style={[styles.location, { color: theme.textSecondary }]}>
               📍 {restaurant.location.latitude.toFixed(4)}, {restaurant.location.longitude.toFixed(4)}
             </Text>
@@ -406,6 +405,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   noRatingText: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  detailsText: {
     fontSize: 14,
     marginBottom: 4,
   },
