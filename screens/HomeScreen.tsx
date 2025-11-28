@@ -535,6 +535,21 @@ const styles = StyleSheet.create({
   footerSpinner: {
     marginBottom: 8,
   },
+  loadMoreButton: {
+    backgroundColor: DESIGN_COLORS.buttonBackground,
+    borderWidth: 1,
+    borderColor: DESIGN_COLORS.border,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadMoreButtonText: {
+    color: DESIGN_COLORS.textPrimary,
+    fontSize: 16,
+    fontWeight: '500',
+  },
   processingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1045,26 +1060,19 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
     hasMoreRef.current = hasMore;
   }, [hasMore]);
 
+  // Simplified auto-load logic - trigger when we have restaurants and more are available
   useEffect(() => {
-    if (!hasMore || isLoadingPage || refreshing) return;
-    if (autoLoadTimerRef.current) {
-      clearTimeout(autoLoadTimerRef.current);
+    if (hasMore && !isLoadingPage && !refreshing && restaurants.length > 0 && restaurants.length % SERVER_PAGE_SIZE === 0) {
+      console.log(`🔄 Auto-loading next page. Current: ${restaurants.length} restaurants, hasMore: ${hasMore}`);
+
+      const nextPage = Math.floor(restaurants.length / SERVER_PAGE_SIZE) + 1;
+      console.log(`📄 Loading page ${nextPage} automatically`);
+
+      loadPage(nextPage).catch(error => {
+        console.error('❌ Auto-load failed:', error);
+      });
     }
-    autoLoadTimerRef.current = setTimeout(() => {
-      if (hasMoreRef.current && !isLoadingRef.current && !refreshingRef.current) {
-        setServerPage((sp) => {
-          const next = sp + 1;
-          loadPage(next);
-          return next;
-        });
-      }
-    }, 400);
-    return () => {
-      if (autoLoadTimerRef.current) {
-        clearTimeout(autoLoadTimerRef.current);
-      }
-    };
-  }, [restaurants.length, hasMore, isLoadingPage, refreshing, serverPage, loadPage]);
+  }, [restaurants.length, hasMore, isLoadingPage, refreshing, loadPage]);
 
   useEffect(() => {
     console.log('🏠 HomeScreen: Restaurants state updated:', restaurants.length);
@@ -1384,14 +1392,32 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
 
     if (isLoadingPage) {
       return (
-        <View style={styles.footer}> 
+        <View style={styles.footer}>
           <ActivityIndicator style={styles.footerSpinner} color="#4A90E2" size="small" />
         </View>
       );
     }
 
+    // Show manual load more button when there are more restaurants available
+    if (hasMore && !isLoadingPage) {
+      return (
+        <View style={styles.footer}>
+          <TouchableOpacity
+            onPress={() => {
+              const nextPage = Math.floor(restaurants.length / SERVER_PAGE_SIZE) + 1;
+              console.log(`🔘 Manual load more: loading page ${nextPage}`);
+              loadPage(nextPage);
+            }}
+            style={styles.loadMoreButton}
+          >
+            <Text style={styles.loadMoreButtonText}>Load More Restaurants</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     return null;
-  }, [hasMore, isLoadingPage]);
+  }, [hasMore, isLoadingPage, restaurants.length, loadPage]);
 
   // Error boundary - show error screen if something went wrong
   if (hasError) {
