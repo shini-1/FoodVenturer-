@@ -87,7 +87,7 @@ const CacheStatusIndicator: React.FC<CacheStatusIndicatorProps> = ({
             </Text>
             {showDetails && (
               <Text style={[styles.detailsText, { color: theme.textSecondary }]}>
-                {(cacheStatus.downloadedItems || 0).toString()} / {(cacheStatus.totalItems || 0).toString()} items
+                {(cacheStatus.downloadedItems || 0)} / {(cacheStatus.totalItems || 0)} items
                 {cacheStatus.cacheSize > 0 ? ` • ${formatCacheSize(cacheStatus.cacheSize)}` : ''}
               </Text>
             )}
@@ -97,7 +97,7 @@ const CacheStatusIndicator: React.FC<CacheStatusIndicatorProps> = ({
         {cacheStatus.isDownloading && (
           <View style={styles.progressContainer}>
             <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-              {Math.round(cacheStatus.downloadProgress || 0).toString()}%
+              {typeof cacheStatus.downloadProgress === 'number' && !isNaN(cacheStatus.downloadProgress) ? Math.round(cacheStatus.downloadProgress) : 0}%
             </Text>
           </View>
         )}

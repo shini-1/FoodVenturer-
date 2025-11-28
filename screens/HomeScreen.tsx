@@ -240,8 +240,76 @@ const DESIGN_COLORS = {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 80, // Account for header
+    paddingTop: 50, // Account for status bar
     backgroundColor: DESIGN_COLORS.background,
+  },
+  // New Top Navigation Bar styles matching target design
+  topNavBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: DESIGN_COLORS.background,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonIcon: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
+  },
+  searchInputContainer: {
+    flex: 1,
+    marginHorizontal: 12,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: DESIGN_COLORS.border,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  searchInput: {
+    fontSize: 14,
+    color: DESIGN_COLORS.textPrimary,
+  },
+  categoryDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: DESIGN_COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  categoryDropdownEmoji: {
+    fontSize: 16,
+    marginRight: 4,
+  },
+  categoryDropdownText: {
+    fontSize: 14,
+    color: DESIGN_COLORS.textPrimary,
+    fontWeight: '500',
+  },
+  categoryDropdownArrow: {
+    fontSize: 10,
+    color: DESIGN_COLORS.textPrimary,
+    marginLeft: 4,
+  },
+  modalCloseButton: {
+    marginTop: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   backButton: {
     position: 'absolute',
@@ -324,49 +392,82 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: DESIGN_COLORS.cardBackground,
-    padding: 16,
-    marginVertical: 8,
+    padding: 12,
+    marginVertical: 6,
     marginHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: DESIGN_COLORS.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   cardContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    position: 'relative',
   },
   restaurantImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 8,
-    marginRight: 16,
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    marginRight: 12,
     backgroundColor: '#f0f0f0',
   },
   cardTextContent: {
     flex: 1,
     justifyContent: 'flex-start',
+    paddingTop: 4,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: DESIGN_COLORS.textPrimary,
-    marginBottom: 8,
+    marginBottom: 4,
+    flex: 1,
+  },
+  heartIcon: {
+    fontSize: 20,
+    color: '#E0E0E0',
+    marginLeft: 8,
   },
   cardLocation: {
-    fontSize: 14,
+    fontSize: 13,
     color: DESIGN_COLORS.textSecondary,
     marginBottom: 4,
+    lineHeight: 18,
   },
   cardCategory: {
-    fontSize: 14,
+    fontSize: 13,
     color: DESIGN_COLORS.textPrimary,
-    fontWeight: '600',
+    marginBottom: 4,
+  },
+  cardRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  cardStars: {
+    fontSize: 12,
+    color: '#FFD700',
+    letterSpacing: 1,
+  },
+  cardRating: {
+    fontSize: 13,
+    color: DESIGN_COLORS.textSecondary,
+    marginLeft: 4,
+  },
+  cardPrice: {
+    fontSize: 13,
+    color: DESIGN_COLORS.textPrimary,
+    marginLeft: 8,
+    fontWeight: '500',
   },
   favoriteButton: {
     position: 'absolute',
@@ -413,17 +514,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
   },
-  closeButton: {
-    marginTop: 15,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -462,27 +552,10 @@ const styles = StyleSheet.create({
   },
 });
 
-// Placeholder image URLs based on category (using unsplash for consistent placeholders)
-const getPlaceholderImage = (category: string): string => {
-  const placeholders: { [key: string]: string } = {
-    italian: 'https://images.unsplash.com/photo-1571997478779-2adcbbe9ab2f?w=100&h=100&fit=crop&crop=center',
-    cafe: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=100&h=100&fit=crop&crop=center',
-    fast_food: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=100&h=100&fit=crop&crop=center',
-    asian: 'https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=100&h=100&fit=crop&crop=center',
-    japanese: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=100&h=100&fit=crop&crop=center',
-    bakery: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=100&h=100&fit=crop&crop=center',
-    grill: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=100&h=100&fit=crop&crop=center',
-    seafood: 'https://images.unsplash.com/photo-1559847844-5315695dadae?w=100&h=100&fit=crop&crop=center',
-    mexican: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=100&h=100&fit=crop&crop=center',
-    thai: 'https://images.unsplash.com/photo-1559847844-d413744b7da0?w=100&h=100&fit=crop&crop=center',
-    buffet: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=100&h=100&fit=crop&crop=center',
-    fine_dining: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=100&h=100&fit=crop&crop=center',
-    fast_casual: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=100&h=100&fit=crop&crop=center',
-    family: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=100&h=100&fit=crop&crop=center',
-    diner: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=100&h=100&fit=crop&crop=center',
-    casual: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=100&h=100&fit=crop&crop=center'
-  };
-  return placeholders[category] || placeholders.casual;
+// Default FoodVenturer placeholder image when no restaurant image is available
+const getPlaceholderImage = (): string => {
+  // Use FoodVenturer logo/branding as default placeholder
+  return 'https://raw.githubusercontent.com/shini-1/FoodVenturer-Expo/main/assets/icon.png';
 };
 
 function isValidHttpUrl(value?: string): boolean {
@@ -495,7 +568,7 @@ function isValidHttpUrl(value?: string): boolean {
   }
 }
 
-function HomeScreen({ navigation }: { navigation: any }) {
+function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
   console.log('🏠 HomeScreen: Component starting...');
   
   // Render-time debugging system
@@ -590,7 +663,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     const isLoadingRef = useRef(false);
     const refreshingRef = useRef(false);
     const hasMoreRef = useRef(true);
-    const SERVER_PAGE_SIZE = 20;
+    const SERVER_PAGE_SIZE = 5;
     const [serverPage, setServerPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isLoadingPage, setIsLoadingPage] = useState(false);
@@ -728,7 +801,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       
       if (typeof reverseGeocode !== 'function') {
         console.warn('⚠️ reverseGeocode is not available, using coordinates');
-        const coordAddress = `${restaurant.location.latitude.toFixed(4)}, ${restaurant.location.longitude.toFixed(4)}`;
+        const coordAddress = `${typeof restaurant.location.latitude === 'number' && !isNaN(restaurant.location.latitude) ? restaurant.location.latitude.toFixed(4) : '0.0000'}, ${typeof restaurant.location.longitude === 'number' && !isNaN(restaurant.location.longitude) ? restaurant.location.longitude.toFixed(4) : '0.0000'}`;
         setAddressCache(prev => ({ ...prev, [cacheKey]: `📍 ${coordAddress}` }));
         return `📍 ${coordAddress}`;
       }
@@ -742,7 +815,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     } catch (error) {
       console.warn('Failed to geocode restaurant:', restaurant.name, error);
       // Fallback to coordinates
-      const coordAddress = `${restaurant.location.latitude.toFixed(4)}, ${restaurant.location.longitude.toFixed(4)}`;
+      const coordAddress = `${typeof restaurant.location.latitude === 'number' && !isNaN(restaurant.location.latitude) ? restaurant.location.latitude.toFixed(4) : '0.0000'}, ${typeof restaurant.location.longitude === 'number' && !isNaN(restaurant.location.longitude) ? restaurant.location.longitude.toFixed(4) : '0.0000'}`;
       setAddressCache(prev => ({ ...prev, [cacheKey]: `📍 ${coordAddress}` }));
       return `📍 ${coordAddress}`;
     } finally {
@@ -1231,7 +1304,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
           <View style={styles.cardContent}>
             <Image
               source={{
-                uri: (restaurant.image && isValidHttpUrl(restaurant.image)) ? (restaurant.image as string) : getPlaceholderImage(restaurant.category || 'casual')
+                uri: (restaurant.image && isValidHttpUrl(restaurant.image)) ? (restaurant.image as string) : getPlaceholderImage()
               }}
               style={styles.restaurantImage}
               contentFit="cover"
@@ -1241,49 +1314,40 @@ function HomeScreen({ navigation }: { navigation: any }) {
               }}
             />
             <View style={styles.cardTextContent}>
-              <Text style={styles.cardTitle}>
-                {(() => {
-                  const displayName = restaurant.name ? restaurant.name.split(', ')[0] : 'Unknown Restaurant';
-                  renderDebug.logTextContent(displayName, 'cardTitle');
-                  return displayName;
-                })()}
-              </Text>
+              <View style={styles.cardTitleRow}>
+                <Text style={styles.cardTitle}>
+                  {(() => {
+                    const displayName = restaurant.name ? restaurant.name.split(', ')[0] : 'Unknown Restaurant';
+                    return displayName;
+                  })()}
+                </Text>
+                <Text style={styles.heartIcon}>🤍</Text>
+              </View>
               <Text style={styles.cardLocation}>
                 {(() => {
-                  renderDebug.logTextContent(address, 'cardLocation');
-                  return address;
+                  return `📍 ${address.replace('📍 ', '')}`;
                 })()}
               </Text>
               <Text style={styles.cardCategory}>
                 {(() => {
                   const categoryText = `${categoryConfig.emoji} ${categoryConfig.label}`;
-                  renderDebug.logTextContent(categoryText, 'cardCategory');
                   return categoryText;
                 })()}
               </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                <Text style={{ color: '#FFD700' }}>
+              <View style={styles.cardRatingRow}>
+                <Text style={styles.cardStars}>
                   {(() => {
-                    const rating = typeof restaurant.rating === 'number' ? restaurant.rating : 0;
-                    const roundedRating = Math.round(rating);
-                    const fullStars = '★'.repeat(Math.max(0, Math.min(5, roundedRating)));
-                    const emptyStars = '☆'.repeat(5 - Math.max(0, Math.min(5, roundedRating)));
-                    return fullStars + emptyStars;
+                    const rating = typeof restaurant.rating === 'number' && !isNaN(restaurant.rating) ? restaurant.rating : 0;
+                    const fullStars = Math.floor(rating);
+                    const emptyStars = 5 - fullStars;
+                    return '★'.repeat(fullStars) + '☆'.repeat(emptyStars);
                   })()}
                 </Text>
-                <Text style={{ marginLeft: 6, color: DESIGN_COLORS.textSecondary }}>
-                  {(() => {
-                    const ratingText = typeof restaurant.rating === 'number' ? restaurant.rating.toFixed(1) : 'No ratings yet';
-                    renderDebug.logTextContent(ratingText, 'ratingText');
-                    return ratingText;
-                  })()}
+                <Text style={styles.cardRating}>
+                  {typeof restaurant.rating === 'number' && !isNaN(restaurant.rating) ? restaurant.rating.toFixed(1) : 'No ratings yet'}
                 </Text>
-                <Text style={{ marginLeft: 10, color: DESIGN_COLORS.textPrimary }}>
-                  {(() => {
-                    const priceText = restaurant.priceRange || '₱';
-                    renderDebug.logTextContent(priceText, 'priceText');
-                    return priceText;
-                  })()}
+                <Text style={styles.cardPrice}>
+                  {restaurant.priceRange || '₱₱'}
                 </Text>
               </View>
             </View>
@@ -1425,116 +1489,49 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   return (
     <View style={styles.container}>
-      <Header />
-      
-      {/* Cache Status Indicator */}
-      <CacheStatusIndicator 
-        showDetails={true}
-        onPress={() => {
-          // Show cache management modal or navigate to cache settings
-          Alert.alert(
-            'Cache Status',
-            'Manage your offline cache here. Would you like to refresh the cache?',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { 
-                text: 'Refresh Cache', 
-                onPress: () => cacheStatusService.refreshCache() 
-              },
-              { 
-                text: 'Clear Cache', 
-                style: 'destructive',
-                onPress: () => {
-                  Alert.alert(
-                    'Clear Cache',
-                    'This will remove all offline data. Continue?',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Clear', onPress: () => cacheStatusService.clearCache() }
-                    ]
-                  );
-                }
-              }
-            ]
-          );
-        }}
-      />
-      
-      {/* Rating Sync Indicator */}
-      <RatingSyncIndicator 
-        showDetails={true}
-        onPress={() => {
-          Alert.alert(
-            'Rating Sync Status',
-            'Manage your rating synchronization here.',
-            [
-              { text: 'OK', style: 'default' }
-            ]
-          );
-        }}
-      />
-      
-      {/* Rating Sort Selector */}
-      <RatingSortSelector
-        selectedSort={sortBy}
-        onSortChange={setSortBy}
-        compact={false}
-      />
-      
-      {/* Processing Indicator */}
-      {isProcessingRatings && (
-        <View style={[styles.processingIndicator, { backgroundColor: theme?.surface || DESIGN_COLORS.cardBackground }]}>
-          <ActivityIndicator size="small" color="#4ECDC4" />
-          <Text style={[styles.processingText, { color: theme?.textSecondary || DESIGN_COLORS.textSecondary }]}>
-            Processing restaurant ratings...
-          </Text>
-        </View>
-      )}
-      
-      {/* Offline mode removed for stability */}
-      <TouchableOpacity
-        onPress={() => {
-          if (navigation && typeof navigation.goBack === 'function') {
-            navigation.goBack();
-          } else {
-            console.warn('⚠️ Navigation goBack not available');
-          }
-        }}
-        style={styles.backButton}
-      >
-        <Text style={styles.backText}>✕</Text>
-      </TouchableOpacity>
-      <View style={styles.searchContainer}>
-        <TextInput
-          placeholder="Search restaurants"
-          value={searchText}
-          onChangeText={setSearchText}
-          style={styles.searchBar}
-          placeholderTextColor={DESIGN_COLORS.textPlaceholder}
-        />
-        <Text style={styles.searchIcon}>🔍</Text>
-        
-        {/* Category Filter Button */}
+      {/* Top Navigation Bar - X button, Search, Category Filter */}
+      <View style={styles.topNavBar}>
         <TouchableOpacity
-          style={styles.categoryButton}
+          onPress={() => {
+            if (navigation && typeof navigation.goBack === 'function') {
+              navigation.goBack();
+            } else {
+              console.warn('⚠️ Navigation goBack not available');
+            }
+          }}
+          style={styles.closeButton}
+        >
+          <Text style={styles.closeButtonIcon}>✕</Text>
+        </TouchableOpacity>
+        
+        <View style={styles.searchInputContainer}>
+          <TextInput
+            placeholder="Search resta..."
+            value={searchText}
+            onChangeText={setSearchText}
+            style={styles.searchInput}
+            placeholderTextColor="#999"
+          />
+        </View>
+        
+        <TouchableOpacity
+          style={styles.categoryDropdown}
           onPress={() => setShowCategoryModal(true)}
           activeOpacity={0.7}
         >
-          <Text style={styles.categoryButtonEmoji}>
+          <Text style={styles.categoryDropdownEmoji}>
             {(() => {
               const category = restaurantCategories.find(c => c.value === selectedCategory);
-              const emoji = category?.emoji || '🍽️';
-              return validateTextValue(emoji, 'HomeScreen.categoryButtonEmoji');
+              return category?.emoji || '🍽️';
             })()}
           </Text>
-          <Text style={styles.categoryButtonLabel}>
+          <Text style={styles.categoryDropdownText}>
             {(() => {
               const category = restaurantCategories.find(c => c.value === selectedCategory);
-              const label = category?.label || 'All';
-              return validateTextValue(label, 'HomeScreen.categoryButtonLabel');
+              return category?.label || 'All Types';
             })()}
           </Text>
-          <Text style={styles.dropdownIcon}>▼</Text>
+          <Text style={styles.categoryDropdownArrow}>▼</Text>
         </TouchableOpacity>
       </View>
 
@@ -1581,14 +1578,15 @@ function HomeScreen({ navigation }: { navigation: any }) {
             />
             <TouchableOpacity
               onPress={() => setShowCategoryModal(false)}
-              style={[styles.closeButton, { backgroundColor: theme?.primary || DESIGN_COLORS.infoBg }]}
+              style={[styles.modalCloseButton, { backgroundColor: theme?.primary || DESIGN_COLORS.infoBg }]}
             >
-              <Text style={[styles.closeButtonText, { color: theme?.background || DESIGN_COLORS.infoText }]}>Done</Text>
+              <Text style={[styles.modalCloseButtonText, { color: theme?.background || DESIGN_COLORS.infoText }]}>Done</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
 
+      {/* Map Container */}
       <View style={styles.mapContainer}>
         {visibleRestaurants && visibleRestaurants.length > 0 && visibleRestaurants.every(r => r && r.id && r.location) ? (
           <MapBoxWebView restaurants={visibleRestaurants} />
@@ -1600,6 +1598,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
           </View>
         )}
       </View>
+      
+      {/* Restaurant Cards List */}
 
       <FlatList
         style={styles.cardsContainer}
@@ -1672,10 +1672,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
           }
         }}
         onEndReachedThreshold={0.5}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        removeClippedSubviews
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={3}
+        removeClippedSubviews={true}
         ListEmptyComponent={
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
@@ -1687,6 +1687,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
       />
     </View>
   );
+  
+  // Fallback return - this should never be reached but satisfies TypeScript
+  return <View style={styles.container} />;
 }
 
 export default function HomeScreenWrapper({ navigation }: { navigation: any }) {

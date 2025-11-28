@@ -110,10 +110,10 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
         try {
           const address = await reverseGeocode(location.latitude, location.longitude);
-          Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4)}`);
+          Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + (typeof location.latitude === 'number' && !isNaN(location.latitude) ? location.latitude.toFixed(4) : '0.0000') + ', ' + (typeof location.longitude === 'number' && !isNaN(location.longitude) ? location.longitude.toFixed(4) : '0.0000')}`);
         } catch (geocodeError) {
           console.warn('📍 Admin(Add): Reverse geocoding failed:', geocodeError);
-          Alert.alert('Success', `Location updated!\nCoordinates: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+          Alert.alert('Success', `Location updated!\nCoordinates: ${(typeof location.latitude === 'number' && !isNaN(location.latitude) ? location.latitude.toFixed(4) : '0.0000')}, ${(typeof location.longitude === 'number' && !isNaN(location.longitude) ? location.longitude.toFixed(4) : '0.0000')}`);
         }
       } else {
         console.warn('📍 Admin(Add): Failed to get location');
@@ -304,10 +304,10 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
         try {
           const address = await reverseGeocode(location.latitude, location.longitude);
-          Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + location.latitude.toFixed(4) + ', ' + location.longitude.toFixed(4)}`);
+          Alert.alert('Success', `Location updated!\n${address || 'Coordinates: ' + (typeof location.latitude === 'number' && !isNaN(location.latitude) ? location.latitude.toFixed(4) : '0.0000') + ', ' + (typeof location.longitude === 'number' && !isNaN(location.longitude) ? location.longitude.toFixed(4) : '0.0000')}`);
         } catch (geocodeError) {
           console.warn('📍 Admin: Reverse geocoding failed:', geocodeError);
-          Alert.alert('Success', `Location updated!\nCoordinates: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+          Alert.alert('Success', `Location updated!\nCoordinates: ${(typeof location.latitude === 'number' && !isNaN(location.latitude) ? location.latitude.toFixed(4) : '0.0000')}, ${(typeof location.longitude === 'number' && !isNaN(location.longitude) ? location.longitude.toFixed(4) : '0.0000')}`);
         }
       } else {
         console.warn('📍 Admin: Failed to get location');
@@ -390,8 +390,8 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
   };
 
   const getAddressDisplay = (latitude: number, longitude: number): string => {
-    const key = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-    return addressCache[key] || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+    const key = `${(typeof latitude === 'number' && !isNaN(latitude) ? latitude.toFixed(4) : '0.0000')},${(typeof longitude === 'number' && !isNaN(longitude) ? longitude.toFixed(4) : '0.0000')}`;
+    return addressCache[key] || `${(typeof latitude === 'number' && !isNaN(latitude) ? latitude.toFixed(4) : '0.0000')}, ${(typeof longitude === 'number' && !isNaN(longitude) ? longitude.toFixed(4) : '0.0000')}`;
   };
 
   const handleEdit = (restaurant: Restaurant) => {
@@ -885,7 +885,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                     {item.name}
                   </Text>
                   <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
-                    {item.location.latitude.toFixed(4)}, {item.location.longitude.toFixed(4)}
+                    {typeof item.location.latitude === 'number' && !isNaN(item.location.latitude) ? item.location.latitude.toFixed(4) : '0.0000'}, {typeof item.location.longitude === 'number' && !isNaN(item.location.longitude) ? item.location.longitude.toFixed(4) : '0.0000'}
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -966,7 +966,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         {item.name}
                       </Text>
                       <Text style={{ color: theme.textSecondary, fontSize: 14, marginTop: 2 }}>
-                        {item.category} • ₱{item.price.toFixed(2)}
+                        {item.category} • ₱{typeof item.price === 'number' && !isNaN(item.price) ? item.price.toFixed(2) : '0.00'}
                       </Text>
                       {item.description && (
                         <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2, fontStyle: 'italic' }} numberOfLines={1}>
@@ -1108,7 +1108,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 }}
               >
                 <Text style={{ color: ownerFilter === 'all' ? theme.background : theme.text, fontSize: 12, fontWeight: 'bold' }}>
-                  All ({owners.length.toString()})
+                  All ({owners.length})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity

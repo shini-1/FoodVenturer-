@@ -62,8 +62,8 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
   const getStatusText = (): string => {
     if (syncStatus.status === 'error') return 'Sync Error';
     if (syncStatus.status === 'syncing') return 'Syncing...';
-    if (syncStatus.queueLength > 0) return `${(syncStatus.queueLength || 0).toString()} Pending`;
-    if (syncStatus.conflictsCount && syncStatus.conflictsCount > 0) return `${(syncStatus.conflictsCount || 0).toString()} Conflicts`;
+    if (syncStatus.queueLength > 0) return `${(syncStatus.queueLength || 0)} Pending`;
+    if (syncStatus.conflictsCount && syncStatus.conflictsCount > 0) return `${(syncStatus.conflictsCount || 0)} Conflicts`;
     if (!syncStatus.isOnline) return 'Offline';
     return 'Synced';
   };
@@ -100,7 +100,7 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
         </Animated.View>
         {syncStatus.queueLength > 0 && (
           <View style={[styles.compactBadge, { backgroundColor: getStatusColor() }]}>
-            <Text style={styles.compactBadgeText}>{(syncStatus.queueLength || 0).toString()}</Text>
+            <Text style={styles.compactBadgeText}>{(syncStatus.queueLength || 0)}</Text>
           </View>
         )}
       </Container>
@@ -132,7 +132,7 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
             </Text>
             {showDetails && (
               <Text style={[styles.detailsText, { color: theme.textSecondary }]}>
-                {(syncStatus.queueLength || 0).toString()} pending • {(syncStatus.conflictsCount || 0).toString()} conflicts
+                {(syncStatus.queueLength || 0)} pending • {(syncStatus.conflictsCount || 0)} conflicts
                 {!syncStatus.isOnline ? ' • Offline mode' : ''}
               </Text>
             )}
@@ -157,7 +157,7 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
       {syncStatus.conflictsCount && syncStatus.conflictsCount > 0 && (
         <View style={[styles.conflictWarning, { backgroundColor: '#FFE5E5' }]}>
           <Text style={styles.conflictText}>
-            ⚠️ {(syncStatus.conflictsCount || 0).toString()} rating conflict{syncStatus.conflictsCount > 1 ? 's' : ''} need resolution
+            ⚠️ {(syncStatus.conflictsCount || 0)} rating conflict{syncStatus.conflictsCount > 1 ? 's' : ''} need resolution
           </Text>
         </View>
       )}
