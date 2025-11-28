@@ -157,7 +157,7 @@ const RatingSyncIndicator: React.FC<RatingSyncIndicatorProps> = ({
       {syncStatus.conflictsCount && syncStatus.conflictsCount > 0 && (
         <View style={[styles.conflictWarning, { backgroundColor: '#FFE5E5' }]}>
           <Text style={styles.conflictText}>
-            ⚠️ {syncStatus.conflictsCount} rating conflict{syncStatus.conflictsCount > 1 ? 's' : ''} need resolution
+            ⚠️ {(syncStatus.conflictsCount || 0).toString()} rating conflict{syncStatus.conflictsCount > 1 ? 's' : ''} need resolution
           </Text>
         </View>
       )}

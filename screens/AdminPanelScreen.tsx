@@ -1108,7 +1108,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 }}
               >
                 <Text style={{ color: ownerFilter === 'all' ? theme.background : theme.text, fontSize: 12, fontWeight: 'bold' }}>
-                  All ({owners.length})
+                  All ({owners.length.toString()})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity

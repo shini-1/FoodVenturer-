@@ -72,7 +72,7 @@ export default function OfflineBanner({ onSyncPress }: OfflineBannerProps) {
             {!isOnline 
               ? 'Offline Mode - Using cached data'
               : pendingCount > 0
-                ? `${pendingCount} action${pendingCount > 1 ? 's' : ''} pending sync`
+                ? `${pendingCount.toString()} action${pendingCount > 1 ? 's' : ''} pending sync`
                 : 'Connected'
             }
           </Text>

@@ -404,7 +404,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
                   })()}
                 </Text>
                 <Text style={[styles.ratingText, { color: theme.text }]}>
-                  {avgRating ? avgRating.toFixed(1) : 'No ratings yet'}{ratingCount ? ` (${ratingCount})` : ''}
+                  {avgRating ? avgRating.toFixed(1) : 'No ratings yet'}{ratingCount ? ` (${ratingCount.toString()})` : ''}
                 </Text>
               </View>
               <Text style={[styles.categoryText, { color: theme.textSecondary }]}>
@@ -423,7 +423,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
                   </View>
                 ))}
                 <Text style={{ marginLeft: 8, color: theme.textSecondary }}>
-                  You rated {myRating}★
+                  You rated {myRating?.toString() || '0'}★
                 </Text>
               </View>
             ) : (
