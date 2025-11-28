@@ -52,8 +52,9 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
   const rank = currentRatingData?.rank;
 
   const renderStars = (rating: number, size: number = 12): React.ReactElement => {
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
+    const safeRating = (typeof rating === 'number' && !isNaN(rating)) ? rating : 0;
+    const fullStars = Math.floor(safeRating);
+    const hasHalfStar = safeRating % 1 >= 0.5;
     const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
 
     return (

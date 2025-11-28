@@ -728,7 +728,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       
       if (typeof reverseGeocode !== 'function') {
         console.warn('⚠️ reverseGeocode is not available, using coordinates');
-        const coordAddress = `${restaurant.location.latitude.toFixed(4)}, ${restaurant.location.longitude.toFixed(4)}`;
+        const coordAddress = `${typeof restaurant.location.latitude === 'number' && !isNaN(restaurant.location.latitude) ? restaurant.location.latitude.toFixed(4) : '0.0000'}, ${typeof restaurant.location.longitude === 'number' && !isNaN(restaurant.location.longitude) ? restaurant.location.longitude.toFixed(4) : '0.0000'}`;
         setAddressCache(prev => ({ ...prev, [cacheKey]: `📍 ${coordAddress}` }));
         return `📍 ${coordAddress}`;
       }
@@ -742,7 +742,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     } catch (error) {
       console.warn('Failed to geocode restaurant:', restaurant.name, error);
       // Fallback to coordinates
-      const coordAddress = `${restaurant.location.latitude.toFixed(4)}, ${restaurant.location.longitude.toFixed(4)}`;
+      const coordAddress = `${typeof restaurant.location.latitude === 'number' && !isNaN(restaurant.location.latitude) ? restaurant.location.latitude.toFixed(4) : '0.0000'}, ${typeof restaurant.location.longitude === 'number' && !isNaN(restaurant.location.longitude) ? restaurant.location.longitude.toFixed(4) : '0.0000'}`;
       setAddressCache(prev => ({ ...prev, [cacheKey]: `📍 ${coordAddress}` }));
       return `📍 ${coordAddress}`;
     } finally {
@@ -1261,16 +1261,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   return categoryText;
                 })()}
               </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                <Text style={{ color: '#FFD700' }}>
-                  {(() => {
-                    const rating = typeof restaurant.rating === 'number' ? restaurant.rating : 0;
-                    const roundedRating = Math.round(rating);
-                    const fullStars = '★'.repeat(Math.max(0, Math.min(5, roundedRating)));
-                    const emptyStars = '☆'.repeat(5 - Math.max(0, Math.min(5, roundedRating)));
-                    return fullStars + emptyStars;
-                  })()}
-                </Text>
                 <Text style={{ marginLeft: 6, color: DESIGN_COLORS.textSecondary }}>
                   {(() => {
                     const ratingText = typeof restaurant.rating === 'number' && !isNaN(restaurant.rating) ? restaurant.rating.toFixed(1) : 'No ratings yet';
