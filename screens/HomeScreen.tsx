@@ -266,11 +266,11 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 12,
     backgroundColor: DESIGN_COLORS.cardBackground,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 25,
+    borderWidth: 2,
     borderColor: DESIGN_COLORS.border,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   searchInput: {
     fontSize: 14,
@@ -280,95 +280,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: DESIGN_COLORS.cardBackground,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 25,
+    borderWidth: 2,
     borderColor: DESIGN_COLORS.border,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   categoryDropdownEmoji: {
     fontSize: 16,
-    marginRight: 4,
+    marginRight: 6,
   },
   categoryDropdownText: {
     fontSize: 14,
     color: DESIGN_COLORS.textPrimary,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   categoryDropdownArrow: {
-    fontSize: 10,
+    fontSize: 12,
     color: DESIGN_COLORS.textPrimary,
-    marginLeft: 4,
+    marginLeft: 6,
   },
   modalCloseButton: {
     marginTop: 15,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalCloseButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    padding: 10,
-    zIndex: 90,
-  },
-  backText: {
-    fontSize: 35,
-    fontWeight: 'bold',
-    color: DESIGN_COLORS.textPrimary,
-  },
-  searchContainer: {
-    position: 'absolute',
-    top: 27,
-    left: 80,
-    right: 20,
-    height: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 90,
-    gap: 8,
-  },
-  searchBar: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingRight: 40,
-    backgroundColor: DESIGN_COLORS.cardBackground,
-    color: DESIGN_COLORS.textPrimary,
-    borderColor: DESIGN_COLORS.border,
-  },
-  searchIcon: {
-    position: 'absolute',
-    right: 16,
-    fontSize: 18,
-  },
-  categoryButton: {
-    height: 40,
-    paddingHorizontal: 12,
-    backgroundColor: DESIGN_COLORS.buttonBackground,
-    borderWidth: 1,
-    borderColor: DESIGN_COLORS.border,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    minWidth: 100,
-  },
-  categoryButtonEmoji: {
-    fontSize: 16,
-  },
-  categoryButtonLabel: {
-    fontSize: 13,
-    color: DESIGN_COLORS.textPrimary,
-    fontWeight: '500',
   },
   dropdownIcon: {
     fontSize: 10,
@@ -377,9 +312,9 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     flex: 1,
-    marginTop: 10,
+    marginTop: 12,
     marginHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: DESIGN_COLORS.border,
     overflow: 'hidden',
@@ -393,32 +328,20 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: DESIGN_COLORS.cardBackground,
     padding: 12,
-    marginVertical: 6,
+    marginVertical: 8,
     marginHorizontal: 16,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   cardContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-  },
-  restaurantImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 12,
-    marginRight: 12,
-    backgroundColor: '#f0f0f0',
-  },
-  cardTextContent: {
-    flex: 1,
-    justifyContent: 'flex-start',
-    paddingTop: 4,
   },
   cardTitleRow: {
     flexDirection: 'row',
@@ -426,10 +349,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     color: DESIGN_COLORS.textPrimary,
-    marginBottom: 4,
+    marginBottom: 6,
     flex: 1,
   },
   heartIcon: {
@@ -438,36 +361,36 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   cardLocation: {
-    fontSize: 13,
+    fontSize: 12,
     color: DESIGN_COLORS.textSecondary,
     marginBottom: 4,
-    lineHeight: 18,
+    lineHeight: 16,
   },
   cardCategory: {
-    fontSize: 13,
-    color: DESIGN_COLORS.textPrimary,
-    marginBottom: 4,
+    fontSize: 12,
+    color: DESIGN_COLORS.textSecondary,
+    marginBottom: 6,
   },
   cardRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 4,
   },
   cardStars: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#FFD700',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   cardRating: {
-    fontSize: 13,
+    fontSize: 12,
     color: DESIGN_COLORS.textSecondary,
-    marginLeft: 4,
+    marginLeft: 6,
   },
   cardPrice: {
-    fontSize: 13,
+    fontSize: 12,
     color: DESIGN_COLORS.textPrimary,
     marginLeft: 8,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   favoriteButton: {
     position: 'absolute',
@@ -892,11 +815,15 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
             console.log(`📊 Set ${merged.length} restaurants (merged from server)`);
             return merged;
           });
+        } else if (!serverData || serverData.length === 0) {
+          // Server returned no data - no more restaurants available
+          console.log(`🏁 Server returned no restaurants for page ${targetPage} - stopping pagination`);
+          setHasMore(false);
         }
         
-        const more = (serverData?.length === SERVER_PAGE_SIZE);
+        const more = (serverData?.length === SERVER_PAGE_SIZE) || (serverData && serverData.length > 0 && targetPage < 10); // Be more aggressive about loading up to page 10
         setHasMore(more);
-        console.log(`✅ Loaded ${serverData?.length || 0} restaurants from server, hasMore: ${more}`);
+        console.log(`✅ Loaded ${serverData?.length || 0} restaurants from server, hasMore: ${more} (page ${targetPage})`);
         
         if (crashLoggerReady && crashLogger && typeof crashLogger.logComponentEvent === 'function') {
           crashLogger.logComponentEvent('HomeScreen', 'load_page_success', { 
@@ -1072,6 +999,17 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
 
       loadPage(nextPage).catch(error => {
         console.error('❌ Auto-load failed:', error);
+      });
+    } else if (restaurants.length > 0 && restaurants.length % SERVER_PAGE_SIZE === 0 && !hasMore) {
+      // Check if we should attempt to load more even if hasMore is false
+      // This handles cases where the server initially said no more but actually has more
+      console.log(`🔍 Checking for more restaurants despite hasMore=false. Current: ${restaurants.length} restaurants`);
+
+      const nextPage = Math.floor(restaurants.length / SERVER_PAGE_SIZE) + 1;
+      console.log(`📄 Attempting to load page ${nextPage} to check for more restaurants`);
+
+      loadPage(nextPage).catch(error => {
+        console.log('ℹ️ No more restaurants available (expected):', error?.message || error);
       });
     } else if (restaurants.length > 0) {
       console.log(`⏸️ Auto-load skipped: hasMore=${hasMore}, isLoadingPage=${isLoadingPage}, refreshing=${refreshing}, length=${restaurants.length}, mod=${restaurants.length % SERVER_PAGE_SIZE}`);
