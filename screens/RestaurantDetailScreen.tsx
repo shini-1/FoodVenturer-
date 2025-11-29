@@ -97,6 +97,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 2,
   },
+  backButtonText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
+  },
   content: {
     padding: 20,
   },
@@ -432,7 +437,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
             style={[styles.backButton, { top: insets.top + 10 }]}
             onPress={() => navigation.goBack()}
           >
-            <Text style={{color: 'white', fontSize: 24}}>✕</Text>
+            <Text style={[styles.backButtonText, { color: DESIGN_COLORS.textPrimary }]}>✕</Text>
           </TouchableOpacity>
         </View>
 
@@ -553,7 +558,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
                     style={styles.contactItem}
                     onPress={() => Linking.openURL(`tel:${restaurant.phone}`)}
                   >
-                    <Text style={{color: DESIGN_COLORS.textPrimary, fontSize: 20}}>Call</Text>
+                    <Text style={{color: DESIGN_COLORS.textPrimary, fontSize: 20}}>📞</Text>
                     <Text style={[styles.contactText, { color: DESIGN_COLORS.textPrimary }]}>{restaurant.phone}</Text>
                   </TouchableOpacity>
                 )}
@@ -562,7 +567,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
                     style={styles.contactItem}
                     onPress={() => Linking.openURL(restaurant.website!.startsWith('http') ? restaurant.website! : `https://${restaurant.website!}`)}
                   >
-                    <Text style={{color: DESIGN_COLORS.textPrimary, fontSize: 20}}>Web</Text>
+                    <Text style={{color: DESIGN_COLORS.textPrimary, fontSize: 20}}>🌐</Text>
                     <Text style={[styles.contactText, { color: DESIGN_COLORS.textPrimary }]}>{restaurant.website}</Text>
                   </TouchableOpacity>
                 )}

@@ -680,6 +680,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
     const [geocodingInProgress, setGeocodingInProgress] = useState<Set<string>>(new Set());
     const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
+    const [isSearchTyping, setIsSearchTyping] = useState(false); // Track if user is actively typing
     const GEOCODE_CONCURRENCY = 3;
     const geocodeActiveRef = useRef(0);
     const geocodeQueueRef = useRef<string[]>([]);
@@ -1379,6 +1380,15 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
       return [];
     }
 
+    // Early return for empty search
+    if (!debouncedSearchText.trim()) {
+      return selectedCategory === 'all' 
+        ? categorizedRestaurants 
+        : categorizedRestaurants.filter(r => r.category === selectedCategory);
+    }
+
+    const searchTerm = debouncedSearchText.toLowerCase().trim();
+
     return categorizedRestaurants.filter((restaurant) => {
       // Safety check - ensure restaurant is valid
       if (!restaurant || typeof restaurant !== 'object') {
@@ -1388,13 +1398,20 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
         return false;
       }
 
-      // Text search filter
-      const matchesSearch = restaurant.name.toLowerCase().includes(debouncedSearchText.toLowerCase());
-
       // Category filter
       const matchesCategory = selectedCategory === 'all' || restaurant.category === selectedCategory;
+      if (!matchesCategory) return false;
 
-      return matchesSearch && matchesCategory;
+      // Text search filter - only if search term exists
+      if (searchTerm) {
+        const nameMatch = restaurant.name.toLowerCase().includes(searchTerm);
+        const categoryMatch = restaurant.category?.toLowerCase().includes(searchTerm);
+        const descriptionMatch = restaurant.description?.toLowerCase().includes(searchTerm);
+        
+        return nameMatch || categoryMatch || descriptionMatch;
+      }
+
+      return true;
     });
   }, [categorizedRestaurants, debouncedSearchText, selectedCategory]);
 
@@ -1441,7 +1458,10 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
   }, [filteredRestaurants, sortBy]);
 
   useEffect(() => {
-    const h = setTimeout(() => setDebouncedSearchText(searchText), 300);
+    const h = setTimeout(() => {
+      setDebouncedSearchText(searchText);
+      setIsSearchTyping(false); // Reset typing state after debounce
+    }, 300);
     return () => clearTimeout(h);
   }, [searchText]);
 
@@ -1757,7 +1777,10 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
           <TextInput
             placeholder="Search restaurants..."
             value={searchText}
-            onChangeText={setSearchText}
+            onChangeText={(text) => {
+              setSearchText(text);
+              setIsSearchTyping(true); // Mark as actively typing
+            }}
             style={styles.searchInput}
             placeholderTextColor={DESIGN_COLORS.textPlaceholder}
           />
@@ -1838,7 +1861,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
       {/* Map Container */}
       <View style={styles.mapContainer}>
         {visibleRestaurants && visibleRestaurants.length > 0 && visibleRestaurants.every(r => r && r.id && r.location) ? (
-          <MapBoxWebView restaurants={visibleRestaurants as CategorizedRestaurant[]} />
+          <MapBoxWebView restaurants={visibleRestaurants as CategorizedRestaurant[]} isTyping={isSearchTyping} />
         ) : (
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { WebView } from 'react-native-webview';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useNetwork } from '../src/contexts/NetworkContext';
@@ -18,6 +18,7 @@ interface Restaurant {
 
 interface MapBoxWebViewProps {
   restaurants: Restaurant[];
+  isTyping?: boolean;
 }
 
 // Extend window interface for mapbox
@@ -30,7 +31,7 @@ declare global {
 }
 
 // WebView component with Mapbox for production builds
-function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaurants: Restaurant[], categories: Category[], isOnline: boolean }) {
+function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = false }: { restaurants: Restaurant[], categories: Category[], isOnline: boolean, isTyping?: boolean }) {
   const webViewRef = useRef<WebView>(null);
   const [webViewKey, setWebViewKey] = useState(0);
   const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
@@ -40,13 +41,63 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
 
   console.log('🗺️ MapBoxWebViewComponent: Rendering with', restaurants.length, 'restaurants and', categories.length, 'categories');
 
-  // Force WebView reload when restaurants change significantly
+  // Store previous restaurant IDs to compare changes
+  const prevRestaurantIdsRef = useRef<string[]>([]);
+
+  // Only force WebView reload for major data changes (empty to populated, or data source changes)
+  // Not for search filtering which should update markers dynamically
   useEffect(() => {
-    if (restaurants && restaurants.length > 0) {
-      console.log('🗺️ MapBoxWebViewComponent: Restaurants changed, forcing WebView reload');
+    const shouldReload = restaurants.length === 0 || (restaurants.length > 0 && webViewKey === 0);
+    if (shouldReload) {
+      console.log('🗺️ MapBoxWebViewComponent: Major data change, forcing WebView reload');
       setWebViewKey(prev => prev + 1);
+      setWebViewReady(false); // Reset ready state for new WebView
+      prevRestaurantIdsRef.current = restaurants.map(r => r.id);
+    } else if (restaurants.length > 0 && webViewReady) {
+      // For search/filtering changes, only update if restaurant IDs actually changed
+      // and user is not actively typing
+      const currentIds = restaurants.map(r => r.id).sort();
+      const prevIds = prevRestaurantIdsRef.current.sort();
+      const idsChanged = JSON.stringify(currentIds) !== JSON.stringify(prevIds);
+
+      if (idsChanged && !isTyping) {
+        console.log('🗺️ MapBoxWebViewComponent: Restaurant IDs changed and not typing, updating markers dynamically');
+        updateMapMarkers(restaurants);
+        prevRestaurantIdsRef.current = [...currentIds];
+      } else if (idsChanged && isTyping) {
+        console.log('🗺️ MapBoxWebViewComponent: Restaurant IDs changed but user is typing, skipping update');
+      } else {
+        console.log('🗺️ MapBoxWebViewComponent: Restaurant list unchanged, skipping marker update');
+      }
     }
-  }, [restaurants.length]);
+  }, [restaurants, webViewReady, isTyping]);
+
+  // Function to dynamically update map markers without reloading WebView
+  const updateMapMarkers = useCallback((restaurantData: Restaurant[]) => {
+    if (!webViewRef.current || !webViewReady) {
+      console.log('🗺️ WebView not ready for marker updates');
+      return;
+    }
+
+    const updateScript = `
+      try {
+        if (typeof window.map !== 'undefined' && typeof window.updateMarkers === 'function') {
+          console.log('🗺️ Dynamically updating markers with', ${restaurantData.length}, 'restaurants');
+          window.updateMarkers(${JSON.stringify(restaurantData)});
+        } else {
+          console.log('🗺️ Map or updateMarkers function not available yet');
+        }
+      } catch (error) {
+        console.error('🗺️ Error injecting marker update script:', error);
+      }
+    `;
+
+    try {
+      webViewRef.current.injectJavaScript(updateScript);
+    } catch (injectError) {
+      console.error('🗺️ Error injecting JavaScript:', injectError);
+    }
+  }, [webViewReady]);
 
   const mapboxToken = Constants.expoConfig?.extra?.mapboxAccessToken || 'pk.eyJ1Ijoic2hpbmlpaSIsImEiOiJjbWhkZGIwZzYwMXJmMmtxMTZpY294c2V6In0.zuQl6u8BJxOgimXHxMiNqQ';
 
@@ -482,14 +533,79 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
                 return DEFAULT_CATEGORY;
               }
 
-              // Clear existing markers before adding new ones
-              if (window.map && window.map.getSource('markers')) {
-                window.map.removeLayer('markers');
-                window.map.removeSource('markers');
-              }
+              // Function to dynamically update markers (called from React Native for search/filtering)
+              window.updateMarkers = function(newRestaurants) {
+                try {
+                  console.log('🗺️ Updating markers with', newRestaurants.length, 'restaurants');
 
-              // Store markers for potential cleanup
-              const markers = [];
+                  // Clear existing markers
+                  if (window.currentMarkers && window.currentMarkers.length > 0) {
+                    window.currentMarkers.forEach(marker => marker.remove());
+                    window.currentMarkers = [];
+                  }
+
+                  // Reset markers array
+                  window.currentMarkers = [];
+
+                  // Add new markers
+                  newRestaurants.forEach(function(restaurant) {
+                    const { location, name, category: restaurantCategory } = restaurant;
+                    
+                    // Validate location data
+                    if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+                      console.warn('🗺️ Skipping restaurant with invalid location:', name, location);
+                      return;
+                    }
+                    
+                    // Use new category resolution logic
+                    const categoryConfig = getCategoryForRestaurant(restaurantCategory, name);
+
+                    const markerEl = document.createElement('div');
+                    markerEl.className = 'marker';
+                    markerEl.style.backgroundColor = categoryConfig.color;
+                    markerEl.innerHTML = categoryConfig.emoji;
+                    markerEl.title = name;
+
+                    const popup = new mapboxgl.Popup({
+                      offset: 25,
+                      closeButton: true,
+                      closeOnClick: false
+                    }).setHTML('<div style="font-size: 14px; line-height: 1.4;"><strong>' + name + '</strong><br>' +
+                      '<span style="color:' + categoryConfig.color + '; font-weight: bold;">' + categoryConfig.emoji + ' ' + categoryConfig.name.replace('_', ' ').toUpperCase() + '</span>' +
+                      '<br><small>📍 ' + (typeof location.latitude === 'number' ? location.latitude.toFixed(4) : '0.0000') + ', ' + (typeof location.longitude === 'number' ? location.longitude.toFixed(4) : '0.0000') + '</small></div>');
+
+                    const marker = new mapboxgl.Marker(markerEl)
+                      .setLngLat([location.longitude, location.latitude])
+                      .setPopup(popup)
+                      .addTo(map);
+                      
+                    window.currentMarkers.push(marker);
+                  });
+
+                  // Fit bounds to new markers if any exist
+                  if (window.currentMarkers.length > 0) {
+                    const bounds = new mapboxgl.LngLatBounds();
+                    newRestaurants.forEach(function(restaurant) {
+                      if (restaurant.location && typeof restaurant.location.latitude === 'number' && typeof restaurant.location.longitude === 'number') {
+                        bounds.extend([restaurant.location.longitude, restaurant.location.latitude]);
+                      }
+                    });
+                    
+                    map.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+                    updateStatus('✅ Map updated with ' + window.currentMarkers.length + ' markers');
+                  } else {
+                    updateStatus('ℹ️ No restaurants match current filters');
+                  }
+
+                  console.log('🗺️ Markers updated successfully:', window.currentMarkers.length, 'markers');
+                } catch (error) {
+                  console.error('🗺️ Error updating markers:', error);
+                  updateStatus('❌ Error updating map markers');
+                }
+              };
+
+              // Initialize global markers array
+              window.currentMarkers = [];
 
               // Slow load feature - load markers in batches of 50 (increased from 20)
               const BATCH_SIZE = 50;
@@ -497,54 +613,65 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
               let loadedCount = 0;
               
               function loadMarkerBatch(startIndex) {
-                const endIndex = Math.min(startIndex + BATCH_SIZE, restaurants.length);
-                
-                for (let i = startIndex; i < endIndex; i++) {
-                  const restaurant = restaurants[i];
-                  const { location, name, category: restaurantCategory } = restaurant;
-                  
-                  // Validate location data
-                  if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
-                    console.warn('🗺️ Skipping restaurant with invalid location:', name, location);
-                    continue;
+                try {
+                  const endIndex = Math.min(startIndex + BATCH_SIZE, restaurants.length);
+                  console.log('🗺️ Loading batch:', startIndex, 'to', endIndex, 'of', restaurants.length);
+
+                  for (let i = startIndex; i < endIndex; i++) {
+                    const restaurant = restaurants[i];
+                    const { location, name, category: restaurantCategory } = restaurant;
+
+                    // Validate location data
+                    if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+                      console.warn('🗺️ Skipping restaurant with invalid location:', name, location);
+                      continue;
+                    }
+
+                    // Use new category resolution logic
+                    const categoryConfig = getCategoryForRestaurant(restaurantCategory, name);
+
+                    try {
+                      const markerEl = document.createElement('div');
+                      markerEl.className = 'marker';
+                      markerEl.style.backgroundColor = categoryConfig.color;
+                      markerEl.innerHTML = categoryConfig.emoji;
+                      markerEl.title = name;
+
+                      const popup = new mapboxgl.Popup({
+                        offset: 25,
+                        closeButton: true,
+                        closeOnClick: false
+                      }).setHTML('<div style="font-size: 14px; line-height: 1.4;"><strong>' + name + '</strong><br>' +
+                        '<span style="color:' + categoryConfig.color + '; font-weight: bold;">' + categoryConfig.emoji + ' ' + categoryConfig.name.replace('_', ' ').toUpperCase() + '</span>' +
+                        '<br><small>📍 ' + (typeof location.latitude === 'number' ? location.latitude.toFixed(4) : '0.0000') + ', ' + (typeof location.longitude === 'number' ? location.longitude.toFixed(4) : '0.0000') + '</small></div>');
+
+                      const marker = new mapboxgl.Marker(markerEl)
+                        .setLngLat([location.longitude, location.latitude])
+                        .setPopup(popup)
+                        .addTo(map);
+
+                      window.currentMarkers.push(marker);
+                    } catch (markerError) {
+                      console.error('🗺️ Error creating marker for restaurant:', name, markerError);
+                      continue; // Continue with next restaurant
+                    }
                   }
-                  
-                  // Use new category resolution logic
-                  const categoryConfig = getCategoryForRestaurant(restaurantCategory, name);
 
-                  const markerEl = document.createElement('div');
-                  markerEl.className = 'marker';
-                  markerEl.style.backgroundColor = categoryConfig.color;
-                  markerEl.innerHTML = categoryConfig.emoji;
-                  markerEl.title = name;
+                  loadedCount = endIndex;
+                  updateStatus('✅ Map loading... ' + loadedCount + '/' + restaurants.length + ' markers');
 
-                  const popup = new mapboxgl.Popup({
-                    offset: 25,
-                    closeButton: true,
-                    closeOnClick: false
-                  }).setHTML('<div style="font-size: 14px; line-height: 1.4;"><strong>' + name + '</strong><br>' +
-                    '<span style="color:' + categoryConfig.color + '; font-weight: bold;">' + categoryConfig.emoji + ' ' + categoryConfig.name.replace('_', ' ').toUpperCase() + '</span>' +
-                    '<br><small>📍 ' + (typeof location.latitude === 'number' ? location.latitude.toFixed(4) : '0.0000') + ', ' + (typeof location.longitude === 'number' ? location.longitude.toFixed(4) : '0.0000') + '</small></div>');
-
-                  const marker = new mapboxgl.Marker(markerEl)
-                    .setLngLat([location.longitude, location.latitude])
-                    .setPopup(popup)
-                    .addTo(map);
-                    
-                  markers.push(marker);
-                }
-                
-                loadedCount = endIndex;
-                updateStatus('✅ Map loading... ' + loadedCount + '/' + restaurants.length + ' markers');
-                
-                // Load next batch if there are more restaurants
-                if (endIndex < restaurants.length) {
-                  setTimeout(function() {
-                    loadMarkerBatch(endIndex);
-                  }, BATCH_DELAY);
-                } else {
-                  console.log('🗺️ All ' + restaurants.length + ' markers loaded, fitting bounds...');
-                  updateStatus('✅ Map ready with ' + loadedCount + ' markers');
+                  // Load next batch if there are more restaurants
+                  if (endIndex < restaurants.length) {
+                    setTimeout(function() {
+                      loadMarkerBatch(endIndex);
+                    }, BATCH_DELAY);
+                  } else {
+                    console.log('🗺️ All ' + restaurants.length + ' markers loaded, fitting bounds...');
+                    updateStatus('✅ Map ready with ' + loadedCount + ' markers');
+                  }
+                } catch (batchError) {
+                  console.error('🗺️ Error in loadMarkerBatch:', batchError);
+                  updateStatus('❌ Error loading markers');
                 }
               }
               
@@ -569,6 +696,9 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
                 const totalBatches = Math.ceil(restaurants.length / BATCH_SIZE);
                 const totalDelay = (totalBatches * BATCH_DELAY) + 1000; // Extra 1 second buffer
                 
+                // Safety timeout - force bounds fitting after 10 seconds max
+                const safetyTimeout = Math.min(totalDelay + 2000, 10000); // Max 10 seconds
+                
                 setTimeout(() => {
                   if (validLocations > 0) {
                     try {
@@ -584,6 +714,19 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
                     updateStatus('⚠️ No valid restaurant locations');
                   }
                 }, totalDelay);
+                
+                // Safety timeout as fallback
+                setTimeout(() => {
+                  console.log('🗺️ Safety timeout triggered - forcing bounds fit');
+                  if (validLocations > 0 && window.currentMarkers && window.currentMarkers.length > 0) {
+                    try {
+                      map.fitBounds(bounds, { padding: 50 });
+                      updateStatus('✅ Map ready with ' + window.currentMarkers.length + ' markers (safety timeout)');
+                    } catch (error) {
+                      console.error('🗺️ Safety timeout bounds fit failed:', error);
+                    }
+                  }
+                }, safetyTimeout);
               } else {
                 updateStatus('✅ Map ready with 0 markers');
               }
@@ -764,7 +907,7 @@ function NativeMapFallback({ restaurants, isOnline }: { restaurants: Restaurant[
 }
 
 // Main component that conditionally renders based on environment
-function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
+function MapBoxWebView({ restaurants, isTyping = false }: MapBoxWebViewProps) {
   const { isOnline } = useNetwork();
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -819,7 +962,7 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
     // When offline, check if we have data to show
     if (restaurants && restaurants.length > 0) {
       console.log('📱 OFFLINE: Using cached data for full map experience');
-      return <MapBoxWebViewComponent restaurants={restaurants} categories={categories} isOnline={isOnline} />;
+      return <MapBoxWebViewComponent restaurants={restaurants} categories={categories} isOnline={isOnline} isTyping={isTyping} />;
     } else {
       console.log('📱 OFFLINE: No cached data, showing fallback');
       return <NativeMapFallback restaurants={restaurants} isOnline={isOnline} />;
@@ -833,7 +976,7 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
 
   // Online and production build - use full MapBox
   console.log('🌐 ONLINE: Rendering full MapBoxWebViewComponent');
-  return <MapBoxWebViewComponent restaurants={restaurants} categories={categories} isOnline={isOnline} />;
+  return <MapBoxWebViewComponent restaurants={restaurants} categories={categories} isOnline={isOnline} isTyping={isTyping} />;
 }
 
 const styles = StyleSheet.create({
