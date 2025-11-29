@@ -1064,7 +1064,8 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
   // Simplified auto-load logic - trigger when we have restaurants and more are available
   useEffect(() => {
     if (hasMore && !isLoadingPage && !refreshing && restaurants.length > 0 && restaurants.length % SERVER_PAGE_SIZE === 0) {
-      console.log(`🔄 Auto-loading next page. Current: ${restaurants.length} restaurants, hasMore: ${hasMore}`);
+      console.log(`🔄 Auto-loading next page. Current: ${restaurants.length} restaurants, hasMore: ${hasMore}, SERVER_PAGE_SIZE: ${SERVER_PAGE_SIZE}`);
+      console.log(`🔄 Condition met: restaurants.length % SERVER_PAGE_SIZE === 0 (${restaurants.length} % ${SERVER_PAGE_SIZE} = ${restaurants.length % SERVER_PAGE_SIZE})`);
 
       const nextPage = Math.floor(restaurants.length / SERVER_PAGE_SIZE) + 1;
       console.log(`📄 Loading page ${nextPage} automatically`);
@@ -1072,6 +1073,8 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
       loadPage(nextPage).catch(error => {
         console.error('❌ Auto-load failed:', error);
       });
+    } else if (restaurants.length > 0) {
+      console.log(`⏸️ Auto-load skipped: hasMore=${hasMore}, isLoadingPage=${isLoadingPage}, refreshing=${refreshing}, length=${restaurants.length}, mod=${restaurants.length % SERVER_PAGE_SIZE}`);
     }
   }, [restaurants.length, hasMore, isLoadingPage, refreshing, loadPage]);
 
@@ -1647,8 +1650,8 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
 
       {/* Map Container */}
       <View style={styles.mapContainer}>
-        {visibleRestaurants && visibleRestaurants.length > 0 && visibleRestaurants.every(r => r && r.id && r.location) ? (
-          <MapBoxWebView restaurants={visibleRestaurants} />
+        {restaurants && restaurants.length > 0 && restaurants.every(r => r && r.id && r.location) ? (
+          <MapBoxWebView restaurants={restaurants as CategorizedRestaurant[]} />
         ) : (
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>
