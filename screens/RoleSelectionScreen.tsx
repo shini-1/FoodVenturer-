@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     flex: 1,
-    backgroundColor: DESIGN_COLORS.infoBg,
+    backgroundColor: DESIGN_COLORS.background,
     paddingTop: 40,
     paddingHorizontal: 20,
     alignItems: 'center',
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 26,
     fontWeight: '600',
-    color: DESIGN_COLORS.infoText,
+    color: DESIGN_COLORS.textPrimary,
     marginBottom: 50,
     textAlign: 'center',
   },

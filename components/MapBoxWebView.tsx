@@ -402,21 +402,51 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = 
             // Use different map style based on online status
             let mapStyle;
             if (!isOnline) {
-              // Offline-compatible style - basic background without external resources
+              // Enhanced offline-compatible style with terrain-like features
               mapStyle = {
                 version: 8,
                 sources: {},
                 layers: [
+                  // Base background layer - represents ocean/water
                   {
-                    id: 'background',
+                    id: 'water',
                     type: 'background',
                     paint: {
-                      'background-color': '#e6f3ff' // Light blue background matching app theme
+                      'background-color': '#a8d5e8' // Light blue for water bodies
+                    }
+                  },
+                  // Land mass background - represents land/terrain
+                  {
+                    id: 'land',
+                    type: 'background',
+                    paint: {
+                      'background-color': '#f0e68c' // Khaki color for land
+                    },
+                    filter: ['==', ['geometry-type'], 'Polygon']
+                  },
+                  // Add subtle grid pattern to represent terrain variation
+                  {
+                    id: 'terrain-grid',
+                    type: 'background',
+                    paint: {
+                      'background-color': '#f5f5dc', // Beige for varied terrain
+                      'background-opacity': 0.3
+                    }
+                  },
+                  // Add a subtle border effect
+                  {
+                    id: 'land-border',
+                    type: 'background',
+                    paint: {
+                      'background-color': '#daa520', // Goldenrod for borders/highlights
+                      'background-opacity': 0.1
                     }
                   }
-                ]
+                ],
+                glyphs: "mapbox://fonts/mapbox/{fontstack}/{range}.pbf", // Fallback for any text needs
+                sprite: "" // Empty sprite to avoid external resources
               };
-              console.log('🗺️ Using offline-compatible map style');
+              console.log('🗺️ Using enhanced offline terrain-style map');
             } else {
               // Online style with MapBox tiles
               mapStyle = 'mapbox://styles/mapbox/streets-v11';
@@ -437,7 +467,7 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = 
 
               // Show offline indicator if needed
               if (!isOnline) {
-                updateStatus('📱 Offline mode - Map loaded with markers only');
+                updateStatus('📱 Offline mode - Terrain and markers loaded');
               }
 
               // Add navigation control
@@ -734,7 +764,7 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = 
                     try {
                       map.fitBounds(bounds, { padding: 50 });
                       console.log('🗺️ Map fitted to bounds after all markers loaded');
-                      updateStatus(isOnline ? '✅ Map ready with ' + loadedCount + ' markers' : '📱 Offline - Map ready with ' + loadedCount + ' markers');
+                      updateStatus(isOnline ? '✅ Map ready with ' + loadedCount + ' markers' : '📱 Offline - Terrain and ' + loadedCount + ' markers ready');
                     } catch (error) {
                       console.error('🗺️ Error fitting bounds:', error);
                       updateStatus('❌ Error fitting map bounds');
@@ -751,7 +781,7 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = 
                   if (validLocations > 0 && window.currentMarkers && window.currentMarkers.length > 0) {
                     try {
                       map.fitBounds(bounds, { padding: 50 });
-                      updateStatus(isOnline ? '✅ Map ready with ' + window.currentMarkers.length + ' markers (safety timeout)' : '📱 Offline - Map ready with ' + window.currentMarkers.length + ' markers (safety timeout)');
+                      updateStatus(isOnline ? '✅ Map ready with ' + window.currentMarkers.length + ' markers (safety timeout)' : '📱 Offline - Terrain and ' + window.currentMarkers.length + ' markers ready (safety timeout)');
                     } catch (error) {
                       console.error('🗺️ Safety timeout bounds fit failed:', error);
                     }

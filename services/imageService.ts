@@ -7,13 +7,13 @@ const STORAGE_BUCKET = BUCKETS.RESTAURANT_IMAGES;
 /**
  * Convert ImagePicker URI to a format suitable for upload
  */
-const prepareImageForUpload = async (imageUri: string): Promise<{ blob: Blob; mimeType: string }> => {
+const prepareImageForUpload = async (imageUri: string): Promise<{ base64: string; mimeType: string }> => {
   try {
     console.log('🔄 Preparing image for upload:', imageUri);
 
     // Handle different URI formats
     let processedUri = imageUri;
-    
+
     // For Expo ImagePicker URIs, ensure they're in the correct format
     if (imageUri.startsWith('file://')) {
       processedUri = imageUri;
@@ -21,7 +21,7 @@ const prepareImageForUpload = async (imageUri: string): Promise<{ blob: Blob; mi
       processedUri = `file://${imageUri}`;
     }
 
-    // For React Native, we need to read the file and convert to base64, then to blob
+    // For React Native, we need to read the file and convert to base64
     if (processedUri.startsWith('file://') || processedUri.startsWith('content://')) {
       try {
         // Read the file as base64
@@ -39,55 +39,43 @@ const prepareImageForUpload = async (imageUri: string): Promise<{ blob: Blob; mi
           mimeType = 'image/webp';
         }
 
-        // Convert base64 to blob
-        const base64Data = `data:${mimeType};base64,${base64}`;
-        const response = await fetch(base64Data);
-        const blob = await response.blob();
-
-        if (!blob) {
-          throw new Error('Failed to create blob from base64 data');
-        }
-
-        console.log('✅ Successfully prepared image blob:', { size: blob.size, type: blob.type });
-        return { blob, mimeType };
+        console.log('✅ Successfully prepared image base64:', { size: base64.length, mimeType });
+        return { base64, mimeType };
       } catch (fileReadError) {
         console.error('❌ Failed to read image file:', fileReadError);
-        
+
         // Try fallback method using fetch directly on the URI
         try {
           console.log('🔄 Trying fallback fetch method...');
           const response = await fetch(processedUri);
-          
+
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
 
-          const blob = await response.blob();
-          
-          if (!blob) {
-            throw new Error('Failed to create blob from fetch response');
-          }
-          
-          console.log('✅ Fallback method successful:', { size: blob.size, type: blob.type });
-          return { blob, mimeType: blob.type || 'image/jpeg' };
+          // Instead of using blob(), convert response to base64
+          const arrayBuffer = await response.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+          console.log('✅ Fallback method successful:', { size: base64.length });
+          return { base64, mimeType: response.headers.get('content-type') || 'image/jpeg' };
         } catch (fallbackError) {
           console.error('❌ Fallback method also failed:', fallbackError);
           throw new Error(`Failed to process image: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
         }
       }
     } else {
-      // For HTTP URLs, use regular fetch
+      // For HTTP URLs, use regular fetch and convert to base64
       const response = await fetch(processedUri);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const blob = await response.blob();
-      
-      if (!blob) {
-        throw new Error('Failed to create blob from HTTP response');
-      }
-      
-      return { blob, mimeType: blob.type || 'image/jpeg' };
+
+      // Convert response to base64 instead of blob
+      const arrayBuffer = await response.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+      return { base64, mimeType: response.headers.get('content-type') || 'image/jpeg' };
     }
   } catch (error) {
     console.error('❌ Failed to prepare image for upload:', error);
@@ -113,22 +101,21 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
     const fileName = `${imageType}-${restaurantId}-${Date.now()}.jpg`;
     const filePath = `${fileName}`;
 
-    console.log('🖼️ Starting image upload:', { imageUri, restaurantId, imageType });
+    console.log(' Starting image upload:', { imageUri, restaurantId, imageType });
 
     // Prepare the image for upload
     const imageData = await prepareImageForUpload(imageUri);
-    
-    // The blob is now guaranteed to exist due to the changes in prepareImageForUpload
-    console.log('✅ Image prepared successfully:', { 
-      size: imageData.blob.size, 
-      type: imageData.blob.type,
-      mimeType: imageData.mimeType 
+
+    // The base64 data is now available directly
+    console.log(' Image prepared successfully:', {
+      size: imageData.base64.length,
+      mimeType: imageData.mimeType
     });
 
-    // Upload to Supabase Storage with the correct MIME type
+    // Upload to Supabase Storage using base64 data
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(filePath, imageData.blob, {
+      .upload(filePath, imageData.base64, {
         contentType: imageData.mimeType,
         upsert: true
       });
@@ -138,7 +125,7 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
       throw new Error(`Failed to upload image: ${error.message}`);
     }
 
-    console.log('✅ Image uploaded to storage successfully');
+    console.log(' Image uploaded to storage successfully');
 
     // Get the public URL for the uploaded file
     const publicUrlData = await supabase.storage
@@ -158,12 +145,12 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
       throw new Error(`Failed to update restaurant with image URL: ${updateError.message}`);
     }
 
-    console.log('✅ Image uploaded and restaurant updated successfully:', imageUrl);
+    console.log(' Image uploaded and restaurant updated successfully:', imageUrl);
     return imageUrl;
 
   } catch (error) {
-    console.error('❌ Image upload failed:', error);
-    
+    console.error(' Image upload failed:', error);
+
     // Re-throw the error so the calling code can handle it properly
     // This will prevent silent failures and provide better error messages
     throw error;
@@ -185,19 +172,18 @@ export const uploadImageToRestaurantBucket = async (
 
     // Prepare the image for upload
     const imageData = await prepareImageForUpload(imageUri);
-    
-    // The blob is now guaranteed to exist due to the changes in prepareImageForUpload
-    console.log('✅ Image prepared for bucket upload:', { 
-      size: imageData.blob.size, 
-      type: imageData.blob.type,
-      mimeType: imageData.mimeType 
+
+    // The base64 data is now available directly
+    console.log('✅ Image prepared for bucket upload:', {
+      size: imageData.base64.length,
+      mimeType: imageData.mimeType
     });
 
     const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(filePath, imageData.blob, { 
-        contentType: imageData.mimeType, 
-        upsert: true 
+      .upload(filePath, imageData.base64, {
+        contentType: imageData.mimeType,
+        upsert: true
       });
 
     if (uploadError) {

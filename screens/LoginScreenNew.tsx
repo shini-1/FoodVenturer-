@@ -63,9 +63,13 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState<string>('');
 
   const handleLogin = useCallback(async () => {
     console.log('🔍 handleLogin called with email:', email, 'password:', password);
+
+    // Clear any previous error messages
+    setLoginError('');
 
     // Prevent automatic calls during render
     if (typeof email !== 'string' || typeof password !== 'string') {
@@ -74,7 +78,7 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
     }
 
     if (!email.trim() || !password.trim()) {
-      console.log('❌ Please fill in all fields');
+      setLoginError('Please enter both email and password');
       return;
     }
 
@@ -99,6 +103,23 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
       onLoginSuccess?.();
     } catch (error: any) {
       console.error('❌ Login Failed:', error.message);
+      
+      // Provide user-friendly error messages based on error type
+      const errorMessage = error.message?.toLowerCase() || '';
+      
+      if (errorMessage.includes('invalid') && errorMessage.includes('password')) {
+        setLoginError('Incorrect password. Please check your password and try again.');
+      } else if (errorMessage.includes('user') && errorMessage.includes('not found')) {
+        setLoginError('No account found with this email address. Please check your email or sign up for a new account.');
+      } else if (errorMessage.includes('email') && errorMessage.includes('not verified')) {
+        setLoginError('Please verify your email address before logging in. Check your inbox for the verification email.');
+      } else if (errorMessage.includes('too many') && errorMessage.includes('attempts')) {
+        setLoginError('Too many failed login attempts. Please try again later or reset your password.');
+      } else if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+        setLoginError('Network connection error. Please check your internet connection and try again.');
+      } else {
+        setLoginError('Login failed. Please check your credentials and try again, or contact support if the problem persists.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -208,6 +229,28 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
               Forgot Password?
             </Text>
           </TouchableOpacity>
+
+          {/* Error Message */}
+          {loginError ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>❌ {loginError}</Text>
+              {(loginError.includes('Incorrect password') || loginError.includes('check your password')) && (
+                <Text style={styles.errorHelp}>
+                  💡 Tip: Make sure caps lock is off and check for typos in your password.
+                </Text>
+              )}
+              {loginError.includes('No account found') && (
+                <Text style={styles.errorHelp}>
+                  💡 Tip: Double-check your email address or create a new business account.
+                </Text>
+              )}
+              {loginError.includes('verify your email') && (
+                <Text style={styles.errorHelp}>
+                  💡 Tip: Check your spam/junk folder if you don't see the verification email.
+                </Text>
+              )}
+            </View>
+          ) : null}
 
           {/* Login Button */}
           <TouchableOpacity
@@ -366,6 +409,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: DESIGN_COLORS.textPrimary,
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee', // Light red background
+    borderWidth: 2,
+    borderColor: '#f44336', // Red border
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#c62828', // Dark red text
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  errorHelp: {
+    fontSize: 12,
+    color: '#d32f2f', // Medium red text
+    fontStyle: 'italic',
   },
 });
 
