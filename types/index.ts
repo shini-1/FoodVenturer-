@@ -85,3 +85,21 @@ export interface Category {
   color: string; // Hex color code
   emoji: string;
 }
+
+// Extended fetch response type to support both blob() and arrayBuffer() methods
+export interface FetchResponseWithBlob extends Response {
+  blob(): Promise<Blob>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+
+// Image upload related types
+export interface ImageUploadOptions {
+  contentType?: string;
+  upsert?: boolean;
+}
+
+export interface ImageUploadResult {
+  url: string;
+  size: number;
+  contentType: string;
+}

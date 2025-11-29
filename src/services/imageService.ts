@@ -1,4 +1,5 @@
 import { supabase, BUCKETS } from '../config/supabase';
+import type { FetchResponseWithBlob, ImageUploadResult } from '../../types';
 
 // Bucket name for storage
 const STORAGE_BUCKET = BUCKETS.RESTAURANT_IMAGES;
@@ -66,13 +67,36 @@ export const uploadImageToRestaurantBucket = async (
     let imageBlob: Blob;
     try {
       console.log('📷 Fetching image from URI...');
-      const response = await fetch(imageUri);
+      const response = await fetch(imageUri) as FetchResponseWithBlob;
       
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${response.status}`);
       }
 
-      imageBlob = await response.blob();
+      // Try using blob() first, fall back to arrayBuffer if not available
+      let imageData: Blob;
+      try {
+        // Attempt to use blob() method (standard Fetch API)
+        if (typeof response.blob === 'function') {
+          console.log('📷 Using response.blob() method');
+          imageData = await response.blob();
+        } else {
+          throw new Error('blob() method not available');
+        }
+      } catch (blobError) {
+        // Fallback to arrayBuffer if blob() fails
+        console.log('📷 blob() failed, falling back to arrayBuffer()');
+        if (typeof response.arrayBuffer === 'function') {
+          console.log('📷 Using response.arrayBuffer() method');
+          const arrayBuffer = await response.arrayBuffer();
+          // Convert ArrayBuffer to Blob
+          imageData = new Blob([arrayBuffer], { type: contentType });
+        } else {
+          throw new Error('Neither blob() nor arrayBuffer() methods available on response');
+        }
+      }
+
+      imageBlob = imageData;
       console.log('📷 Image converted to blob, size:', imageBlob.size, 'bytes');
     } catch (fetchError: any) {
       console.error('❌ Failed to fetch/convert image:', fetchError);
