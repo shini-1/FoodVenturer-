@@ -1,5 +1,4 @@
 import { supabase, BUCKETS } from '../config/supabase';
-import * as FileSystem from 'expo-file-system';
 
 // Bucket name for storage
 const STORAGE_BUCKET = BUCKETS.RESTAURANT_IMAGES;
@@ -45,7 +44,7 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
 
 /**
  * Upload an image to the restaurant images bucket and return its public URL
- * Uses Expo FileSystem for React Native compatibility
+ * Uses fetch API with proper error handling for React Native
  */
 export const uploadImageToRestaurantBucket = async (
   imageUri: string,
@@ -58,30 +57,37 @@ export const uploadImageToRestaurantBucket = async (
 
     console.log('📷 Starting upload:', { imageUri, fileName });
 
-    // Read file as base64 using Expo FileSystem (React Native compatible)
-    let base64Data: string;
+    // Use fetch to get the image data and convert to blob
+    let imageBlob: Blob;
     try {
-      base64Data = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: 'base64',
-      });
-      console.log('📷 Successfully read file as base64, size:', base64Data.length);
-    } catch (readError) {
-      console.error('❌ Failed to read image file:', readError);
-      throw new Error('Failed to read image file. Please try selecting the image again.');
-    }
-
-    // Convert base64 to Uint8Array for Supabase upload
-    try {
-      const binaryString = atob(base64Data);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+      const response = await fetch(imageUri);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
       }
 
+      // Get the blob from the response
+      imageBlob = await response.blob();
+      console.log('📷 Successfully fetched image, size:', imageBlob.size);
+
+    } catch (fetchError: any) {
+      console.error('❌ Failed to fetch image:', fetchError);
+
+      // If fetch fails, provide specific error messages
+      if (fetchError.message?.includes('Network request failed')) {
+        throw new Error('Network error while accessing the image. Please check your internet connection.');
+      } else if (fetchError.message?.includes('404') || fetchError.message?.includes('Not Found')) {
+        throw new Error('The selected image could not be accessed. Please try selecting a different image.');
+      } else {
+        throw new Error(`Failed to access image: ${fetchError.message || 'Unknown error'}. Please try selecting the image again.`);
+      }
+    }
+
+    // Upload the blob to Supabase
+    try {
       console.log('📷 Uploading to Supabase storage...');
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .upload(filePath, bytes, {
+        .upload(filePath, imageBlob, {
           contentType: contentType,
           upsert: true
         });
@@ -92,9 +98,9 @@ export const uploadImageToRestaurantBucket = async (
       }
 
       console.log('✅ Upload successful');
-    } catch (uploadError) {
+    } catch (uploadError: any) {
       console.error('❌ Upload failed:', uploadError);
-      throw new Error('Failed to upload image. Please check your internet connection.');
+      throw new Error(`Failed to upload image: ${uploadError.message || 'Unknown upload error'}. Please check your internet connection.`);
     }
 
     // Get public URL

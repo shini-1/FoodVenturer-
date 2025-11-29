@@ -25,7 +25,6 @@ interface BusinessDashboardScreenProps {
 
 function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
   const insets = useSafeAreaInsets();
-  const [hasRestaurant, setHasRestaurant] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -55,8 +54,8 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
         return;
       }
 
-      const restaurant = await restaurantService.getRestaurantByOwnerId(user.id);
-      setHasRestaurant(!!restaurant);
+      // Just check if user exists, don't store restaurant status
+      await restaurantService.getRestaurantByOwnerId(user.id);
     } catch (error) {
       console.error('Error checking restaurant status:', error);
     } finally {
@@ -65,13 +64,7 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
   };
 
   const quickActions = [
-    ...(hasRestaurant ? [] : [{ id: 'create-restaurant', label: 'Create Restaurant', icon: '🏪' }]),
-    ...(hasRestaurant ? [
-      { id: 'menu-list', label: 'Menu List', icon: '📋' },
-      { id: 'add-menu', label: 'Add Menu Item', icon: '➕' },
-      { id: 'edit-menu', label: 'Edit Menu Items', icon: '✏️' },
-      { id: 'post-promo', label: 'Post Promo', icon: '📢' },
-    ] : []),
+    { id: 'create-restaurant', label: 'Create Restaurant', icon: '🏪' },
     { id: 'edit-profile', label: 'Edit Profile', icon: '👤' },
   ];
 
@@ -85,20 +78,8 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
       case 'create-restaurant':
         navigation.navigate('CreateRestaurant');
         break;
-      case 'menu-list':
-        navigation.navigate('MenuList');
-        break;
-      case 'add-menu':
-        navigation.navigate('AddMenuItem');
-        break;
-      case 'edit-menu':
-        navigation.navigate('EditMenuItems');
-        break;
       case 'edit-profile':
         navigation.navigate('EditProfile');
-        break;
-      case 'post-promo':
-        navigation.navigate('PostPromo');
         break;
       default:
         break;
@@ -127,13 +108,13 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
               Loading...
             </Text>
           </View>
-        ) : !hasRestaurant ? (
+        ) : (
           <View style={{ alignItems: 'center', padding: 20 }}>
             <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textSecondary, textAlign: 'center' }]}>
-              Welcome! Create your restaurant to start managing menus and promotions.
+              Welcome to your Business Dashboard!{'\n'}Manage your restaurant and profile here.
             </Text>
           </View>
-        ) : null}
+        )}
 
         <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary }]}>Quick Actions</Text>
 
