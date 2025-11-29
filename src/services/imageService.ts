@@ -1,5 +1,6 @@
 import { supabase, BUCKETS } from '../config/supabase';
-import type { FetchResponseWithBlob, ImageUploadResult } from '../../types';
+import type { ImageUploadResult } from '../../types';
+import * as FileSystem from 'expo-file-system';
 
 // Bucket name for storage
 const STORAGE_BUCKET = BUCKETS.RESTAURANT_IMAGES;
@@ -63,44 +64,31 @@ export const uploadImageToRestaurantBucket = async (
 
     console.log('📷 Starting upload:', { imageUri, fileName });
 
-    // Step 1: Fetch the image and convert to blob
+    // Step 1: Read the image file and convert to blob using expo-file-system
     let imageBlob: Blob;
     try {
-      console.log('📷 Fetching image from URI...');
-      const response = await fetch(imageUri) as FetchResponseWithBlob;
+      console.log('📷 Reading image from URI using expo-file-system...');
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
+      // Read the file as base64
+      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: 'base64',
+      });
+      
+      console.log('📷 Image read as base64, length:', base64.length);
+      
+      // Convert base64 to Blob
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
-
-      // Try using blob() first, fall back to arrayBuffer if not available
-      let imageData: Blob;
-      try {
-        // Attempt to use blob() method (standard Fetch API)
-        if (typeof response.blob === 'function') {
-          console.log('📷 Using response.blob() method');
-          imageData = await response.blob();
-        } else {
-          throw new Error('blob() method not available');
-        }
-      } catch (blobError) {
-        // Fallback to arrayBuffer if blob() fails
-        console.log('📷 blob() failed, falling back to arrayBuffer()');
-        if (typeof response.arrayBuffer === 'function') {
-          console.log('📷 Using response.arrayBuffer() method');
-          const arrayBuffer = await response.arrayBuffer();
-          // Convert ArrayBuffer to Blob
-          imageData = new Blob([arrayBuffer], { type: contentType });
-        } else {
-          throw new Error('Neither blob() nor arrayBuffer() methods available on response');
-        }
-      }
-
-      imageBlob = imageData;
+      const byteArray = new Uint8Array(byteNumbers);
+      imageBlob = new Blob([byteArray], { type: contentType });
+      
       console.log('📷 Image converted to blob, size:', imageBlob.size, 'bytes');
-    } catch (fetchError: any) {
-      console.error('❌ Failed to fetch/convert image:', fetchError);
-      throw new Error(`Failed to process image: ${fetchError.message}`);
+    } catch (fileError: any) {
+      console.error('❌ Failed to read/convert image:', fileError);
+      throw new Error(`Failed to process image: ${fileError.message}`);
     }
 
     // Step 2: Upload blob to Supabase
