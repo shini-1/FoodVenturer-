@@ -248,62 +248,73 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     backgroundColor: DESIGN_COLORS.background,
+    gap: 10,
   },
   closeButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 4,
   },
   closeButtonIcon: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: DESIGN_COLORS.textPrimary,
   },
   searchInputContainer: {
     flex: 1,
-    marginHorizontal: 12,
     backgroundColor: DESIGN_COLORS.cardBackground,
-    borderRadius: 25,
+    borderRadius: 22,
     borderWidth: 2,
     borderColor: DESIGN_COLORS.border,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    height: 40,
+    justifyContent: 'center',
   },
   searchInput: {
-    fontSize: 14,
+    fontSize: 13,
     color: DESIGN_COLORS.textPrimary,
   },
   categoryDropdown: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: DESIGN_COLORS.cardBackground,
-    borderRadius: 25,
+    borderRadius: 22,
     borderWidth: 2,
     borderColor: DESIGN_COLORS.border,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    height: 40,
+    minWidth: 120,
   },
   categoryDropdownEmoji: {
-    fontSize: 16,
-    marginRight: 6,
+    fontSize: 13,
+    marginRight: 4,
   },
   categoryDropdownText: {
-    fontSize: 14,
+    fontSize: 13,
     color: DESIGN_COLORS.textPrimary,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   categoryDropdownArrow: {
-    fontSize: 12,
+    fontSize: 10,
     color: DESIGN_COLORS.textPrimary,
-    marginLeft: 6,
+    marginLeft: 4,
   },
   modalCloseButton: {
     marginTop: 15,
     paddingVertical: 12,
     paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   dropdownIcon: {
     fontSize: 10,
@@ -312,9 +323,9 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     flex: 1,
-    marginTop: 12,
+    marginTop: 10,
     marginHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: DESIGN_COLORS.border,
     overflow: 'hidden',
@@ -323,73 +334,75 @@ const styles = StyleSheet.create({
   cardsContainer: {
     flex: 1,
     paddingHorizontal: 0,
+    paddingVertical: 6,
     backgroundColor: DESIGN_COLORS.background,
   },
   card: {
     backgroundColor: DESIGN_COLORS.cardBackground,
-    padding: 12,
+    padding: 10,
     marginVertical: 8,
     marginHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: DESIGN_COLORS.border,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
   },
   cardContent: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   cardTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    marginBottom: 1,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: DESIGN_COLORS.textPrimary,
-    marginBottom: 6,
+    marginBottom: 1,
     flex: 1,
   },
   heartIcon: {
-    fontSize: 20,
+    fontSize: 16,
     color: '#E0E0E0',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   cardLocation: {
-    fontSize: 12,
+    fontSize: 10,
     color: DESIGN_COLORS.textSecondary,
-    marginBottom: 4,
-    lineHeight: 16,
+    marginBottom: 1,
+    lineHeight: 13,
   },
   cardCategory: {
-    fontSize: 12,
+    fontSize: 10,
     color: DESIGN_COLORS.textSecondary,
-    marginBottom: 6,
+    marginBottom: 3,
   },
   cardRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   cardStars: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#FFD700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   cardRating: {
-    fontSize: 12,
+    fontSize: 10,
     color: DESIGN_COLORS.textSecondary,
-    marginLeft: 6,
+    marginLeft: 3,
   },
   cardPrice: {
-    fontSize: 12,
+    fontSize: 10,
     color: DESIGN_COLORS.textPrimary,
-    marginLeft: 8,
+    marginLeft: 5,
     fontWeight: '600',
   },
   favoriteButton: {
@@ -487,6 +500,77 @@ const styles = StyleSheet.create({
   processingText: {
     marginLeft: 8,
     fontSize: 14,
+  },
+  restaurantImage: {
+    width: 85,
+    height: 85,
+    borderRadius: 10,
+    marginRight: 10,
+    backgroundColor: '#f0f0f0',
+  },
+  cardTextContent: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    paddingTop: 0,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    padding: 10,
+    zIndex: 90,
+  },
+  backText: {
+    fontSize: 35,
+    fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
+  },
+  searchContainer: {
+    position: 'absolute',
+    top: 27,
+    left: 80,
+    right: 20,
+    height: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 90,
+    gap: 8,
+  },
+  searchBar: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingRight: 40,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    color: DESIGN_COLORS.textPrimary,
+    borderColor: DESIGN_COLORS.border,
+  },
+  searchIcon: {
+    position: 'absolute',
+    right: 16,
+    fontSize: 18,
+  },
+  categoryButton: {
+    height: 40,
+    paddingHorizontal: 12,
+    backgroundColor: DESIGN_COLORS.buttonBackground,
+    borderWidth: 1,
+    borderColor: DESIGN_COLORS.border,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 100,
+  },
+  categoryButtonEmoji: {
+    fontSize: 16,
+  },
+  categoryButtonLabel: {
+    fontSize: 13,
+    color: DESIGN_COLORS.textPrimary,
+    fontWeight: '500',
   },
 });
 
@@ -899,6 +983,19 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
       geocodeActiveRef.current = 0;
       geocodeQueueRef.current = [];
       queuedRef.current.clear();
+      
+      // Sync ratings to Supabase before refreshing
+      console.log('🔄 Syncing ratings to Supabase...');
+      if (ratingSyncService) {
+        try {
+          // Trigger sync process by setting online status
+          ratingSyncService.setOnlineStatus(true);
+          console.log('✅ Ratings sync triggered');
+        } catch (syncError) {
+          console.warn('⚠️ Rating sync failed:', syncError);
+        }
+      }
+      
       await loadPage(1);
     } finally {
       setRefreshing(false);
