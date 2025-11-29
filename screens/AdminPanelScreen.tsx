@@ -507,10 +507,13 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
   const handleSaveAdd = async () => {
     try {
       setAddLoading(true);
+      console.log('🏪 Admin(Add): Starting restaurant creation process');
 
       const name = addForm.name.trim();
       const latitude = parseFloat(addForm.latitude);
       const longitude = parseFloat(addForm.longitude);
+
+      console.log('🏪 Admin(Add): Validating inputs:', { name, latitude, longitude, hasImage: !!addForm.image });
 
       if (!name) {
         Alert.alert('Error', 'Restaurant name is required');
@@ -540,10 +543,25 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         priceRange: addForm.priceRange
       };
 
+      // Validate image URL if present
+      if (restaurantData.image && restaurantData.image.length > 0) {
+        try {
+          new URL(restaurantData.image);
+          console.log('🏪 Admin(Add): Image URL validated successfully');
+        } catch (urlError) {
+          console.warn('🏪 Admin(Add): Invalid image URL, removing:', restaurantData.image);
+          restaurantData.image = undefined;
+        }
+      }
+
+      console.log('🏪 Admin(Add): Final restaurant data:', restaurantData);
+
       await addRestaurant(restaurantData);
+      console.log('🏪 Admin(Add): Restaurant added to database successfully');
 
       const updatedRestaurants = await getRestaurants();
       setRestaurants(updatedRestaurants);
+      console.log('🏪 Admin(Add): Restaurant list refreshed');
 
       setAddForm({
         name: '',
@@ -562,6 +580,13 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       Alert.alert('Success', 'Restaurant added successfully!');
 
     } catch (error: any) {
+      console.error('🏪 Admin(Add): Error during restaurant creation:', error);
+      console.error('🏪 Admin(Add): Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
       Alert.alert('Error', `Failed to add restaurant: ${error.message}`);
     } finally {
       setAddLoading(false);
@@ -883,6 +908,50 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         >
           <Text style={styles.iconText}>🧹</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={async () => {
+            try {
+              console.log('🧪 Testing image upload...');
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permission needed', 'Please grant permission to access your photos');
+                return;
+              }
+
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.8,
+              });
+
+              if (!result.canceled && result.assets && result.assets.length > 0) {
+                const imageUri = result.assets[0].uri;
+                console.log('🧪 Test image URI:', imageUri);
+
+                const { uploadImageToRestaurantBucket } = await import('../services/imageService');
+                const testId = `test_${Date.now()}`;
+                const uploadedUrl = await uploadImageToRestaurantBucket(imageUri, testId);
+
+                console.log('🧪 Test upload successful:', uploadedUrl);
+                Alert.alert('Test Success', `Image uploaded successfully!\nURL: ${uploadedUrl.substring(0, 50)}...`);
+              }
+            } catch (error: any) {
+              console.error('🧪 Test upload failed:', error);
+              Alert.alert('Test Failed', `Image upload test failed: ${error.message}`);
+            }
+          }}
+          style={[styles.iconButton, { backgroundColor: '#007bff' }]}
+        >
+          <Text style={styles.iconText}>🖼️</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ marginBottom: 20 }}>
+        <Text style={{ fontSize: 12, color: DESIGN_COLORS.textSecondary, textAlign: 'center' }}>
+          ➕ Add Restaurant • 🧹 Cleanup Duplicates • 🖼️ Test Image Upload
+        </Text>
       </View>
 
       {activeTab === 'restaurants' && (
@@ -1710,14 +1779,17 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
                       if (!result.canceled && result.assets && result.assets.length > 0) {
                         const imageUri = result.assets[0].uri;
-                        console.log('📷 Selected image URI for add:', imageUri);
+                        console.log('📷 Admin(Add): Selected image URI:', imageUri);
                         setImageUploading(true);
 
                         try {
                           const { uploadImageToRestaurantBucket } = await import('../services/imageService');
                           const tempRestaurantId = `temp_${Date.now()}`;
+                          console.log('📷 Admin(Add): Starting upload with temp ID:', tempRestaurantId);
+
                           const uploadedImageUrl = await uploadImageToRestaurantBucket(imageUri, tempRestaurantId);
-                          
+                          console.log('📷 Admin(Add): Upload successful, URL:', uploadedImageUrl);
+
                           setAddForm(prev => ({
                             ...prev,
                             image: uploadedImageUrl
@@ -1726,8 +1798,26 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                           Alert.alert('Success', 'Image uploaded successfully!');
 
                         } catch (uploadError: any) {
-                          console.error('Image upload error:', uploadError);
-                          Alert.alert('Error', `Failed to upload image: ${uploadError?.message || 'Unknown error'}`);
+                          console.error('📷 Admin(Add): Image upload error:', uploadError);
+                          console.error('📷 Admin(Add): Error details:', {
+                            message: uploadError.message,
+                            code: uploadError.code,
+                            details: uploadError.details,
+                            hint: uploadError.hint
+                          });
+
+                          let errorMessage = 'Failed to upload image';
+                          if (uploadError.message?.includes('Failed to process image for upload')) {
+                            errorMessage = 'Failed to process the selected image. Please try a different image.';
+                          } else if (uploadError.message?.includes('Failed to upload image')) {
+                            errorMessage = 'Failed to upload image to storage. Please check your internet connection.';
+                          } else if (uploadError.message?.includes('storage')) {
+                            errorMessage = 'Storage permission error. Please check your Supabase configuration.';
+                          } else if (uploadError.message) {
+                            errorMessage = `Image upload failed: ${uploadError.message}`;
+                          }
+
+                          Alert.alert('Image Upload Error', errorMessage + '\n\nThe restaurant will be created without an image. Please try again.');
                         } finally {
                           setImageUploading(false);
                         }

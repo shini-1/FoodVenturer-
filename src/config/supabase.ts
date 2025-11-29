@@ -14,6 +14,7 @@ export const TABLES = {
   BUSINESS_OWNERS: 'business_owners',
   ADMINS: 'admins',
   MENU_ITEMS: 'menu_items',
+  PROMOS: 'promos',
   RESTAURANT_RATINGS: 'restaurant_ratings',
   RESTAURANT_DEVICE_RATINGS: 'restaurant_device_ratings',
   RESTAURANT_DEVICE_FAVORITES: 'restaurant_device_favorites',

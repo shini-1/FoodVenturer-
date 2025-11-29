@@ -189,6 +189,7 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Restaurant Details</Text>
 
+          <Text style={styles.fieldLabel}>Restaurant Name <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={styles.input}
             placeholder="Restaurant Name *"
@@ -197,6 +198,7 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
             onChangeText={setRestaurantName}
           />
 
+          <Text style={styles.fieldLabel}>Category <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={styles.input}
             placeholder="Category * (e.g., Italian, Chinese, Fast Food)"
@@ -205,6 +207,7 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
             onChangeText={setCategory}
           />
 
+          <Text style={styles.fieldLabel}>Location <Text style={styles.required}>*</Text></Text>
           <TouchableOpacity
             onPress={handleGetLocation}
             disabled={locationLoading}
@@ -217,25 +220,7 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
             )}
           </TouchableOpacity>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Latitude *"
-            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
-            value={latitude}
-            editable={false}
-            selectTextOnFocus={false}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Longitude *"
-            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
-            value={longitude}
-            editable={false}
-            selectTextOnFocus={false}
-          />
-
-          <Text style={styles.fieldLabel}>Price Range (₱)</Text>
+          <Text style={styles.fieldLabel}>Price Range</Text>
           <View style={styles.priceRangeContainer}>
             {['₱','₱₱','₱₱₱','₱₱₱₱'].map((pr) => (
               <TouchableOpacity
@@ -283,6 +268,7 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
             )}
           </View>
 
+          <Text style={styles.fieldLabel}>Phone Number</Text>
           <TextInput
             style={styles.input}
             placeholder="Phone Number"
@@ -292,6 +278,7 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
             keyboardType="phone-pad"
           />
 
+          <Text style={styles.fieldLabel}>Website URL</Text>
           <TextInput
             style={styles.input}
             placeholder="Website URL"
@@ -301,6 +288,7 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
             keyboardType="url"
           />
 
+          <Text style={styles.fieldLabel}>Hours</Text>
           <TextInput
             style={styles.input}
             placeholder="Hours (e.g., Mon-Fri: 9AM-10PM, Sat-Sun: 10AM-11PM)"
@@ -311,6 +299,7 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
             numberOfLines={2}
           />
 
+          <Text style={styles.fieldLabel}>Description</Text>
           <TextInput
             style={styles.input}
             placeholder="Description"
@@ -499,6 +488,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
     color: DESIGN_COLORS.textSecondary,
+  },
+  required: {
+    color: '#ff4444',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

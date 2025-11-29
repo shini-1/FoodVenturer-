@@ -390,6 +390,13 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = 
             // Use Mapbox token from config
             mapboxgl.accessToken = '${mapboxToken}';
 
+            // Process data first
+            const categories = ${JSON.stringify(categories)};
+            const restaurants = ${JSON.stringify(restaurants)};
+            const isOnline = ${isOnline};
+
+            console.log('🗺️ Processing data - online:', isOnline, 'categories:', categories.length, 'restaurants:', restaurants.length);
+
             updateStatus('Creating map...');
 
             // Use different map style based on online status
@@ -497,13 +504,6 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = 
                 locationButton.addEventListener('click', window.requestLocation);
                 console.log('🗺️ Location button event listener added');
               }
-
-            // Process data
-              const categories = ${JSON.stringify(categories)};
-              const restaurants = ${JSON.stringify(restaurants)};
-              const isOnline = ${isOnline};
-
-              console.log('🗺️ Processing data - online:', isOnline, 'categories:', categories.length, 'restaurants:', restaurants.length);
 
               // Category configuration data
               const CATEGORY_CONFIG = ${JSON.stringify(Object.fromEntries(

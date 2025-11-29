@@ -7,6 +7,19 @@ import { promoService } from '../src/services/promoService';
 import { restaurantService } from '../src/services/restaurantService';
 import { supabase } from '../src/config/supabase';
 
+// Design colors matching the Home Screen exactly
+const DESIGN_COLORS = {
+  background: '#E6F3FF',      // Light blue - main screen background
+  cardBackground: '#FFFFFF',   // White - card backgrounds
+  border: '#000000',           // Black - all borders
+  textPrimary: '#000000',      // Black - primary text (names, types)
+  textSecondary: '#666666',    // Gray - secondary text (locations)
+  textPlaceholder: '#999999',  // Light gray - placeholder text
+  buttonBackground: '#FFFFFF', // White - button backgrounds
+  infoBg: '#000000',          // Black - info button background
+  infoText: '#FFFFFF',        // White - info button text
+};
+
 interface PostPromoScreenProps {
   navigation: any;
 }
@@ -85,87 +98,91 @@ function PostPromoScreen({ navigation }: PostPromoScreenProps) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: DESIGN_COLORS.background }]}>
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { top: insets.top + 10 }]}>
-          <Text style={[styles.backButtonText, { color: theme.primary }]}>✕</Text>
+          <Text style={[styles.backButtonText, { color: DESIGN_COLORS.textPrimary }]}>✕</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.title, { color: theme.text }]}>Post Promo</Text>
+        <Text style={[styles.title, { color: DESIGN_COLORS.textPrimary }]}>Post Promo</Text>
 
         <View style={styles.formSection}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Create New Promotion</Text>
+          <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary }]}>Create New Promotion</Text>
 
+          <Text style={styles.fieldLabel}>Promo Title <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={[
               styles.input,
               {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
+                borderColor: DESIGN_COLORS.border,
+                backgroundColor: DESIGN_COLORS.cardBackground,
+                color: DESIGN_COLORS.textPrimary,
               },
             ]}
-            placeholder="Promo Title"
-            placeholderTextColor={theme.textSecondary}
+            placeholder="e.g., Weekend Special: 20% Off"
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={promoTitle}
             onChangeText={setPromoTitle}
           />
 
+          <Text style={styles.fieldLabel}>Promo Description <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={[
               styles.input,
               {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
+                borderColor: DESIGN_COLORS.border,
+                backgroundColor: DESIGN_COLORS.cardBackground,
+                color: DESIGN_COLORS.textPrimary,
               },
             ]}
-            placeholder="Promo Description"
-            placeholderTextColor={theme.textSecondary}
+            placeholder="Describe your promotion in detail"
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={promoDescription}
             onChangeText={setPromoDescription}
             multiline
             numberOfLines={4}
           />
 
+          <Text style={styles.fieldLabel}>Discount Percentage <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={[
               styles.input,
               {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
+                borderColor: DESIGN_COLORS.border,
+                backgroundColor: DESIGN_COLORS.cardBackground,
+                color: DESIGN_COLORS.textPrimary,
               },
             ]}
-            placeholder="Discount (%)"
-            placeholderTextColor={theme.textSecondary}
+            placeholder="e.g., 20 for 20% off"
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={discount}
             onChangeText={setDiscount}
             keyboardType="decimal-pad"
           />
 
+          <Text style={styles.fieldLabel}>Expiry Date <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={[
               styles.input,
               {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
+                borderColor: DESIGN_COLORS.border,
+                backgroundColor: DESIGN_COLORS.cardBackground,
+                color: DESIGN_COLORS.textPrimary,
               },
             ]}
-            placeholder="Expiry Date (e.g., 2024-12-31)"
-            placeholderTextColor={theme.textSecondary}
+            placeholder="YYYY-MM-DD (e.g., 2024-12-31)"
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={expiryDate}
             onChangeText={setExpiryDate}
           />
 
           <TouchableOpacity
-            style={[styles.postButton, { backgroundColor: theme.primary }]}
+            style={[styles.postButton, { backgroundColor: DESIGN_COLORS.cardBackground, borderColor: DESIGN_COLORS.border }]}
             onPress={handlePostPromo}
             disabled={isLoading}
           >
-            <Text style={styles.postButtonText}>{isLoading ? 'Posting...' : 'Post Promo'}</Text>
+            <Text style={[styles.postButtonText, { color: DESIGN_COLORS.textPrimary }]}>{isLoading ? 'Posting...' : 'Post Promo'}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -176,6 +193,8 @@ function PostPromoScreen({ navigation }: PostPromoScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: DESIGN_COLORS.background,
+    paddingTop: 50, // Account for status bar
   },
   content: {
     flex: 1,
@@ -183,22 +202,34 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
+    top: 20,
     left: 20,
-    width: 60,
+    width: 40,
     height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
     zIndex: 1000,
   },
   backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 24,
     textAlign: 'center',
+    color: DESIGN_COLORS.textPrimary,
   },
   formSection: {
     marginBottom: 20,
@@ -208,6 +239,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
     textAlign: 'center',
+    color: DESIGN_COLORS.textPrimary,
   },
   input: {
     borderWidth: 2,
@@ -217,15 +249,35 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
     minHeight: 48,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderColor: DESIGN_COLORS.border,
+    color: DESIGN_COLORS.textPrimary,
   },
   postButton: {
     borderRadius: 12,
     paddingVertical: 14,
     marginTop: 20,
     alignItems: 'center',
+    borderWidth: 2,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   postButtonText: {
-    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  fieldLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    marginTop: 4,
+    color: DESIGN_COLORS.textPrimary,
+  },
+  required: {
+    color: '#ff4444',
     fontSize: 16,
     fontWeight: 'bold',
   },
