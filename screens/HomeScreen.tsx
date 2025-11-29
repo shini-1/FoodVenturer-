@@ -29,6 +29,7 @@ import { ratingSyncService } from '../src/services/ratingSyncService';
 import { ratingCalculationService, RestaurantRatingData } from '../src/services/ratingCalculationService';
 import { useNetwork } from '../src/contexts/NetworkContext';
 import { syncService } from '../src/services/syncService';
+import { localDatabase } from '../src/services/localDatabase';
 import { Restaurant } from '../types';
 
 // Enhanced error boundary component with detailed debugging
@@ -979,13 +980,55 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
           const { items: serverData, total } = await restaurantService.getRestaurantsPageWithCount(targetPage, SERVER_PAGE_SIZE);
           console.log(`📊 Server returned ${serverData.length} restaurants, total: ${total}`);
 
+          // Get locally created but not-yet-synced restaurants to show immediately
+          let localUnsyncedRestaurants: Restaurant[] = [];
+          try {
+            await localDatabase.initialize();
+            const unsyncedLocal = await localDatabase.getUnsyncedRestaurants();
+            localUnsyncedRestaurants = unsyncedLocal.map(local => ({
+              id: local.id,
+              name: local.name,
+              location: {
+                latitude: local.latitude,
+                longitude: local.longitude,
+              },
+              image: local.image || '',
+              category: local.category,
+              rating: local.rating || 0,
+              priceRange: local.price_range || '$',
+              description: local.description || '',
+              phone: local.phone || '',
+              hours: local.hours || '',
+              website: local.website || '',
+            }));
+            console.log(`📱 Found ${localUnsyncedRestaurants.length} locally created restaurants to include`);
+          } catch (localError) {
+            console.warn('⚠️ Could not fetch local unsynced restaurants:', localError);
+          }
+
+          // Merge server data with local unsynced restaurants
+          const allData = [...serverData, ...localUnsyncedRestaurants];
+          const mergedData = allData.filter((item, index, self) => 
+            self.findIndex(r => r.id === item.id) === index
+          ); // Remove duplicates by ID
+
+          console.log(`📊 After merging: ${mergedData.length} total restaurants (${serverData.length} from server, ${localUnsyncedRestaurants.length} local)`);
+
           if (targetPage === 1) {
-            setRestaurants(serverData || []);
+            setRestaurants(mergedData);
+          } else if (mergedData.length > serverData.length) { // We added local restaurants
+            setRestaurants(prev => {
+              const existing = new Set((prev || []).map((r: Restaurant) => r.id));
+              const newFromServer = serverData.filter(r => r && r.id && !existing.has(r.id));
+              const merged = [...(prev || []), ...newFromServer, ...localUnsyncedRestaurants];
+              console.log(`📊 Set ${merged.length} restaurants (merged server + local)`);
+              return merged;
+            });
           } else if (serverData && serverData.length > 0) {
             setRestaurants(prev => {
               const existing = new Set((prev || []).map((r: Restaurant) => r.id));
               const merged = [...(prev || []), ...serverData.filter(r => r && r.id && !existing.has(r.id))];
-              console.log(`📊 Set ${merged.length} restaurants (merged from server)`);
+              console.log(`📊 Set ${merged.length} restaurants (from server)`);
               return merged;
             });
           } else if (!serverData || serverData.length === 0) {
@@ -996,9 +1039,9 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
           
           const more = (serverData?.length === SERVER_PAGE_SIZE) || (serverData && serverData.length > 0 && targetPage < 10); // Be more aggressive about loading up to page 10
           setHasMore(more);
-          console.log(`✅ Loaded ${serverData?.length || 0} restaurants from server, hasMore: ${more} (page ${targetPage})`);
+          console.log(`✅ Loaded ${mergedData?.length || 0} restaurants from server + local, hasMore: ${more} (page ${targetPage})`);
           
-          // Cache data to SQLite for offline use
+          // Cache data to SQLite for offline use (only server data)
           if (serverData && serverData.length > 0) {
             try {
               console.log('💾 Caching server data to SQLite for offline use');

@@ -17,7 +17,7 @@ import { restaurantService, CreateRestaurantData } from '../src/services/restaur
 import * as ImagePicker from 'expo-image-picker';
 import { LocationService } from '../services/expoLocationService';
 import { reverseGeocode } from '../src/services/geocodingService';
-import { uploadImageToRestaurantBucket } from '../services/imageService';
+import { uploadImageToRestaurantBucket } from '../src/services/imageService';
 
 // Design colors matching the Home Screen exactly
 const DESIGN_COLORS = {

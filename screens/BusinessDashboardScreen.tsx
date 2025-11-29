@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { restaurantService } from '../src/services/restaurantService';
 import { supabase } from '../src/config/supabase';
 import Header from '../components/Header';
@@ -30,6 +31,14 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
   useEffect(() => {
     checkRestaurantStatus();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Check restaurant status every time the screen comes into focus
+      // This ensures buttons update after creating a restaurant
+      checkRestaurantStatus();
+    }, [])
+  );
 
   const checkRestaurantStatus = async () => {
     try {

@@ -213,6 +213,13 @@ class LocalDatabase {
     return result || null;
   }
 
+  async getUnsyncedRestaurants(): Promise<LocalRestaurant[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const result = await this.db.getAllAsync<LocalRestaurant>('SELECT * FROM restaurants WHERE sync_status != ? ORDER BY created_at DESC', ['synced']);
+    return result;
+  }
+
   // Menu item operations
   async insertMenuItem(menuItem: Omit<LocalMenuItem, 'created_at' | 'updated_at' | 'sync_status'>): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
