@@ -1603,7 +1603,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
         
         <View style={styles.searchInputContainer}>
           <TextInput
-            placeholder="Search resta..."
+            placeholder="Search restaurants..."
             value={searchText}
             onChangeText={setSearchText}
             style={styles.searchInput}
@@ -1685,8 +1685,8 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
 
       {/* Map Container */}
       <View style={styles.mapContainer}>
-        {restaurants && restaurants.length > 0 && restaurants.every(r => r && r.id && r.location) ? (
-          <MapBoxWebView restaurants={restaurants as CategorizedRestaurant[]} />
+        {visibleRestaurants && visibleRestaurants.length > 0 && visibleRestaurants.every(r => r && r.id && r.location) ? (
+          <MapBoxWebView restaurants={visibleRestaurants as CategorizedRestaurant[]} />
         ) : (
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>

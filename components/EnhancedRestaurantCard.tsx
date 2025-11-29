@@ -3,6 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated, Image } from 'react
 import { useTheme } from '../theme/ThemeContext';
 import { Restaurant } from '../types';
 
+// Default FoodVenturer placeholder image when no restaurant image is available
+const getPlaceholderImage = (): string => {
+  // Use FoodVenturer logo/branding as default placeholder
+  return 'https://raw.githubusercontent.com/shini-1/FoodVenturer-Expo/main/assets/icon.png';
+};
+
 interface EnhancedRestaurantCardProps {
   restaurant: Restaurant;
   onPress: () => void;
@@ -64,7 +70,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
         {/* Image */}
         <Image
           source={{
-            uri: restaurant.image || `https://picsum.photos/seed/${restaurant.id}/200/200.jpg`
+            uri: restaurant.image || getPlaceholderImage()
           }}
           style={styles.image}
         />

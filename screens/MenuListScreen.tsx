@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, FlatList } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
+import { DESIGN_COLORS, SHADOW_STYLE, BORDER_RADIUS } from '../src/config/designColors';
 
 interface MenuItem {
   id: string;
@@ -25,29 +26,29 @@ function MenuListScreen({ navigation }: MenuListScreenProps) {
 
   const renderMenuItem = ({ item }: { item: MenuItem }) => (
     <TouchableOpacity
-      style={[styles.menuItem, { borderColor: theme.primary }]}
+      style={styles.menuItem}
       activeOpacity={0.7}
     >
       <View style={styles.menuItemContent}>
-        <Text style={[styles.menuItemName, { color: theme.text }]}>{item.name}</Text>
+        <Text style={styles.menuItemName}>{item.name}</Text>
         <View style={styles.menuItemDetails}>
-          <Text style={[styles.menuItemPrice, { color: theme.primary }]}>${item.price.toFixed(2)}</Text>
-          <Text style={[styles.menuItemCategory, { color: theme.textSecondary }]}>{item.category}</Text>
+          <Text style={styles.menuItemPrice}>${item.price.toFixed(2)}</Text>
+          <Text style={styles.menuItemCategory}>{item.category}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={styles.container}>
       <Header />
       <View style={styles.content}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={[styles.backButtonText, { color: theme.primary }]}>✕</Text>
+          <Text style={styles.backButtonText}>✕</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.title, { color: theme.text }]}>Menu List</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Your Menu Items</Text>
+        <Text style={styles.title}>Menu List</Text>
+        <Text style={styles.subtitle}>Your Menu Items</Text>
 
         <FlatList
           data={menuItems}
@@ -58,7 +59,7 @@ function MenuListScreen({ navigation }: MenuListScreenProps) {
         />
 
         <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: theme.primary }]}
+          style={styles.addButton}
           onPress={() => navigation.navigate('AddMenuItem')}
         >
           <Text style={styles.addButtonText}>+ Add New Item</Text>
@@ -71,28 +72,46 @@ function MenuListScreen({ navigation }: MenuListScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: DESIGN_COLORS.background,
+    paddingTop: 50,
   },
   content: {
     flex: 1,
     padding: 20,
   },
   backButton: {
-    marginBottom: 16,
+    position: 'absolute',
+    right: 20,
+    top: 20,
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.circle,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOW_STYLE,
+    zIndex: 10,
   },
   backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 4,
     textAlign: 'center',
+    color: DESIGN_COLORS.textPrimary,
+    marginTop: 20,
   },
   subtitle: {
     fontSize: 16,
     marginBottom: 16,
     textAlign: 'center',
+    color: DESIGN_COLORS.textSecondary,
   },
   listContainer: {
     gap: 12,
@@ -100,8 +119,11 @@ const styles = StyleSheet.create({
   },
   menuItem: {
     borderWidth: 2,
-    borderRadius: 12,
+    borderRadius: BORDER_RADIUS.medium,
     padding: 16,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderColor: DESIGN_COLORS.border,
+    ...SHADOW_STYLE,
   },
   menuItemContent: {
     gap: 8,
@@ -109,6 +131,7 @@ const styles = StyleSheet.create({
   menuItemName: {
     fontSize: 16,
     fontWeight: '600',
+    color: DESIGN_COLORS.textPrimary,
   },
   menuItemDetails: {
     flexDirection: 'row',
@@ -118,19 +141,25 @@ const styles = StyleSheet.create({
   menuItemPrice: {
     fontSize: 14,
     fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
   menuItemCategory: {
     fontSize: 12,
     fontStyle: 'italic',
+    color: DESIGN_COLORS.textSecondary,
   },
   addButton: {
-    borderRadius: 12,
+    borderRadius: BORDER_RADIUS.medium,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 'auto',
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    ...SHADOW_STYLE,
   },
   addButtonText: {
-    color: 'white',
+    color: DESIGN_COLORS.textPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },

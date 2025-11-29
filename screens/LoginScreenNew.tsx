@@ -15,6 +15,19 @@ import { useTheme } from '../theme/ThemeContext';
 import { businessOwnerAuthService } from '../src/services/businessOwnerAuthService';
 import { useAuth } from '../components/AuthContext';
 
+// Design colors matching the Home Screen exactly
+const DESIGN_COLORS = {
+  background: '#E6F3FF',      // Light blue - main screen background
+  cardBackground: '#FFFFFF',   // White - card backgrounds
+  border: '#000000',           // Black - all borders
+  textPrimary: '#000000',      // Black - primary text (names, types)
+  textSecondary: '#666666',    // Gray - secondary text (locations)
+  textPlaceholder: '#999999',  // Light gray - placeholder text
+  buttonBackground: '#FFFFFF', // White - button backgrounds
+  infoBg: '#000000',          // Black - info button background
+  infoText: '#FFFFFF',        // White - info button text
+};
+
 interface LoginScreenNewProps {
   navigation: any;
   onClose?: () => void;
@@ -112,7 +125,7 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
     >
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={[styles.container, { backgroundColor: DESIGN_COLORS.background }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         bounces={false}
@@ -122,13 +135,13 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
           style={styles.closeButton}
           onPress={onClose}
         >
-          <Text style={[styles.closeButtonText, { color: theme.primary }]}>✕</Text>
+          <Text style={[styles.closeButtonText, { color: DESIGN_COLORS.textPrimary }]}>✕</Text>
         </TouchableOpacity>
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Business Owner Login</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          <Text style={[styles.title, { color: DESIGN_COLORS.textPrimary }]}>Business Owner Login</Text>
+          <Text style={[styles.subtitle, { color: DESIGN_COLORS.textSecondary }]}>
             Access your business dashboard
           </Text>
         </View>
@@ -136,17 +149,17 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
         {/* Form */}
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Email Address</Text>
+            <Text style={[styles.label, { color: DESIGN_COLORS.textPrimary }]}>Email Address</Text>
             <TextInput
               style={[styles.input, {
-                backgroundColor: theme.surface,
-                color: theme.text,
-                borderColor: theme.border
+                backgroundColor: DESIGN_COLORS.cardBackground,
+                color: DESIGN_COLORS.textPrimary,
+                borderColor: DESIGN_COLORS.border
               }]}
               value={email}
               onChangeText={setEmail}
               placeholder="Enter your email"
-              placeholderTextColor={theme.textSecondary}
+              placeholderTextColor={DESIGN_COLORS.textPlaceholder}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -155,18 +168,18 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Password</Text>
+            <Text style={[styles.label, { color: DESIGN_COLORS.textPrimary }]}>Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput, {
-                  backgroundColor: theme.surface,
-                  color: theme.text,
-                  borderColor: theme.border
+                  backgroundColor: DESIGN_COLORS.cardBackground,
+                  color: DESIGN_COLORS.textPrimary,
+                  borderColor: DESIGN_COLORS.border
                 }]}
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Enter your password"
-                placeholderTextColor={theme.textSecondary}
+                placeholderTextColor={DESIGN_COLORS.textPlaceholder}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -179,7 +192,7 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
                 style={styles.eyeButton}
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Text style={{ color: theme.textSecondary }}>
+                <Text style={{ color: DESIGN_COLORS.textSecondary }}>
                   {showPassword ? '🙈' : '👁️'}
                 </Text>
               </TouchableOpacity>
@@ -191,7 +204,7 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
             style={styles.forgotPassword}
             onPress={handleForgotPassword}
           >
-            <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>
+            <Text style={[styles.forgotPasswordText, { color: DESIGN_COLORS.textPrimary }]}>
               Forgot Password?
             </Text>
           </TouchableOpacity>
@@ -199,16 +212,17 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
           {/* Login Button */}
           <TouchableOpacity
             style={[styles.loginButton, {
-              backgroundColor: theme.primary,
+              backgroundColor: DESIGN_COLORS.cardBackground,
+              borderColor: DESIGN_COLORS.border,
               opacity: isLoading ? 0.6 : 1
             }]}
             onPress={handleLogin}
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color={theme.background} />
+              <ActivityIndicator color={DESIGN_COLORS.textPrimary} />
             ) : (
-              <Text style={[styles.loginButtonText, { color: theme.background }]}>
+              <Text style={[styles.loginButtonText, { color: DESIGN_COLORS.textPrimary }]}>
                 Login
               </Text>
             )}
@@ -216,11 +230,11 @@ function LoginScreenNew({ navigation, onClose, onSwitchToSignup, onLoginSuccess 
 
           {/* Sign Up Link */}
           <View style={styles.signupContainer}>
-            <Text style={[styles.signupText, { color: theme.textSecondary }]}>
+            <Text style={[styles.signupText, { color: DESIGN_COLORS.textSecondary }]}>
               Don't have an account?{' '}
             </Text>
             <TouchableOpacity onPress={onSwitchToSignup}>
-              <Text style={[styles.signupLink, { color: theme.primary }]}>
+              <Text style={[styles.signupLink, { color: DESIGN_COLORS.textPrimary }]}>
                 Sign Up
               </Text>
             </TouchableOpacity>
@@ -235,17 +249,33 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 60,
     paddingBottom: 30,
     minHeight: '100%',
+    backgroundColor: DESIGN_COLORS.background,
   },
   closeButton: {
-    alignSelf: 'flex-end',
-    padding: 10,
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   closeButtonText: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
   header: {
     alignItems: 'center',
@@ -256,10 +286,12 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
+    color: DESIGN_COLORS.textPrimary,
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
+    color: DESIGN_COLORS.textSecondary,
   },
   form: {
     flex: 1,
@@ -271,12 +303,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
+    color: DESIGN_COLORS.textPrimary,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 8,
+    borderWidth: 2,
+    borderRadius: 12,
     padding: 16,
     fontSize: 16,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    color: DESIGN_COLORS.textPrimary,
+    borderColor: DESIGN_COLORS.border,
   },
   passwordContainer: {
     position: 'relative',
@@ -296,16 +332,26 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 14,
     fontWeight: '600',
+    color: DESIGN_COLORS.textPrimary,
   },
   loginButton: {
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginBottom: 20,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   loginButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
   signupContainer: {
     flexDirection: 'row',
@@ -314,10 +360,12 @@ const styles = StyleSheet.create({
   },
   signupText: {
     fontSize: 16,
+    color: DESIGN_COLORS.textSecondary,
   },
   signupLink: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
 });
 

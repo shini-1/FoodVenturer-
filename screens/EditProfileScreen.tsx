@@ -3,6 +3,19 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert 
 import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 
+// Design colors matching the Home Screen exactly
+const DESIGN_COLORS = {
+  background: '#E6F3FF',      // Light blue - main screen background
+  cardBackground: '#FFFFFF',   // White - card backgrounds
+  border: '#000000',           // Black - all borders
+  textPrimary: '#000000',      // Black - primary text (names, types)
+  textSecondary: '#666666',    // Gray - secondary text (locations)
+  textPlaceholder: '#999999',  // Light gray - placeholder text
+  buttonBackground: '#FFFFFF', // White - button backgrounds
+  infoBg: '#000000',          // Black - info button background
+  infoText: '#FFFFFF',        // White - info button text
+};
+
 interface EditProfileScreenProps {
   navigation: any;
 }
@@ -40,83 +53,55 @@ function EditProfileScreen({ navigation }: EditProfileScreenProps) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={styles.container}>
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={[styles.backButtonText, { color: theme.primary }]}>✕</Text>
+          <Text style={styles.backButtonText}>✕</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.title, { color: theme.text }]}>Edit Profile</Text>
+        <Text style={styles.title}>Edit Profile</Text>
 
         <View style={styles.formSection}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Edit Business Profile</Text>
+          <Text style={styles.sectionTitle}>Edit Business Profile</Text>
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Business Name"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={businessName}
             onChangeText={setBusinessName}
           />
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Address"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={address}
             onChangeText={setAddress}
             multiline
           />
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Phone Number"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={phoneNumber}
             onChangeText={setPhoneNumber}
             keyboardType="phone-pad"
           />
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Email"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
           />
 
           <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: theme.primary }]}
+            style={styles.saveButton}
             onPress={handleSaveProfile}
             disabled={isLoading}
           >
@@ -131,23 +116,42 @@ function EditProfileScreen({ navigation }: EditProfileScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: DESIGN_COLORS.background,
+    paddingTop: 50, // Account for status bar
   },
   content: {
     flex: 1,
     padding: 20,
   },
   backButton: {
-    marginBottom: 16,
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 24,
     textAlign: 'center',
+    color: DESIGN_COLORS.textPrimary,
   },
   formSection: {
     marginBottom: 20,
@@ -157,6 +161,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
     textAlign: 'center',
+    color: DESIGN_COLORS.textPrimary,
   },
   input: {
     borderWidth: 2,
@@ -166,15 +171,26 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
     minHeight: 48,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    color: DESIGN_COLORS.textPrimary,
+    borderColor: DESIGN_COLORS.border,
   },
   saveButton: {
     borderRadius: 12,
     paddingVertical: 14,
     marginTop: 20,
     alignItems: 'center',
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   saveButtonText: {
-    color: 'white',
+    color: DESIGN_COLORS.textPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },

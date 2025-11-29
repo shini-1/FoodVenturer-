@@ -17,6 +17,19 @@ import { useTheme } from '../theme/ThemeContext';
 import { businessOwnerAuthService } from '../src/services/businessOwnerAuthService';
 import { useAuth } from '../components/AuthContext';
 
+// Design colors matching the Home Screen exactly
+const DESIGN_COLORS = {
+  background: '#E6F3FF',      // Light blue - main screen background
+  cardBackground: '#FFFFFF',   // White - card backgrounds
+  border: '#000000',           // Black - all borders
+  textPrimary: '#000000',      // Black - primary text (names, types)
+  textSecondary: '#666666',    // Gray - secondary text (locations)
+  textPlaceholder: '#999999',  // Light gray - placeholder text
+  buttonBackground: '#FFFFFF', // White - button backgrounds
+  infoBg: '#000000',          // Black - info button background
+  infoText: '#FFFFFF',        // White - info button text
+};
+
 interface RegisterScreenNewProps {
   navigation: any;
   onClose?: () => void;
@@ -160,14 +173,7 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
     >
       <ScrollView
-        contentContainerStyle={[
-          styles.container,
-          {
-            backgroundColor: theme.background, // Use theme background for dark mode
-            paddingTop: keyboardVisible ? 5 : 10,
-            paddingBottom: keyboardVisible ? 10 : 30,
-          }
-        ]}
+        contentContainerStyle={[styles.container, { backgroundColor: DESIGN_COLORS.background }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         bounces={false}
@@ -177,13 +183,13 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
           style={styles.closeButton}
           onPress={onClose}
         >
-          <Text style={[styles.closeButtonText, { color: theme.primary }]}>✕</Text>
+          <Text style={[styles.closeButtonText, { color: DESIGN_COLORS.textPrimary }]}>✕</Text>
         </TouchableOpacity>
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Create Business Account</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          <Text style={[styles.title, { color: DESIGN_COLORS.textPrimary }]}>Create Business Account</Text>
+          <Text style={[styles.subtitle, { color: DESIGN_COLORS.textSecondary }]}>
             Join FoodVenturer as a business owner
           </Text>
         </View>
@@ -192,49 +198,49 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
         <View style={styles.form}>
           <View style={styles.row}>
             <View style={[styles.inputGroup, styles.halfWidth]}>
-              <Text style={[styles.label, { color: theme.text }]}>First Name *</Text>
+              <Text style={[styles.label, { color: DESIGN_COLORS.textPrimary }]}>First Name *</Text>
               <TextInput
                 style={[styles.input, {
-                  backgroundColor: theme.surface,
-                  color: theme.text,
-                  borderColor: theme.border
+                  backgroundColor: DESIGN_COLORS.cardBackground,
+                  color: DESIGN_COLORS.textPrimary,
+                  borderColor: DESIGN_COLORS.border
                 }]}
                 value={formData.firstName}
                 onChangeText={(value) => updateFormData('firstName', value)}
                 placeholder="First name"
-                placeholderTextColor={theme.textSecondary}
+                placeholderTextColor={DESIGN_COLORS.textPlaceholder}
                 autoCapitalize="words"
               />
             </View>
             <View style={[styles.inputGroup, styles.halfWidth]}>
-              <Text style={[styles.label, { color: theme.text }]}>Last Name *</Text>
+              <Text style={[styles.label, { color: DESIGN_COLORS.textPrimary }]}>Last Name *</Text>
               <TextInput
                 style={[styles.input, {
-                  backgroundColor: theme.surface,
-                  color: theme.text,
-                  borderColor: theme.border
+                  backgroundColor: DESIGN_COLORS.cardBackground,
+                  color: DESIGN_COLORS.textPrimary,
+                  borderColor: DESIGN_COLORS.border
                 }]}
                 value={formData.lastName}
                 onChangeText={(value) => updateFormData('lastName', value)}
                 placeholder="Last name"
-                placeholderTextColor={theme.textSecondary}
+                placeholderTextColor={DESIGN_COLORS.textPlaceholder}
                 autoCapitalize="words"
               />
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Email Address *</Text>
+            <Text style={[styles.label, { color: DESIGN_COLORS.textPrimary }]}>Email Address *</Text>
             <TextInput
               style={[styles.input, {
-                backgroundColor: theme.surface,
-                color: theme.text,
-                borderColor: theme.border
+                backgroundColor: DESIGN_COLORS.cardBackground,
+                color: DESIGN_COLORS.textPrimary,
+                borderColor: DESIGN_COLORS.border
               }]}
               value={formData.email}
               onChangeText={(value) => updateFormData('email', value)}
               placeholder="Enter your email"
-              placeholderTextColor={theme.textSecondary}
+              placeholderTextColor={DESIGN_COLORS.textPlaceholder}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -242,50 +248,50 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Phone Number</Text>
+            <Text style={[styles.label, { color: DESIGN_COLORS.textPrimary }]}>Phone Number</Text>
             <TextInput
               style={[styles.input, {
-                backgroundColor: theme.surface,
-                color: theme.text,
-                borderColor: theme.border
+                backgroundColor: DESIGN_COLORS.cardBackground,
+                color: DESIGN_COLORS.textPrimary,
+                borderColor: DESIGN_COLORS.border
               }]}
               value={formData.phoneNumber}
               onChangeText={(value) => updateFormData('phoneNumber', value)}
               placeholder="Enter your phone number"
-              placeholderTextColor={theme.textSecondary}
+              placeholderTextColor={DESIGN_COLORS.textPlaceholder}
               keyboardType="phone-pad"
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Business Name</Text>
+            <Text style={[styles.label, { color: DESIGN_COLORS.textPrimary }]}>Business Name</Text>
             <TextInput
               style={[styles.input, {
-                backgroundColor: theme.surface,
-                color: theme.text,
-                borderColor: theme.border
+                backgroundColor: DESIGN_COLORS.cardBackground,
+                color: DESIGN_COLORS.textPrimary,
+                borderColor: DESIGN_COLORS.border
               }]}
               value={formData.businessName}
               onChangeText={(value) => updateFormData('businessName', value)}
               placeholder="Enter your restaurant name"
-              placeholderTextColor={theme.textSecondary}
+              placeholderTextColor={DESIGN_COLORS.textPlaceholder}
               autoCapitalize="words"
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Password *</Text>
+            <Text style={[styles.label, { color: DESIGN_COLORS.textPrimary }]}>Password *</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput, {
-                  backgroundColor: theme.surface,
-                  color: theme.text,
-                  borderColor: theme.border
+                  backgroundColor: DESIGN_COLORS.cardBackground,
+                  color: DESIGN_COLORS.textPrimary,
+                  borderColor: DESIGN_COLORS.border
                 }]}
                 value={formData.password}
                 onChangeText={(value) => updateFormData('password', value)}
                 placeholder="Create a password (min 6 characters)"
-                placeholderTextColor={theme.textSecondary}
+                placeholderTextColor={DESIGN_COLORS.textPlaceholder}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -294,7 +300,7 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
                 style={styles.eyeButton}
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Text style={{ color: theme.textSecondary }}>
+                <Text style={{ color: DESIGN_COLORS.textSecondary }}>
                   {showPassword ? '🙈' : '👁️'}
                 </Text>
               </TouchableOpacity>
@@ -302,18 +308,18 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Confirm Password *</Text>
+            <Text style={[styles.label, { color: DESIGN_COLORS.textPrimary }]}>Confirm Password *</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput, {
-                  backgroundColor: theme.surface,
-                  color: theme.text,
-                  borderColor: theme.border
+                  backgroundColor: DESIGN_COLORS.cardBackground,
+                  color: DESIGN_COLORS.textPrimary,
+                  borderColor: DESIGN_COLORS.border
                 }]}
                 value={formData.confirmPassword}
                 onChangeText={(value) => updateFormData('confirmPassword', value)}
                 placeholder="Confirm your password"
-                placeholderTextColor={theme.textSecondary}
+                placeholderTextColor={DESIGN_COLORS.textPlaceholder}
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -322,7 +328,7 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
                 style={styles.eyeButton}
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
               >
-                <Text style={{ color: theme.textSecondary }}>
+                <Text style={{ color: DESIGN_COLORS.textSecondary }}>
                   {showConfirmPassword ? '🙈' : '👁️'}
                 </Text>
               </TouchableOpacity>
@@ -332,16 +338,17 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
           {/* Sign Up Button */}
           <TouchableOpacity
             style={[styles.signupButton, {
-              backgroundColor: theme.primary,
+              backgroundColor: DESIGN_COLORS.cardBackground,
+              borderColor: DESIGN_COLORS.border,
               opacity: isLoading ? 0.6 : 1
             }]}
             onPress={handleSignup}
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color={theme.background} />
+              <ActivityIndicator color={DESIGN_COLORS.textPrimary} />
             ) : (
-              <Text style={[styles.signupButtonText, { color: theme.background }]}>
+              <Text style={[styles.signupButtonText, { color: DESIGN_COLORS.textPrimary }]}>
                 Create Account
               </Text>
             )}
@@ -349,11 +356,11 @@ function RegisterScreenNew({ navigation, onClose, onSwitchToLogin }: RegisterScr
 
           {/* Login Link */}
           <View style={styles.loginContainer}>
-            <Text style={[styles.loginText, { color: theme.textSecondary }]}>
+            <Text style={[styles.loginText, { color: DESIGN_COLORS.textSecondary }]}>
               Already have an account?{' '}
             </Text>
             <TouchableOpacity onPress={onSwitchToLogin}>
-              <Text style={[styles.loginLink, { color: theme.primary }]}>
+              <Text style={[styles.loginLink, { color: DESIGN_COLORS.textPrimary }]}>
                 Login
               </Text>
             </TouchableOpacity>
@@ -368,31 +375,49 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 60,
     paddingBottom: 30,
     minHeight: '100%',
+    backgroundColor: DESIGN_COLORS.background,
   },
   closeButton: {
-    alignSelf: 'flex-end',
-    padding: 10,
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   closeButtonText: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
   header: {
     alignItems: 'center',
     marginTop: 20,
-    marginBottom: 30,
+    marginBottom: 40,
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
+    color: DESIGN_COLORS.textPrimary,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     textAlign: 'center',
+    color: DESIGN_COLORS.textSecondary,
   },
   form: {
     flex: 1,
@@ -408,15 +433,19 @@ const styles = StyleSheet.create({
     width: '48%',
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: 8,
+    color: DESIGN_COLORS.textPrimary,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 14,
+    borderWidth: 2,
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    color: DESIGN_COLORS.textPrimary,
+    borderColor: DESIGN_COLORS.border,
   },
   passwordContainer: {
     position: 'relative',
@@ -426,19 +455,28 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     position: 'absolute',
-    right: 14,
-    top: 14,
+    right: 16,
+    top: 16,
   },
   signupButton: {
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginTop: 10,
     marginBottom: 20,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   signupButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
   loginContainer: {
     flexDirection: 'row',
@@ -447,10 +485,12 @@ const styles = StyleSheet.create({
   },
   loginText: {
     fontSize: 16,
+    color: DESIGN_COLORS.textSecondary,
   },
   loginLink: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
 });
 

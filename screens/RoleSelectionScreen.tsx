@@ -6,6 +6,19 @@ import LoginScreenNew from './LoginScreenNew';
 import RegisterScreenNew from './RegisterScreenNew';
 import AdminLoginScreen from './AdminLoginScreen';
 
+// Design colors matching the Home Screen exactly
+const DESIGN_COLORS = {
+  background: '#E6F3FF',      // Light blue - main screen background
+  cardBackground: '#FFFFFF',   // White - card backgrounds
+  border: '#000000',           // Black - all borders
+  textPrimary: '#000000',      // Black - primary text (names, types)
+  textSecondary: '#666666',    // Gray - secondary text (locations)
+  textPlaceholder: '#999999',  // Light gray - placeholder text
+  buttonBackground: '#FFFFFF', // White - button backgrounds
+  infoBg: '#000000',          // Black - info button background
+  infoText: '#FFFFFF',        // White - info button text
+};
+
 function RoleSelectionScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
   const [showBusinessModal, setShowBusinessModal] = useState(false);
@@ -203,13 +216,17 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
+    backgroundColor: DESIGN_COLORS.background,
   },
   topSection: {
     flex: 1,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: DESIGN_COLORS.cardBackground,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderBottomWidth: 0,
+    borderColor: DESIGN_COLORS.border,
   },
   logoImage: {
     width: '100%',
@@ -217,7 +234,7 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     flex: 1,
-    backgroundColor: '#2C3E50',
+    backgroundColor: DESIGN_COLORS.infoBg,
     paddingTop: 40,
     paddingHorizontal: 20,
     alignItems: 'center',
@@ -225,28 +242,30 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 26,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: DESIGN_COLORS.infoText,
     marginBottom: 50,
     textAlign: 'center',
   },
   roleButton: {
     width: '85%',
     height: 65,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: DESIGN_COLORS.cardBackground,
     borderRadius: 32.5,
     justifyContent: 'center',
     alignItems: 'center',
     marginVertical: 12,
-    elevation: 2,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    elevation: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   roleButtonText: {
     fontSize: 19,
     fontWeight: 'bold',
-    color: '#000000',
+    color: DESIGN_COLORS.textPrimary,
   },
   modalOverlay: {
     position: 'absolute',
@@ -255,20 +274,20 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 1000, // Ensure it's above other content
+    zIndex: 1000,
   },
   modalContainer: {
     borderRadius: 20,
-    margin: 0, // Remove margin to use full screen
-    maxWidth: '100%', // Allow full width
+    margin: 0,
+    maxWidth: '100%',
     width: '100%',
-    height: '100%', // Use full screen height
+    height: '100%',
     elevation: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    overflow: 'hidden', // Prevent content from spilling outside rounded corners
+    overflow: 'hidden',
   },
   keyboardFriendlyModal: {
     justifyContent: 'flex-start',
@@ -287,7 +306,7 @@ const styles = StyleSheet.create({
   modalCloseText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: DESIGN_COLORS.textPrimary,
   },
   modalContent: {
     flex: 1,
@@ -298,24 +317,31 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
+    color: DESIGN_COLORS.textPrimary,
     marginBottom: 10,
     textAlign: 'center',
   },
   modalSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: DESIGN_COLORS.textSecondary,
     marginBottom: 40,
     textAlign: 'center',
   },
   testLoginButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: DESIGN_COLORS.cardBackground,
     padding: 20,
     borderRadius: 10,
     minWidth: 200,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   testLoginText: {
-    color: 'white',
+    color: DESIGN_COLORS.textPrimary,
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',

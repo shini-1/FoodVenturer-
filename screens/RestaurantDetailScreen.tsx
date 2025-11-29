@@ -23,9 +23,24 @@ import { supabase } from '../src/config/supabase';
 import Header from '../components/Header';
 import MapBoxWebView from '../components/MapBoxWebView';
 
+// Design colors matching the Home Screen exactly
+const DESIGN_COLORS = {
+  background: '#E6F3FF',      // Light blue - main screen background
+  cardBackground: '#FFFFFF',   // White - card backgrounds
+  border: '#000000',           // Black - all borders
+  textPrimary: '#000000',      // Black - primary text (names, types)
+  textSecondary: '#666666',    // Gray - secondary text (locations)
+  textPlaceholder: '#999999',  // Light gray - placeholder text
+  buttonBackground: '#FFFFFF', // White - button backgrounds
+  infoBg: '#000000',          // Black - info button background
+  infoText: '#FFFFFF',        // White - info button text
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: DESIGN_COLORS.background,
+    paddingTop: 50, // Account for status bar
   },
   centered: {
     justifyContent: 'center',
@@ -34,21 +49,27 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
+    color: DESIGN_COLORS.textSecondary,
   },
   errorText: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 24,
     textAlign: 'center',
+    color: DESIGN_COLORS.textPrimary,
   },
   retryButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
   },
   retryButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
   imageContainer: {
     height: 250,
@@ -67,6 +88,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   content: {
     padding: 20,
@@ -78,10 +107,12 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
+    color: DESIGN_COLORS.textPrimary,
   },
   restaurantCategory: {
     fontSize: 16,
     marginBottom: 16,
+    color: DESIGN_COLORS.textSecondary,
   },
   ratingSection: {
     flexDirection: 'row',
@@ -98,13 +129,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 4,
+    color: DESIGN_COLORS.textPrimary,
   },
   categoryText: {
     fontSize: 14,
+    color: DESIGN_COLORS.textSecondary,
   },
   descriptionText: {
     fontSize: 16,
     lineHeight: 24,
+    color: DESIGN_COLORS.textSecondary,
   },
   contactContainer: {
   },
@@ -116,39 +150,50 @@ const styles = StyleSheet.create({
   contactText: {
     fontSize: 16,
     marginLeft: 12,
+    color: DESIGN_COLORS.textPrimary,
   },
   hoursText: {
     fontSize: 16,
     lineHeight: 24,
+    color: DESIGN_COLORS.textSecondary,
   },
   section: {
     padding: 20,
     marginVertical: 10,
-    borderRadius: 15,
+    borderRadius: 12,
     width: '100%',
     borderWidth: 2,
-    borderTopWidth: 4,
-    elevation: 5,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    borderColor: DESIGN_COLORS.border,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 12,
+    color: DESIGN_COLORS.textPrimary,
   },
   mapContainer: {
     height: 200,
     borderRadius: 12,
     overflow: 'hidden',
     marginTop: 8,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
   },
   locationCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
   },
   locationInfo: {
     marginLeft: 12,
@@ -158,20 +203,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 4,
+    color: DESIGN_COLORS.textPrimary,
   },
   locationSubtext: {
     fontSize: 14,
+    color: DESIGN_COLORS.textSecondary,
   },
   directionButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
   },
   directionButtonText: {
     fontSize: 14,
     fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
 });
 
@@ -343,9 +394,9 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
   };
   if (loading) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#000000" />
+        <Text style={styles.loadingText}>
           Loading restaurant details...
         </Text>
       </View>
@@ -355,30 +406,30 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
   // Error state
   if (!restaurant) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: theme.background }]}>
-        <Text style={[styles.errorText, { color: theme.text }]}>Restaurant not found</Text>
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>Restaurant not found</Text>
         <TouchableOpacity
-          style={[styles.retryButton, { backgroundColor: theme.primary }]}
+          style={styles.retryButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={[styles.retryButtonText, { color: theme.background }]}>Go Back</Text>
+          <Text style={styles.retryButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={styles.container}>
       <Header />
-      <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView style={styles.container}>
         {/* Hero Image */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: restaurant.image || 'https://via.placeholder.com/400x250?text=No+Image' }}
+            source={{ uri: restaurant.image || 'https://raw.githubusercontent.com/shini-1/FoodVenturer-Expo/main/assets/icon.png' }}
             style={styles.headerImage}
           />
           <TouchableOpacity
-            style={[styles.backButton, { backgroundColor: 'rgba(0,0,0,0.5)', top: insets.top + 10 }]}
+            style={[styles.backButton, { top: insets.top + 10 }]}
             onPress={() => navigation.goBack()}
           >
             <Text style={{color: 'white', fontSize: 24}}>✕</Text>
@@ -388,7 +439,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
         {/* Restaurant Info */}
         <View style={styles.content}>
           <View style={styles.infoSection}>
-            <Text style={[styles.restaurantName, { color: theme.text }]}>
+            <Text style={[styles.restaurantName, { color: DESIGN_COLORS.textPrimary }]}>
               {restaurant.name.split(', ')[0]}
             </Text>
 
@@ -403,11 +454,11 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
                     return full + empty;
                   })()}
                 </Text>
-                <Text style={[styles.ratingText, { color: theme.text }]}>
+                <Text style={[styles.ratingText, { color: DESIGN_COLORS.textPrimary }]}>
                   {avgRating && typeof avgRating === 'number' && !isNaN(avgRating) ? avgRating.toFixed(1) : 'No ratings yet'}{ratingCount ? ` (${ratingCount})` : ''}
                 </Text>
               </View>
-              <Text style={[styles.categoryText, { color: theme.textSecondary }]}>
+              <Text style={[styles.categoryText, { color: DESIGN_COLORS.textSecondary }]}>
                 {restaurant.category || 'Restaurant'} - {restaurant.priceRange || '₱'}
               </Text>
             </View>
@@ -422,7 +473,7 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
                     </Text>
                   </View>
                 ))}
-                <Text style={{ marginLeft: 8, color: theme.textSecondary }}>
+                <Text style={{ marginLeft: 8, color: DESIGN_COLORS.textSecondary }}>
                   You rated {myRating || 0}★
                 </Text>
               </View>
@@ -484,9 +535,9 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
 
           {/* Description */}
           {restaurant.description && (
-            <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>About</Text>
-              <Text style={[styles.descriptionText, { color: theme.textSecondary }]}>
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary }]}>About</Text>
+              <Text style={[styles.descriptionText, { color: DESIGN_COLORS.textSecondary }]}>
                 {restaurant.description}
               </Text>
             </View>
@@ -494,16 +545,16 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
 
           {/* Contact Information */}
           {(restaurant.phone || restaurant.website) && (
-            <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Contact</Text>
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary }]}>Contact</Text>
               <View style={styles.contactContainer}>
                 {restaurant.phone && (
                   <TouchableOpacity
                     style={styles.contactItem}
                     onPress={() => Linking.openURL(`tel:${restaurant.phone}`)}
                   >
-                    <Text style={{color: theme.primary, fontSize: 20}}>Call</Text>
-                    <Text style={[styles.contactText, { color: theme.text }]}>{restaurant.phone}</Text>
+                    <Text style={{color: DESIGN_COLORS.textPrimary, fontSize: 20}}>Call</Text>
+                    <Text style={[styles.contactText, { color: DESIGN_COLORS.textPrimary }]}>{restaurant.phone}</Text>
                   </TouchableOpacity>
                 )}
                 {restaurant.website && (
@@ -511,8 +562,8 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
                     style={styles.contactItem}
                     onPress={() => Linking.openURL(restaurant.website!.startsWith('http') ? restaurant.website! : `https://${restaurant.website!}`)}
                   >
-                    <Text style={{color: theme.primary, fontSize: 20}}>Web</Text>
-                    <Text style={[styles.contactText, { color: theme.text }]}>{restaurant.website}</Text>
+                    <Text style={{color: DESIGN_COLORS.textPrimary, fontSize: 20}}>Web</Text>
+                    <Text style={[styles.contactText, { color: DESIGN_COLORS.textPrimary }]}>{restaurant.website}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -521,26 +572,26 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
 
           {/* Hours */}
           {restaurant.hours && (
-            <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Hours</Text>
-              <Text style={[styles.hoursText, { color: theme.textSecondary }]}>
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary }]}>Hours</Text>
+              <Text style={[styles.hoursText, { color: DESIGN_COLORS.textSecondary }]}>
                 {restaurant.hours}
               </Text>
             </View>
           )}
 
           {/* Menu */}
-          <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Menu</Text>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary }]}>Menu</Text>
             {menuLoading ? (
               <View style={{ alignItems: 'center', padding: 20 }}>
-                <ActivityIndicator size="small" color={theme.primary} />
-                <Text style={[styles.descriptionText, { color: theme.textSecondary, marginTop: 8 }]}>
+                <ActivityIndicator size="small" color="#000000" />
+                <Text style={[styles.descriptionText, { color: DESIGN_COLORS.textSecondary, marginTop: 8 }]}>
                   Loading menu...
                 </Text>
               </View>
             ) : menuItems.length === 0 ? (
-              <Text style={[styles.descriptionText, { color: theme.textSecondary, textAlign: 'center', paddingVertical: 20 }]}>
+              <Text style={[styles.descriptionText, { color: DESIGN_COLORS.textSecondary, textAlign: 'center', paddingVertical: 20 }]}>
                 No menu items available
               </Text>
             ) : (
@@ -558,22 +609,22 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
 
                   return Object.entries(groupedItems).map(([category, items]) => (
                     <View key={category} style={{ marginBottom: 16 }}>
-                      <Text style={[styles.sectionTitle, { color: theme.primary, fontSize: 16, marginBottom: 8 }]}>
+                      <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary, fontSize: 16, marginBottom: 8 }]}>
                         {category}
                       </Text>
                       {items.map(item => (
-                        <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border + '30' }}>
+                        <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: DESIGN_COLORS.border + '30' }}>
                           <View style={{ flex: 1 }}>
-                            <Text style={[styles.restaurantName, { color: theme.text, fontSize: 16 }]}>
+                            <Text style={[styles.restaurantName, { color: DESIGN_COLORS.textPrimary, fontSize: 16 }]}>
                               {item.name}
                             </Text>
                             {item.description && (
-                              <Text style={[styles.descriptionText, { color: theme.textSecondary, fontSize: 14, marginTop: 2 }]}>
+                              <Text style={[styles.descriptionText, { color: DESIGN_COLORS.textSecondary, fontSize: 14, marginTop: 2 }]}>
                                 {item.description}
                               </Text>
                             )}
                           </View>
-                          <Text style={[styles.restaurantName, { color: theme.primary, fontSize: 16, fontWeight: 'bold' }]}>
+                          <Text style={[styles.restaurantName, { color: DESIGN_COLORS.textPrimary, fontSize: 16, fontWeight: 'bold' }]}>
                             ₱{item.price.toFixed(2)}
                           </Text>
                         </View>
@@ -586,34 +637,34 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
           </View>
 
           {/* Promotions */}
-          <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Promotions</Text>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary }]}>Promotions</Text>
             {promoLoading ? (
               <View style={{ alignItems: 'center', padding: 20 }}>
-                <ActivityIndicator size="small" color={theme.primary} />
-                <Text style={[styles.descriptionText, { color: theme.textSecondary, marginTop: 8 }]}>
+                <ActivityIndicator size="small" color="#000000" />
+                <Text style={[styles.descriptionText, { color: DESIGN_COLORS.textSecondary, marginTop: 8 }]}>
                   Loading promotions...
                 </Text>
               </View>
             ) : promos.length === 0 ? (
-              <Text style={[styles.descriptionText, { color: theme.textSecondary, textAlign: 'center', paddingVertical: 20 }]}>
+              <Text style={[styles.descriptionText, { color: DESIGN_COLORS.textSecondary, textAlign: 'center', paddingVertical: 20 }]}>
                 No active promotions
               </Text>
             ) : (
               <View style={{ gap: 12 }}>
                 {promos.map(promo => (
-                  <View key={promo.id} style={{ padding: 16, backgroundColor: theme.primary + '10', borderRadius: 8, borderWidth: 1, borderColor: theme.primary + '30' }}>
-                    <Text style={[styles.restaurantName, { color: theme.primary, fontSize: 18, fontWeight: 'bold' }]}>
+                  <View key={promo.id} style={{ padding: 16, backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, borderWidth: 1, borderColor: DESIGN_COLORS.border + '30' }}>
+                    <Text style={[styles.restaurantName, { color: DESIGN_COLORS.textPrimary, fontSize: 18, fontWeight: 'bold' }]}>
                       {promo.title}
                     </Text>
-                    <Text style={[styles.descriptionText, { color: theme.textSecondary, marginTop: 4 }]}>
+                    <Text style={[styles.descriptionText, { color: DESIGN_COLORS.textSecondary, marginTop: 4 }]}>
                       {promo.description}
                     </Text>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                      <Text style={[styles.categoryText, { color: theme.text, fontSize: 16, fontWeight: 'bold' }]}>
+                      <Text style={[styles.categoryText, { color: DESIGN_COLORS.textPrimary, fontSize: 16, fontWeight: 'bold' }]}>
                         {promo.discount}% OFF
                       </Text>
-                      <Text style={[styles.categoryText, { color: theme.textSecondary, fontSize: 14 }]}>
+                      <Text style={[styles.categoryText, { color: DESIGN_COLORS.textSecondary, fontSize: 14 }]}>
                         Expires: {new Date(promo.expiryDate).toLocaleDateString()}
                       </Text>
                     </View>
@@ -624,25 +675,25 @@ function RestaurantDetailScreen({ navigation, route }: RestaurantDetailScreenPro
           </View>
 
           {/* Location Details */}
-          <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.primary, shadowColor: theme.primary }]}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Location Details</Text>
-            <View style={[styles.locationCard, { backgroundColor: theme.surface }]}>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary }]}>Location Details</Text>
+            <View style={styles.locationCard}>
               <View style={styles.locationInfo}>
-                <Text style={[styles.locationText, { color: theme.text }]}>
+                <Text style={[styles.locationText, { color: DESIGN_COLORS.textPrimary }]}>
                   Location: {address || parseAddressFromName(restaurant.name)}
                 </Text>
-                <Text style={[styles.locationSubtext, { color: theme.textSecondary }]}>
+                <Text style={[styles.locationSubtext, { color: DESIGN_COLORS.textSecondary }]}>
                   Coordinates: {restaurant.location.latitude.toFixed(6)}, {restaurant.location.longitude.toFixed(6)}
                 </Text>
               </View>
               <TouchableOpacity
-                style={[styles.directionButton, { backgroundColor: theme.primary }]}
+                style={styles.directionButton}
                 onPress={() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${restaurant.location.latitude},${restaurant.location.longitude}`)}
               >
-                <Text style={[styles.directionButtonText, { color: theme.background }]}>Directions</Text>
+                <Text style={[styles.directionButtonText, { color: DESIGN_COLORS.textPrimary }]}>Directions</Text>
               </TouchableOpacity>
             </View>
-            <View style={[styles.mapContainer, { backgroundColor: theme.surface }]}>
+            <View style={styles.mapContainer}>
               <MapBoxWebView restaurants={[restaurant]} />
             </View>
           </View>

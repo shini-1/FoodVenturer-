@@ -14,6 +14,19 @@ import { listOwnersFromAuth, confirmOwnerEmail, verifyOwner, confirmAndVerify, B
 import { adminAuthService } from '../src/services/adminAuthService';
 import { supabase, TABLES, SUPABASE_CONFIG } from '../src/config/supabase';
 
+// Design colors matching the Home Screen exactly
+const DESIGN_COLORS = {
+  background: '#E6F3FF',      // Light blue - main screen background
+  cardBackground: '#FFFFFF',   // White - card backgrounds
+  border: '#000000',           // Black - all borders
+  textPrimary: '#000000',      // Black - primary text (names, types)
+  textSecondary: '#666666',    // Gray - secondary text (locations)
+  textPlaceholder: '#999999',  // Light gray - placeholder text
+  buttonBackground: '#FFFFFF', // White - button backgrounds
+  infoBg: '#000000',          // Black - info button background
+  infoText: '#FFFFFF',        // White - info button text
+};
+
 function AdminPanelScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
 
@@ -784,27 +797,27 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background, padding: 20 }}>
+    <View style={{ flex: 1, backgroundColor: DESIGN_COLORS.background, padding: 20 }}>
       <Header />
       <TouchableOpacity
         onPress={() => navigation.navigate('RoleSelection')}
-        style={{ padding: 10, backgroundColor: theme.primary, marginBottom: 20, alignSelf: 'flex-start', borderRadius: 5 }}
+        style={{ padding: 10, backgroundColor: DESIGN_COLORS.cardBackground, marginBottom: 20, alignSelf: 'flex-start', borderRadius: 12, borderWidth: 2, borderColor: DESIGN_COLORS.border, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2 }}
       >
-        <Text style={{ color: theme.background }}>Back to Role Selection</Text>
+        <Text style={{ color: DESIGN_COLORS.textPrimary }}>Back to Role Selection</Text>
       </TouchableOpacity>
-      <Text style={{ fontSize: 24, marginBottom: 20, color: theme.text }}>Admin Panel</Text>
+      <Text style={{ fontSize: 24, marginBottom: 20, color: DESIGN_COLORS.textPrimary }}>Admin Panel</Text>
 
-      <View style={{ flexDirection: 'row', marginBottom: 20, backgroundColor: theme.surface, borderRadius: 10, padding: 5 }}>
+      <View style={{ flexDirection: 'row', marginBottom: 20, backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 12, padding: 5, borderWidth: 2, borderColor: DESIGN_COLORS.border }}>
         <TouchableOpacity
           onPress={() => setActiveTab('restaurants')}
           style={[
             styles.tabButton,
-            activeTab === 'restaurants' && { backgroundColor: theme.primary }
+            activeTab === 'restaurants' && { backgroundColor: DESIGN_COLORS.infoBg }
           ]}
         >
           <Text style={[
             styles.tabText,
-            { color: activeTab === 'restaurants' ? theme.background : theme.text }
+            { color: activeTab === 'restaurants' ? DESIGN_COLORS.infoText : DESIGN_COLORS.textPrimary }
           ]}>
             🍽️ Restaurants
           </Text>
@@ -814,12 +827,12 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
           onPress={() => setActiveTab('menu')}
           style={[
             styles.tabButton,
-            activeTab === 'menu' && { backgroundColor: theme.primary }
+            activeTab === 'menu' && { backgroundColor: DESIGN_COLORS.infoBg }
           ]}
         >
           <Text style={[
             styles.tabText,
-            { color: activeTab === 'menu' ? theme.background : theme.text }
+            { color: activeTab === 'menu' ? DESIGN_COLORS.infoText : DESIGN_COLORS.textPrimary }
           ]}>
             📋 Menu
           </Text>
@@ -829,12 +842,12 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
           onPress={() => setActiveTab('pending')}
           style={[
             styles.tabButton,
-            activeTab === 'pending' && { backgroundColor: theme.primary }
+            activeTab === 'pending' && { backgroundColor: DESIGN_COLORS.infoBg }
           ]}
         >
           <Text style={[
             styles.tabText,
-            { color: activeTab === 'pending' ? theme.background : theme.text }
+            { color: activeTab === 'pending' ? DESIGN_COLORS.infoText : DESIGN_COLORS.textPrimary }
           ]}>
             ⏳ Pending
           </Text>
@@ -844,12 +857,12 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
           onPress={() => setActiveTab('owners')}
           style={[
             styles.tabButton,
-            activeTab === 'owners' && { backgroundColor: theme.primary }
+            activeTab === 'owners' && { backgroundColor: DESIGN_COLORS.infoBg }
           ]}
         >
           <Text style={[
             styles.tabText,
-            { color: activeTab === 'owners' ? theme.background : theme.text }
+            { color: activeTab === 'owners' ? DESIGN_COLORS.infoText : DESIGN_COLORS.textPrimary }
           ]}>
             👥 Owners
           </Text>
@@ -874,46 +887,46 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
       {activeTab === 'restaurants' && (
         <>
-          <Text style={{ fontSize: 18, marginBottom: 10, color: theme.text }}>Restaurants:</Text>
+          <Text style={{ fontSize: 18, marginBottom: 10, color: DESIGN_COLORS.textPrimary }}>Restaurants:</Text>
           <FlatList
             data={restaurants}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: DESIGN_COLORS.border, backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, marginBottom: 8, borderWidth: 2, borderColor: DESIGN_COLORS.border }}>
                 <View style={{ flex: 1, marginRight: 10 }}>
-                  <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }} numberOfLines={2}>
+                  <Text style={{ color: DESIGN_COLORS.textPrimary, fontSize: 16, fontWeight: '500' }} numberOfLines={2}>
                     {item.name}
                   </Text>
-                  <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                  <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 12, marginTop: 2 }}>
                     {typeof item.location.latitude === 'number' && !isNaN(item.location.latitude) ? item.location.latitude.toFixed(4) : '0.0000'}, {typeof item.location.longitude === 'number' && !isNaN(item.location.longitude) ? item.location.longitude.toFixed(4) : '0.0000'}
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TouchableOpacity
                     onPress={() => handleEdit(item)}
-                    style={{ backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4 }}
+                    style={{ backgroundColor: DESIGN_COLORS.cardBackground, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 2, borderColor: DESIGN_COLORS.border, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2 }}
                   >
-                    <Text style={{ color: theme.background, fontSize: 12, fontWeight: 'bold' }}>Edit</Text>
+                    <Text style={{ color: DESIGN_COLORS.textPrimary, fontSize: 12, fontWeight: 'bold' }}>Edit</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleDelete(item.id)}
-                    style={{ backgroundColor: '#dc3545', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4 }}
+                    style={{ backgroundColor: '#dc3545', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
                   >
                     <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>Delete</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             )}
-            style={{ backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}
+            style={{ backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, marginTop: 10 }}
           />
         </>
       )}
 
       {activeTab === 'menu' && (
         <>
-          <Text style={{ fontSize: 18, marginBottom: 10, color: theme.text }}>Menu Management</Text>
+          <Text style={{ fontSize: 18, marginBottom: 10, color: DESIGN_COLORS.textPrimary }}>Menu Management</Text>
 
-          <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Select Restaurant:</Text>
+          <Text style={{ fontSize: 16, marginBottom: 8, color: DESIGN_COLORS.textPrimary }}>Select Restaurant:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
             {restaurants.map((restaurant) => (
               <TouchableOpacity
@@ -921,18 +934,18 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 onPress={() => loadMenuItems(restaurant)}
                 style={[
                   {
-                    backgroundColor: selectedRestaurantForMenu?.id === restaurant.id ? theme.primary : theme.surface,
+                    backgroundColor: selectedRestaurantForMenu?.id === restaurant.id ? DESIGN_COLORS.infoBg : DESIGN_COLORS.cardBackground,
                     paddingHorizontal: 16,
                     paddingVertical: 12,
-                    borderRadius: 8,
+                    borderRadius: 12,
                     marginRight: 12,
                     borderWidth: 2,
-                    borderColor: theme.primary
+                    borderColor: DESIGN_COLORS.border
                   }
                 ]}
               >
                 <Text style={{
-                  color: selectedRestaurantForMenu?.id === restaurant.id ? theme.background : theme.text,
+                  color: selectedRestaurantForMenu?.id === restaurant.id ? DESIGN_COLORS.infoText : DESIGN_COLORS.textPrimary,
                   fontWeight: 'bold',
                   fontSize: 14
                 }}>
@@ -945,12 +958,12 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
           {selectedRestaurantForMenu && (
             <>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <Text style={{ fontSize: 16, color: theme.text }}>
+                <Text style={{ fontSize: 16, color: DESIGN_COLORS.textPrimary }}>
                   Menu Items for {selectedRestaurantForMenu.name.split(', ')[0]}
                 </Text>
                 <TouchableOpacity
                   onPress={handleAddMenuItem}
-                  style={{ backgroundColor: '#28a745', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6 }}
+                  style={{ backgroundColor: '#28a745', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
                 >
                   <Text style={{ color: 'white', fontWeight: 'bold' }}>+ Add Item</Text>
                 </TouchableOpacity>
@@ -960,16 +973,16 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 data={menuItems}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: DESIGN_COLORS.border, backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, marginBottom: 8, borderWidth: 2, borderColor: DESIGN_COLORS.border }}>
                     <View style={{ flex: 1, marginRight: 10 }}>
-                      <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }}>
+                      <Text style={{ color: DESIGN_COLORS.textPrimary, fontSize: 16, fontWeight: '500' }}>
                         {item.name}
                       </Text>
-                      <Text style={{ color: theme.textSecondary, fontSize: 14, marginTop: 2 }}>
+                      <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 14, marginTop: 2 }}>
                         {item.category} • ₱{typeof item.price === 'number' && !isNaN(item.price) ? item.price.toFixed(2) : '0.00'}
                       </Text>
                       {item.description && (
-                        <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2, fontStyle: 'italic' }} numberOfLines={1}>
+                        <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 12, marginTop: 2, fontStyle: 'italic' }} numberOfLines={1}>
                           {item.description}
                         </Text>
                       )}
@@ -980,30 +993,30 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <TouchableOpacity
                         onPress={() => handleMenuEdit(item)}
-                        style={{ backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4 }}
+                        style={{ backgroundColor: DESIGN_COLORS.cardBackground, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 2, borderColor: DESIGN_COLORS.border, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2 }}
                       >
-                        <Text style={{ color: theme.background, fontSize: 12, fontWeight: 'bold' }}>Edit</Text>
+                        <Text style={{ color: DESIGN_COLORS.textPrimary, fontSize: 12, fontWeight: 'bold' }}>Edit</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleDeleteMenuItem(item.id)}
-                        style={{ backgroundColor: '#dc3545', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4 }}
+                        style={{ backgroundColor: '#dc3545', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
                       >
                         <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>Delete</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                 )}
-                style={{ backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}
+                style={{ backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, marginTop: 10 }}
                 ListEmptyComponent={
                   <View style={{ alignItems: 'center', padding: 20 }}>
-                    <Text style={{ color: theme.textSecondary, fontSize: 16 }}>
+                    <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 16 }}>
                       No menu items for this restaurant
                     </Text>
                     <TouchableOpacity
                       onPress={handleAddMenuItem}
-                      style={{ backgroundColor: theme.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, marginTop: 10 }}
+                      style={{ backgroundColor: DESIGN_COLORS.cardBackground, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, marginTop: 10, borderWidth: 2, borderColor: DESIGN_COLORS.border, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2 }}
                     >
-                      <Text style={{ color: theme.background, fontWeight: 'bold' }}>Add First Item</Text>
+                      <Text style={{ color: DESIGN_COLORS.textPrimary, fontWeight: 'bold' }}>Add First Item</Text>
                     </TouchableOpacity>
                   </View>
                 }
@@ -1012,10 +1025,10 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
           )}
 
           {!selectedRestaurantForMenu && (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}>
-              <Text style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 10 }}>🍽️</Text>
-              <Text style={{ fontSize: 18, color: theme.text, marginBottom: 10 }}>Select a Restaurant</Text>
-              <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center' }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, marginTop: 10, borderWidth: 2, borderColor: DESIGN_COLORS.border }}>
+              <Text style={{ fontSize: 24, color: DESIGN_COLORS.textSecondary, marginBottom: 10 }}>🍽️</Text>
+              <Text style={{ fontSize: 18, color: DESIGN_COLORS.textPrimary, marginBottom: 10 }}>Select a Restaurant</Text>
+              <Text style={{ fontSize: 14, color: DESIGN_COLORS.textSecondary, textAlign: 'center' }}>
                 Choose a restaurant above to manage its menu items
               </Text>
             </View>
@@ -1025,16 +1038,16 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
       {activeTab === 'pending' && (
         <>
-          <Text style={{ fontSize: 18, marginBottom: 10, color: theme.text }}>Pending Reviews</Text>
+          <Text style={{ fontSize: 18, marginBottom: 10, color: DESIGN_COLORS.textPrimary }}>Pending Reviews</Text>
           {loadingPending ? (
             <View style={{ alignItems: 'center', padding: 20 }}>
-              <Text style={{ color: theme.textSecondary }}>Loading pending submissions...</Text>
+              <Text style={{ color: DESIGN_COLORS.textSecondary }}>Loading pending submissions...</Text>
             </View>
           ) : pendingBusinesses.length === 0 ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}>
-              <Text style={{ fontSize: 24, color: theme.textSecondary, marginBottom: 10 }}>⏳</Text>
-              <Text style={{ fontSize: 18, color: theme.text, marginBottom: 10 }}>No Pending Submissions</Text>
-              <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center' }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, marginTop: 10, borderWidth: 2, borderColor: DESIGN_COLORS.border }}>
+              <Text style={{ fontSize: 24, color: DESIGN_COLORS.textSecondary, marginBottom: 10 }}>⏳</Text>
+              <Text style={{ fontSize: 18, color: DESIGN_COLORS.textPrimary, marginBottom: 10 }}>No Pending Submissions</Text>
+              <Text style={{ fontSize: 14, color: DESIGN_COLORS.textSecondary, textAlign: 'center' }}>
                 Restaurant owner submissions will appear here{'\n'}for approval or rejection.
               </Text>
             </View>
@@ -1043,25 +1056,25 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
               data={pendingBusinesses}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
-                <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: DESIGN_COLORS.border, backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, marginBottom: 8, borderWidth: 2, borderColor: DESIGN_COLORS.border }}>
                   <View style={{ flex: 1, marginRight: 10, minWidth: 0 }}>
-                    <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }} numberOfLines={2}>
+                    <Text style={{ color: DESIGN_COLORS.textPrimary, fontSize: 16, fontWeight: '500' }} numberOfLines={2}>
                       {item.businessName}
                     </Text>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                    <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 12, marginTop: 2 }}>
                       Owner: {item.ownerName}
                     </Text>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+                    <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 12 }}>
                       📧 {item.email} | 📞 {item.phone}
                     </Text>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+                    <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 12 }}>
                       📍 {getAddressDisplay(item.location.latitude, item.location.longitude)}
                     </Text>
                     <Text style={{ color: '#ffc107', fontSize: 12, marginTop: 2 }}>
                       Submitted: {new Date(item.submittedAt).toLocaleDateString()}
                     </Text>
                     {item.description && (
-                      <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2, fontStyle: 'italic' }} numberOfLines={2}>
+                      <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 12, marginTop: 2, fontStyle: 'italic' }} numberOfLines={2}>
                         "{item.description}"
                       </Text>
                     )}
@@ -1069,7 +1082,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
                       onPress={() => handleApproveBusiness(item.id)}
-                      style={{ backgroundColor: '#28a745', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4 }}
+                      style={{ backgroundColor: '#28a745', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
                     >
                       <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>✅ Approve</Text>
                     </TouchableOpacity>
@@ -1078,14 +1091,14 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         setRejectingBusinessId(item.id);
                         setShowRejectionModal(true);
                       }}
-                      style={{ backgroundColor: '#dc3545', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4 }}
+                      style={{ backgroundColor: '#dc3545', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
                     >
                       <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>❌ Reject</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
-              style={{ backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}
+              style={{ backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, marginTop: 10 }}
             />
           )}
         </>
@@ -1094,35 +1107,45 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
       {activeTab === 'owners' && (
         <>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <Text style={{ fontSize: 18, color: theme.text }}>Authentication Users</Text>
+            <Text style={{ fontSize: 18, color: DESIGN_COLORS.textPrimary }}>Authentication Users</Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity
                 onPress={() => setOwnerFilter('all')}
                 style={{
-                  backgroundColor: ownerFilter === 'all' ? theme.primary : theme.surface,
+                  backgroundColor: ownerFilter === 'all' ? DESIGN_COLORS.infoBg : DESIGN_COLORS.cardBackground,
                   paddingHorizontal: 12,
                   paddingVertical: 6,
-                  borderRadius: 4,
-                  borderWidth: 1,
-                  borderColor: theme.border
+                  borderRadius: 8,
+                  borderWidth: 2,
+                  borderColor: DESIGN_COLORS.border,
+                  elevation: 1,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 2,
                 }}
               >
-                <Text style={{ color: ownerFilter === 'all' ? theme.background : theme.text, fontSize: 12, fontWeight: 'bold' }}>
+                <Text style={{ color: ownerFilter === 'all' ? DESIGN_COLORS.infoText : DESIGN_COLORS.textPrimary, fontSize: 12, fontWeight: 'bold' }}>
                   All ({owners.length})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setOwnerFilter('pending')}
                 style={{
-                  backgroundColor: ownerFilter === 'pending' ? theme.primary : theme.surface,
+                  backgroundColor: ownerFilter === 'pending' ? DESIGN_COLORS.infoBg : DESIGN_COLORS.cardBackground,
                   paddingHorizontal: 12,
                   paddingVertical: 6,
-                  borderRadius: 4,
-                  borderWidth: 1,
-                  borderColor: theme.border
+                  borderRadius: 8,
+                  borderWidth: 2,
+                  borderColor: DESIGN_COLORS.border,
+                  elevation: 1,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 2,
                 }}
               >
-                <Text style={{ color: ownerFilter === 'pending' ? theme.background : theme.text, fontSize: 12, fontWeight: 'bold' }}>
+                <Text style={{ color: ownerFilter === 'pending' ? DESIGN_COLORS.infoText : DESIGN_COLORS.textPrimary, fontSize: 12, fontWeight: 'bold' }}>
                   Pending
                 </Text>
               </TouchableOpacity>
@@ -1131,14 +1154,14 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
 
           {loadingOwners ? (
             <View style={{ alignItems: 'center', padding: 20 }}>
-              <ActivityIndicator size="large" color={theme.primary} />
-              <Text style={{ color: theme.textSecondary, marginTop: 10 }}>Loading users...</Text>
+              <ActivityIndicator size="large" color="#000000" />
+              <Text style={{ color: DESIGN_COLORS.textSecondary, marginTop: 10 }}>Loading users...</Text>
             </View>
           ) : owners.length === 0 ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 8, marginTop: 10, padding: 20 }}>
-              <Text style={{ fontSize: 24, color: theme.textSecondary, marginBottom: 10 }}>👥</Text>
-              <Text style={{ fontSize: 18, color: theme.text, marginBottom: 10 }}>No Users Found</Text>
-              <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center' }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, marginTop: 10, padding: 20, borderWidth: 2, borderColor: DESIGN_COLORS.border }}>
+              <Text style={{ fontSize: 24, color: DESIGN_COLORS.textSecondary, marginBottom: 10 }}>👥</Text>
+              <Text style={{ fontSize: 18, color: DESIGN_COLORS.textPrimary, marginBottom: 10 }}>No Users Found</Text>
+              <Text style={{ fontSize: 14, color: DESIGN_COLORS.textSecondary, textAlign: 'center' }}>
                 {ownerFilter === 'pending' ? 'No pending users to verify' : 'No authentication users in the system'}
               </Text>
             </View>
@@ -1150,21 +1173,21 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 <RefreshControl
                   refreshing={refreshingOwners}
                   onRefresh={refreshOwners}
-                  tintColor={theme.primary}
+                  tintColor="#000000"
                 />
               }
               renderItem={({ item }) => (
-                <View style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border, backgroundColor: theme.surface }}>
+                <View style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: DESIGN_COLORS.border, backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, marginBottom: 8, borderWidth: 2, borderColor: DESIGN_COLORS.border }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <View style={{ flex: 1, marginRight: 10 }}>
-                      <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }}>
+                      <Text style={{ color: DESIGN_COLORS.textPrimary, fontSize: 16, fontWeight: '500' }}>
                         {item.email}
                       </Text>
-                      <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                      <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 12, marginTop: 2 }}>
                         UID: {item.uid.substring(0, 8)}...
                       </Text>
                       {item.firstName || item.lastName ? (
-                        <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                        <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 12, marginTop: 2 }}>
                           Name: {item.firstName} {item.lastName}
                         </Text>
                       ) : null}
@@ -1183,7 +1206,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         )}
                       </View>
                       {item.createdAt && (
-                        <Text style={{ color: theme.textSecondary, fontSize: 11, marginTop: 2 }}>
+                        <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 11, marginTop: 2 }}>
                           Created: {new Date(item.createdAt).toLocaleDateString()}
                         </Text>
                       )}
@@ -1195,7 +1218,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                           backgroundColor: '#6f42c1',
                           paddingHorizontal: 10,
                           paddingVertical: 6,
-                          borderRadius: 4,
+                          borderRadius: 8,
                           minWidth: 100
                         }}
                       >
@@ -1208,10 +1231,10 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                           onPress={() => handleConfirmOwnerEmail(item.uid)}
                           disabled={confirmingOwnerUid === item.uid}
                           style={{
-                            backgroundColor: confirmingOwnerUid === item.uid ? theme.border : '#17a2b8',
+                            backgroundColor: confirmingOwnerUid === item.uid ? DESIGN_COLORS.border : '#17a2b8',
                             paddingHorizontal: 10,
                             paddingVertical: 6,
-                            borderRadius: 4,
+                            borderRadius: 8,
                             minWidth: 100
                           }}
                         >
@@ -1229,10 +1252,10 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                           onPress={() => handleVerifyOwner(item.uid)}
                           disabled={verifyingOwnerUid === item.uid}
                           style={{
-                            backgroundColor: verifyingOwnerUid === item.uid ? theme.border : '#28a745',
+                            backgroundColor: verifyingOwnerUid === item.uid ? DESIGN_COLORS.border : '#28a745',
                             paddingHorizontal: 10,
                             paddingVertical: 6,
-                            borderRadius: 4,
+                            borderRadius: 8,
                             minWidth: 100
                           }}
                         >
@@ -1249,7 +1272,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                   </View>
                 </View>
               )}
-              style={{ backgroundColor: theme.surface, borderRadius: 8, marginTop: 10 }}
+              style={{ backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 8, marginTop: 10 }}
             />
           )}
         </>
@@ -1262,86 +1285,90 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
         onRequestClose={() => setShowMenuEditModal(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ backgroundColor: theme.surface, borderRadius: 10, padding: 20, width: '90%', maxWidth: 400, maxHeight: '80%' }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: theme.text }}>
+          <View style={{ backgroundColor: DESIGN_COLORS.cardBackground, borderRadius: 12, padding: 20, width: '90%', maxWidth: 400, maxHeight: '80%', borderWidth: 2, borderColor: DESIGN_COLORS.border }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: DESIGN_COLORS.textPrimary }}>
               {editingMenuItem ? 'Edit Menu Item' : 'Add Menu Item'}
             </Text>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Name:</Text>
+              <Text style={{ fontSize: 16, marginBottom: 8, color: DESIGN_COLORS.textPrimary }}>Name:</Text>
               <TextInput
                 value={menuEditForm.name}
                 onChangeText={(text) => setMenuEditForm(prev => ({ ...prev, name: text }))}
                 style={{
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: 5,
-                  padding: 10,
+                  borderWidth: 2,
+                  borderColor: DESIGN_COLORS.border,
+                  borderRadius: 12,
+                  padding: 16,
                   marginBottom: 15,
-                  color: theme.text,
-                  backgroundColor: theme.background
+                  color: DESIGN_COLORS.textPrimary,
+                  backgroundColor: DESIGN_COLORS.cardBackground,
+                  fontSize: 16
                 }}
                 placeholder="Menu item name"
-                placeholderTextColor={theme.textSecondary}
+                placeholderTextColor={DESIGN_COLORS.textPlaceholder}
               />
 
-              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Price:</Text>
+              <Text style={{ fontSize: 16, marginBottom: 8, color: DESIGN_COLORS.textPrimary }}>Price:</Text>
               <TextInput
                 value={menuEditForm.price}
                 onChangeText={(text) => setMenuEditForm(prev => ({ ...prev, price: text }))}
                 style={{
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: 5,
-                  padding: 10,
+                  borderWidth: 2,
+                  borderColor: DESIGN_COLORS.border,
+                  borderRadius: 12,
+                  padding: 16,
                   marginBottom: 15,
-                  color: theme.text,
-                  backgroundColor: theme.background
+                  color: DESIGN_COLORS.textPrimary,
+                  backgroundColor: DESIGN_COLORS.cardBackground,
+                  fontSize: 16
                 }}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
-                placeholderTextColor={theme.textSecondary}
+                placeholderTextColor={DESIGN_COLORS.textPlaceholder}
               />
 
-              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Category:</Text>
+              <Text style={{ fontSize: 16, marginBottom: 8, color: DESIGN_COLORS.textPrimary }}>Category:</Text>
               <TextInput
                 value={menuEditForm.category}
                 onChangeText={(text) => setMenuEditForm(prev => ({ ...prev, category: text }))}
                 style={{
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: 5,
-                  padding: 10,
+                  borderWidth: 2,
+                  borderColor: DESIGN_COLORS.border,
+                  borderRadius: 12,
+                  padding: 16,
                   marginBottom: 15,
-                  color: theme.text,
-                  backgroundColor: theme.background
+                  color: DESIGN_COLORS.textPrimary,
+                  backgroundColor: DESIGN_COLORS.cardBackground,
+                  fontSize: 16
                 }}
                 placeholder="e.g., Appetizers, Main Course, Desserts"
-                placeholderTextColor={theme.textSecondary}
+                placeholderTextColor={DESIGN_COLORS.textPlaceholder}
               />
 
-              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Description:</Text>
+              <Text style={{ fontSize: 16, marginBottom: 8, color: DESIGN_COLORS.textPrimary }}>Description:</Text>
               <TextInput
                 value={menuEditForm.description}
                 onChangeText={(text) => setMenuEditForm(prev => ({ ...prev, description: text }))}
                 style={{
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: 5,
-                  padding: 10,
+                  borderWidth: 2,
+                  borderColor: DESIGN_COLORS.border,
+                  borderRadius: 12,
+                  padding: 16,
                   marginBottom: 15,
-                  color: theme.text,
-                  backgroundColor: theme.background,
+                  color: DESIGN_COLORS.textPrimary,
+                  backgroundColor: DESIGN_COLORS.cardBackground,
                   minHeight: 80,
-                  textAlignVertical: 'top'
+                  textAlignVertical: 'top',
+                  fontSize: 16
                 }}
                 placeholder="Optional description"
                 multiline
                 numberOfLines={3}
-                placeholderTextColor={theme.textSecondary}
+                placeholderTextColor={DESIGN_COLORS.textPlaceholder}
               />
 
-              <Text style={{ fontSize: 16, marginBottom: 8, color: theme.text }}>Menu Item Image:</Text>
+              <Text style={{ fontSize: 16, marginBottom: 8, color: DESIGN_COLORS.textPrimary }}>Menu Item Image:</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
                 <TouchableOpacity
                   onPress={async () => {
@@ -1387,17 +1414,24 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                   }}
                   disabled={imageUploading}
                   style={{
-                    backgroundColor: imageUploading ? theme.border : theme.primary,
+                    backgroundColor: imageUploading ? DESIGN_COLORS.border : DESIGN_COLORS.cardBackground,
                     paddingHorizontal: 15,
                     paddingVertical: 10,
-                    borderRadius: 5,
-                    marginRight: 10
+                    borderRadius: 8,
+                    marginRight: 10,
+                    borderWidth: 2,
+                    borderColor: DESIGN_COLORS.border,
+                    elevation: 1,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.06,
+                    shadowRadius: 2,
                   }}
                 >
                   {imageUploading ? (
-                    <ActivityIndicator size="small" color={theme.text} />
+                    <ActivityIndicator size="small" color={DESIGN_COLORS.textPrimary} />
                   ) : (
-                    <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                    <Text style={{ color: DESIGN_COLORS.textPrimary, fontSize: 12, fontWeight: 'bold' }}>
                       📷 Select Image
                     </Text>
                   )}
@@ -1405,11 +1439,11 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 {menuEditForm.image ? (
                   <Image
                     source={{ uri: menuEditForm.image }}
-                    style={{ width: 50, height: 50, borderRadius: 5 }}
+                    style={{ width: 50, height: 50, borderRadius: 8 }}
                     resizeMode="cover"
                   />
                 ) : (
-                  <Text style={{ color: theme.textSecondary, fontSize: 12 }}>No image selected</Text>
+                  <Text style={{ color: DESIGN_COLORS.textSecondary, fontSize: 12 }}>No image selected</Text>
                 )}
               </View>
 
@@ -1420,17 +1454,17 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                     width: 24,
                     height: 24,
                     borderWidth: 2,
-                    borderColor: theme.primary,
+                    borderColor: DESIGN_COLORS.textPrimary,
                     borderRadius: 4,
                     marginRight: 10,
                     justifyContent: 'center',
                     alignItems: 'center',
-                    backgroundColor: menuEditForm.isAvailable ? theme.primary : 'transparent'
+                    backgroundColor: menuEditForm.isAvailable ? DESIGN_COLORS.textPrimary : 'transparent'
                   }}
                 >
-                  {menuEditForm.isAvailable && <Text style={{ color: theme.background, fontSize: 16 }}>✓</Text>}
+                  {menuEditForm.isAvailable && <Text style={{ color: DESIGN_COLORS.cardBackground, fontSize: 16 }}>✓</Text>}
                 </TouchableOpacity>
-                <Text style={{ color: theme.text, fontSize: 16 }}>Available</Text>
+                <Text style={{ color: DESIGN_COLORS.textPrimary, fontSize: 16 }}>Available</Text>
               </View>
             </ScrollView>
 
@@ -1440,16 +1474,16 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                   setShowMenuEditModal(false);
                   setEditingMenuItem(null);
                 }}
-                style={{ backgroundColor: theme.border, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5, flex: 1, marginRight: 10 }}
+                style={{ backgroundColor: DESIGN_COLORS.border, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, flex: 1, marginRight: 10 }}
               >
-                <Text style={{ color: theme.text, textAlign: 'center', fontWeight: 'bold' }}>Cancel</Text>
+                <Text style={{ color: DESIGN_COLORS.textPrimary, textAlign: 'center', fontWeight: 'bold' }}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleSaveMenuItem}
-                style={{ backgroundColor: theme.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5, flex: 1, marginLeft: 10 }}
+                style={{ backgroundColor: DESIGN_COLORS.cardBackground, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, flex: 1, marginLeft: 10, borderWidth: 2, borderColor: DESIGN_COLORS.border, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2 }}
               >
-                <Text style={{ color: theme.background, textAlign: 'center', fontWeight: 'bold' }}>
+                <Text style={{ color: DESIGN_COLORS.textPrimary, textAlign: 'center', fontWeight: 'bold' }}>
                   {editingMenuItem ? 'Update' : 'Create'}
                 </Text>
               </TouchableOpacity>

@@ -19,6 +19,19 @@ import { LocationService } from '../services/expoLocationService';
 import { reverseGeocode } from '../src/services/geocodingService';
 import { uploadImageToRestaurantBucket } from '../services/imageService';
 
+// Design colors matching the Home Screen exactly
+const DESIGN_COLORS = {
+  background: '#E6F3FF',      // Light blue - main screen background
+  cardBackground: '#FFFFFF',   // White - card backgrounds
+  border: '#000000',           // Black - all borders
+  textPrimary: '#000000',      // Black - primary text (names, types)
+  textSecondary: '#666666',    // Gray - secondary text (locations)
+  textPlaceholder: '#999999',  // Light gray - placeholder text
+  buttonBackground: '#FFFFFF', // White - button backgrounds
+  infoBg: '#000000',          // Black - info button background
+  infoText: '#FFFFFF',        // White - info button text
+};
+
 interface CreateRestaurantScreenProps {
   navigation: any;
 }
@@ -164,44 +177,30 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={styles.container}>
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { top: insets.top + 10 }]}>
-          <Text style={[styles.backButtonText, { color: theme.primary }]}>✕</Text>
+          <Text style={styles.backButtonText}>✕</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.title, { color: theme.text }]}>Create Restaurant</Text>
+        <Text style={styles.title}>Create Restaurant</Text>
 
         <View style={styles.formSection}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Restaurant Details</Text>
+          <Text style={styles.sectionTitle}>Restaurant Details</Text>
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Restaurant Name *"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={restaurantName}
             onChangeText={setRestaurantName}
           />
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Category * (e.g., Italian, Chinese, Fast Food)"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={category}
             onChangeText={setCategory}
           />
@@ -209,51 +208,34 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
           <TouchableOpacity
             onPress={handleGetLocation}
             disabled={locationLoading}
-            style={[
-              styles.locationButton,
-              { backgroundColor: locationLoading ? theme.border : '#28a745' }
-            ]}
+            style={styles.locationButton}
           >
             {locationLoading ? (
-              <ActivityIndicator size="small" color="white" />
+              <ActivityIndicator size="small" color={DESIGN_COLORS.textPrimary} />
             ) : (
               <Text style={styles.locationButtonText}>📍 Get Location</Text>
             )}
           </TouchableOpacity>
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Latitude *"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={latitude}
             editable={false}
             selectTextOnFocus={false}
           />
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Longitude *"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={longitude}
             editable={false}
             selectTextOnFocus={false}
           />
 
-          <Text style={[styles.fieldLabel, { color: theme.text }]}>Price Range (₱)</Text>
+          <Text style={styles.fieldLabel}>Price Range (₱)</Text>
           <View style={styles.priceRangeContainer}>
             {['₱','₱₱','₱₱₱','₱₱₱₱'].map((pr) => (
               <TouchableOpacity
@@ -262,14 +244,14 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
                 style={[
                   styles.priceRangeButton,
                   {
-                    borderColor: theme.primary,
-                    backgroundColor: priceRange === pr ? theme.primary : theme.inputBackground
+                    backgroundColor: priceRange === pr ? DESIGN_COLORS.infoBg : DESIGN_COLORS.cardBackground,
+                    borderColor: DESIGN_COLORS.border,
                   }
                 ]}
               >
                 <Text style={[
                   styles.priceRangeText,
-                  { color: priceRange === pr ? 'white' : theme.text }
+                  { color: priceRange === pr ? DESIGN_COLORS.infoText : DESIGN_COLORS.textPrimary }
                 ]}>
                   {pr}
                 </Text>
@@ -277,18 +259,15 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
             ))}
           </View>
 
-          <Text style={[styles.fieldLabel, { color: theme.text }]}>Restaurant Image</Text>
+          <Text style={styles.fieldLabel}>Restaurant Image</Text>
           <View style={styles.imagePickerContainer}>
             <TouchableOpacity
               onPress={handleSelectImage}
               disabled={imageUploading}
-              style={[
-                styles.imagePickerButton,
-                { backgroundColor: imageUploading ? theme.border : theme.primary }
-              ]}
+              style={styles.imagePickerButton}
             >
               {imageUploading ? (
-                <ActivityIndicator size="small" color="white" />
+                <ActivityIndicator size="small" color={DESIGN_COLORS.textPrimary} />
               ) : (
                 <Text style={styles.imagePickerButtonText}>📷 Select Image</Text>
               )}
@@ -300,53 +279,32 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
                 resizeMode="cover"
               />
             ) : (
-              <Text style={[styles.noImageText, { color: theme.textSecondary }]}>No image selected</Text>
+              <Text style={styles.noImageText}>No image selected</Text>
             )}
           </View>
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Phone Number"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
           />
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Website URL"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={website}
             onChangeText={setWebsite}
             keyboardType="url"
           />
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Hours (e.g., Mon-Fri: 9AM-10PM, Sat-Sun: 10AM-11PM)"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={hours}
             onChangeText={setHours}
             multiline
@@ -354,16 +312,9 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
           />
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: theme.primary,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
+            style={styles.input}
             placeholder="Description"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
             value={description}
             onChangeText={setDescription}
             multiline
@@ -371,7 +322,7 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
           />
 
           <TouchableOpacity
-            style={[styles.createButton, { backgroundColor: theme.primary }]}
+            style={styles.createButton}
             onPress={handleCreateRestaurant}
             disabled={isLoading}
           >
@@ -388,6 +339,8 @@ function CreateRestaurantScreen({ navigation }: CreateRestaurantScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: DESIGN_COLORS.background,
+    paddingTop: 50, // Account for status bar
   },
   content: {
     flex: 1,
@@ -396,21 +349,32 @@ const styles = StyleSheet.create({
   backButton: {
     position: 'absolute',
     left: 20,
-    width: 60,
+    width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
     zIndex: 1000,
   },
   backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: DESIGN_COLORS.textPrimary,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 24,
     textAlign: 'center',
+    color: DESIGN_COLORS.textPrimary,
   },
   formSection: {
     marginBottom: 20,
@@ -420,6 +384,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
     textAlign: 'center',
+    color: DESIGN_COLORS.textPrimary,
   },
   input: {
     borderWidth: 2,
@@ -429,15 +394,26 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
     minHeight: 48,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    color: DESIGN_COLORS.textPrimary,
+    borderColor: DESIGN_COLORS.border,
   },
   createButton: {
     borderRadius: 12,
     paddingVertical: 14,
     marginTop: 20,
     alignItems: 'center',
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   createButtonText: {
-    color: 'white',
+    color: DESIGN_COLORS.textPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -448,9 +424,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   locationButtonText: {
-    color: 'white',
+    color: DESIGN_COLORS.textPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -459,6 +443,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     marginTop: 4,
+    color: DESIGN_COLORS.textPrimary,
   },
   priceRangeContainer: {
     flexDirection: 'row',
@@ -491,9 +476,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
+    backgroundColor: DESIGN_COLORS.cardBackground,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.border,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
   },
   imagePickerButtonText: {
-    color: 'white',
+    color: DESIGN_COLORS.textPrimary,
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -505,6 +498,7 @@ const styles = StyleSheet.create({
   noImageText: {
     fontSize: 14,
     fontStyle: 'italic',
+    color: DESIGN_COLORS.textSecondary,
   },
 });
 
