@@ -930,7 +930,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                 const imageUri = result.assets[0].uri;
                 console.log('🧪 Test image URI:', imageUri);
 
-                const { uploadImageToRestaurantBucket } = await import('../services/imageService');
+                const { uploadImageToRestaurantBucket } = await import('../src/services/imageService');
                 const testId = `test_${Date.now()}`;
                 const uploadedUrl = await uploadImageToRestaurantBucket(imageUri, testId);
 
@@ -1460,7 +1460,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         setImageUploading(true);
 
                         try {
-                          const { uploadImageToRestaurantBucket } = await import('../services/imageService');
+                          const { uploadImageToRestaurantBucket } = await import('../src/services/imageService');
                           const tempMenuItemId = `menu_${Date.now()}`;
                           const uploadedImageUrl = await uploadImageToRestaurantBucket(imageUri, tempMenuItemId);
                           
@@ -1783,7 +1783,7 @@ function AdminPanelScreen({ navigation }: { navigation: any }) {
                         setImageUploading(true);
 
                         try {
-                          const { uploadImageToRestaurantBucket } = await import('../services/imageService');
+                          const { uploadImageToRestaurantBucket } = await import('../src/services/imageService');
                           const tempRestaurantId = `temp_${Date.now()}`;
                           console.log('📷 Admin(Add): Starting upload with temp ID:', tempRestaurantId);
 
