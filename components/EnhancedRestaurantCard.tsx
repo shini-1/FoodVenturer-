@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { Image } from 'expo-image';
 import { useTheme } from '../theme/ThemeContext';
 import { Restaurant } from '../types';
 
@@ -66,13 +67,18 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
   const rating = typeof restaurant.rating === 'number' ? restaurant.rating : 0;
   const ratingText = rating > 0 ? rating.toFixed(1) : 'No ratings yet';
 
-  // Debug logging for image display
-  const imageUri = restaurant.image || getPlaceholderImage();
-  if (!restaurant.image) {
-    console.log(`📷 Restaurant "${restaurant.name}" has no image, using placeholder`);
-  } else {
-    console.log(`📷 Restaurant "${restaurant.name}" image URL:`, restaurant.image);
-  }
+  // Debug logging and validation for image display
+  const imageUri = restaurant.image && restaurant.image.trim() ? restaurant.image.trim() : getPlaceholderImage();
+  const isUsingPlaceholder = !restaurant.image || !restaurant.image.trim();
+  
+  useEffect(() => {
+    if (isUsingPlaceholder) {
+      console.log(`📷 Restaurant "${restaurant.name}" has no image, using placeholder`);
+    } else {
+      console.log(`📷 Restaurant "${restaurant.name}" image URL:`, restaurant.image);
+      console.log(`📷 Image URI (trimmed):`, imageUri);
+    }
+  }, [restaurant.image, restaurant.name, imageUri, isUsingPlaceholder]);
 
   return (
     <Animated.View style={[styles.container, { transform: [{ scale: animatedScale }] }]}>
@@ -83,6 +89,8 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
             uri: imageUri
           }}
           style={styles.image}
+          contentFit="cover"
+          cachePolicy="memory-disk"
         />
 
         {/* Content */}

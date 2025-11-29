@@ -1,7 +1,10 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Header from '../components/Header';
+import { restaurantService } from '../src/services/restaurantService';
+import { supabase } from '../src/config/supabase';
 
 // Design colors matching the Home Screen exactly
 const DESIGN_COLORS = {
@@ -22,12 +25,55 @@ interface BusinessDashboardScreenProps {
 
 function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
   const insets = useSafeAreaInsets();
+  const [hasRestaurant, setHasRestaurant] = useState(false);
+  const [isCheckingRestaurant, setIsCheckingRestaurant] = useState(true);
+  const [userRestaurant, setUserRestaurant] = useState<any>(null);
 
-  // Removed async initialization to prevent crashes during navigation
-  // The dashboard will display immediately without waiting for restaurant status
+  // Check if user has a restaurant when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      checkUserRestaurant();
+    }, [])
+  );
+
+  const checkUserRestaurant = async () => {
+    try {
+      setIsCheckingRestaurant(true);
+      console.log('🔍 Checking if user has a restaurant...');
+
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.warn('⚠️ User not authenticated');
+        setHasRestaurant(false);
+        return;
+      }
+
+      // Check if user has a restaurant
+      const restaurant = await restaurantService.getRestaurantByOwnerId(user.id);
+      if (restaurant) {
+        console.log('✅ User has a restaurant:', restaurant.name);
+        setHasRestaurant(true);
+        setUserRestaurant(restaurant);
+      } else {
+        console.log('ℹ️ User does not have a restaurant yet');
+        setHasRestaurant(false);
+        setUserRestaurant(null);
+      }
+    } catch (error: any) {
+      console.error('❌ Error checking restaurant status:', error);
+      setHasRestaurant(false);
+    } finally {
+      setIsCheckingRestaurant(false);
+    }
+  };
 
   const quickActions = [
-    { id: 'create-restaurant', label: 'Create Restaurant', icon: '🏪' },
+    {
+      id: hasRestaurant ? 'manage-restaurant' : 'create-restaurant',
+      label: hasRestaurant ? 'Manage Restaurant' : 'Create Restaurant',
+      icon: hasRestaurant ? '⚙️' : '🏪',
+    },
     { id: 'edit-profile', label: 'Edit Profile', icon: '👤' },
   ];
 
@@ -40,6 +86,15 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
     switch (actionId) {
       case 'create-restaurant':
         navigation.navigate('CreateRestaurant');
+        break;
+      case 'manage-restaurant':
+        // Navigate to restaurant management screen
+        if (userRestaurant) {
+          navigation.navigate('RestaurantDetail', {
+            restaurantId: userRestaurant.id,
+            restaurant: userRestaurant
+          });
+        }
         break;
       case 'edit-profile':
         navigation.navigate('EditProfile');
@@ -67,9 +122,16 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
         <Text style={[styles.title, { color: DESIGN_COLORS.textPrimary }]}>Business Dashboard</Text>
 
         <View style={{ alignItems: 'center', padding: 20 }}>
-          <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textSecondary, textAlign: 'center' }]}>
-            Welcome to your Business Dashboard!{'\n'}Manage your restaurant and profile here.
-          </Text>
+          {isCheckingRestaurant ? (
+            <ActivityIndicator size="small" color={DESIGN_COLORS.textPrimary} />
+          ) : (
+            <>
+              <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textSecondary, textAlign: 'center' }]}>
+                Welcome to your Business Dashboard!{'\n'}
+                {hasRestaurant ? `Managing: ${userRestaurant?.name}` : 'Create your first restaurant to get started.'}
+              </Text>
+            </>
+          )}
         </View>
 
         <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary }]}>Quick Actions</Text>

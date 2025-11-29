@@ -22,10 +22,15 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
     // Upload to bucket first
     const imageUrl = await uploadImageToRestaurantBucket(imageUri, `${restaurantId}_${imageType}`, 'image/jpeg');
 
+    // Verify image URL before updating database
+    if (!imageUrl || !imageUrl.trim()) {
+      throw new Error('Image URL is empty after upload');
+    }
+
     // Update the restaurant record with the image URL
     const { error: updateError } = await supabase
       .from('restaurants')
-      .update({ image: imageUrl })
+      .update({ image: imageUrl.trim() })
       .eq('id', restaurantId);
 
     if (updateError) {
@@ -44,7 +49,7 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
 
 /**
  * Upload an image to the restaurant images bucket and return its public URL
- * Uses simple fetch API for broad compatibility
+ * Converts image URI to blob and uploads to Supabase
  */
 export const uploadImageToRestaurantBucket = async (
   imageUri: string,
@@ -57,12 +62,29 @@ export const uploadImageToRestaurantBucket = async (
 
     console.log('📷 Starting upload:', { imageUri, fileName });
 
-    // Upload directly to Supabase using the URI
+    // Step 1: Fetch the image and convert to blob
+    let imageBlob: Blob;
+    try {
+      console.log('📷 Fetching image from URI...');
+      const response = await fetch(imageUri);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+
+      imageBlob = await response.blob();
+      console.log('📷 Image converted to blob, size:', imageBlob.size, 'bytes');
+    } catch (fetchError: any) {
+      console.error('❌ Failed to fetch/convert image:', fetchError);
+      throw new Error(`Failed to process image: ${fetchError.message}`);
+    }
+
+    // Step 2: Upload blob to Supabase
     try {
       console.log('📷 Uploading to Supabase storage...');
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .upload(filePath, { uri: imageUri, type: contentType, name: fileName } as any, {
+        .upload(filePath, imageBlob, {
           contentType: contentType,
           upsert: true
         });
@@ -75,10 +97,10 @@ export const uploadImageToRestaurantBucket = async (
       console.log('✅ Upload successful');
     } catch (uploadError: any) {
       console.error('❌ Upload failed:', uploadError);
-      throw new Error(`Failed to upload image: ${uploadError.message || 'Unknown upload error'}. Please check your internet connection.`);
+      throw new Error(`Failed to upload image: ${uploadError.message || 'Unknown upload error'}`);
     }
 
-    // Get public URL
+    // Step 3: Get public URL
     const publicUrlData = await supabase.storage
       .from(STORAGE_BUCKET)
       .getPublicUrl(filePath);
