@@ -28,7 +28,7 @@ import { cacheStatusService } from '../src/services/cacheStatusService';
 import { ratingSyncService } from '../src/services/ratingSyncService';
 import { ratingCalculationService, RestaurantRatingData } from '../src/services/ratingCalculationService';
 import { useNetwork } from '../src/contexts/NetworkContext';
-
+import { syncService } from '../src/services/syncService';
 import { Restaurant } from '../types';
 
 // Enhanced error boundary component with detailed debugging
@@ -278,7 +278,9 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     fontSize: 13,
-    color: DESIGN_COLORS.textPrimary,
+    color: DESIGN_COLORS.textPrimary, // Black text
+    backgroundColor: 'transparent', // Ensure no background color inheritance
+    flex: 1, // Take full width of container
   },
   categoryDropdown: {
     flexDirection: 'row',
@@ -749,6 +751,26 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
       initRatingServices();
     }, []);
 
+    // Initialize sync service for offline data
+    useEffect(() => {
+      const initSyncService = async () => {
+        try {
+          console.log('🔄 Initializing sync service for offline support...');
+          
+          // Trigger initial sync to populate SQLite database
+          if (isOnline) {
+            await syncService.sync({ forceFullSync: false, syncRestaurants: true });
+            console.log('✅ Initial sync completed');
+          }
+          
+        } catch (error) {
+          console.error('❌ Error initializing sync service:', error);
+        }
+      };
+      
+      initSyncService();
+    }, [isOnline]);
+
     // Process restaurant ratings when restaurants change
     useEffect(() => {
       const processRatings = async () => {
@@ -880,62 +902,188 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
         crashLogger.logComponentEvent('HomeScreen', 'load_page_start', { page: targetPage });
       }
 
-      // Simplified approach - just try to fetch from server
-      console.log('🌐 Attempting to load from server...');
+      // Check if we should use offline mode (SQLite database)
+      const isOffline = !isOnline;
       
-      try {
-        if (!restaurantService || typeof restaurantService.getRestaurantsPageWithCount !== 'function') {
-          throw new Error('Restaurant service not available');
-        }
+      if (isOffline) {
+        console.log('📱 OFFLINE MODE: Using SQLite database for restaurants');
         
-        const { items: serverData, total } = await restaurantService.getRestaurantsPageWithCount(targetPage, SERVER_PAGE_SIZE);
-        console.log(`📊 Server returned ${serverData.length} restaurants, total: ${total}`);
+        try {
+          // Use SQLite database for offline data
+          await DatabaseService.getDatabase(); // Ensure database is initialized
+          
+          const offset = (targetPage - 1) * SERVER_PAGE_SIZE;
+          const localRestaurants = await DatabaseService.getRestaurants(SERVER_PAGE_SIZE, offset);
+          
+          // Transform SQLite data to Restaurant interface
+          const restaurants: Restaurant[] = localRestaurants.map(local => ({
+            id: local.id,
+            name: local.name,
+            location: {
+              latitude: local.latitude || 40.7128, // Default to NYC if null
+              longitude: local.longitude || -74.0060,
+            },
+            image: local.image_url || '',
+            category: local.category,
+            rating: local.rating || 0,
+            priceRange: local.price_range || '$',
+            description: local.description || '',
+            phone: '', // Not stored in SQLite yet
+            hours: '', // Not stored in SQLite yet
+            website: '', // Not stored in SQLite yet
+          }));
 
-        if (targetPage === 1) {
-          setRestaurants(serverData || []);
-        } else if (serverData && serverData.length > 0) {
-          setRestaurants(prev => {
-            const existing = new Set((prev || []).map((r: Restaurant) => r.id));
-            const merged = [...(prev || []), ...serverData.filter(r => r && r.id && !existing.has(r.id))];
-            console.log(`📊 Set ${merged.length} restaurants (merged from server)`);
-            return merged;
-          });
-        } else if (!serverData || serverData.length === 0) {
-          // Server returned no data - no more restaurants available
-          console.log(`🏁 Server returned no restaurants for page ${targetPage} - stopping pagination`);
-          setHasMore(false);
+          // Get total count for pagination
+          const stats = await DatabaseService.getDatabaseStats();
+          const total = stats.restaurants;
+
+          if (targetPage === 1) {
+            setRestaurants(restaurants);
+          } else if (restaurants.length > 0) {
+            setRestaurants(prev => {
+              const existing = new Set((prev || []).map((r: Restaurant) => r.id));
+              const merged = [...(prev || []), ...restaurants.filter(r => !existing.has(r.id))];
+              console.log(`📊 Set ${merged.length} restaurants (offline from SQLite)`);
+              return merged;
+            });
+          } else if (restaurants.length === 0) {
+            console.log(`🏁 No restaurants found in SQLite for page ${targetPage}`);
+            setHasMore(false);
+          }
+          
+          const more = (restaurants.length === SERVER_PAGE_SIZE) && (targetPage < Math.ceil(total / SERVER_PAGE_SIZE));
+          setHasMore(more);
+          console.log(`✅ Loaded ${restaurants.length} restaurants from SQLite, hasMore: ${more} (page ${targetPage})`);
+          
+        } catch (offlineError) {
+          console.error('❌ SQLite offline error:', offlineError);
+          // If SQLite fails, try to fall back to cached data or show empty state
+          if (targetPage === 1) {
+            setRestaurants([]);
+            setHasMore(false);
+          }
+          throw offlineError;
         }
-        
-        const more = (serverData?.length === SERVER_PAGE_SIZE) || (serverData && serverData.length > 0 && targetPage < 10); // Be more aggressive about loading up to page 10
-        setHasMore(more);
-        console.log(`✅ Loaded ${serverData?.length || 0} restaurants from server, hasMore: ${more} (page ${targetPage})`);
-        
-        if (crashLoggerReady && crashLogger && typeof crashLogger.logComponentEvent === 'function') {
-          crashLogger.logComponentEvent('HomeScreen', 'load_page_success', { 
-            page: targetPage, 
-            restaurantsCount: serverData?.length || 0,
-            total 
-          });
-        }
-      } catch (serverError) {
-        console.error('❌ Server error:', serverError);
-        
-        if (crashLoggerReady && crashLogger && typeof crashLogger.logError === 'function') {
-          await crashLogger.logError(serverError as Error, {
-            component: 'HomeScreen',
-            screen: 'HomeScreen',
-            additionalContext: {
-              phase: 'load_page_server_error',
-              targetPage,
-              serverPage
+      } else {
+        // Online mode: fetch from Supabase
+        console.log('🌐 ONLINE MODE: Fetching from Supabase');
+
+        try {
+          if (!restaurantService || typeof restaurantService.getRestaurantsPageWithCount !== 'function') {
+            throw new Error('Restaurant service not available');
+          }
+          
+          const { items: serverData, total } = await restaurantService.getRestaurantsPageWithCount(targetPage, SERVER_PAGE_SIZE);
+          console.log(`📊 Server returned ${serverData.length} restaurants, total: ${total}`);
+
+          if (targetPage === 1) {
+            setRestaurants(serverData || []);
+          } else if (serverData && serverData.length > 0) {
+            setRestaurants(prev => {
+              const existing = new Set((prev || []).map((r: Restaurant) => r.id));
+              const merged = [...(prev || []), ...serverData.filter(r => r && r.id && !existing.has(r.id))];
+              console.log(`📊 Set ${merged.length} restaurants (merged from server)`);
+              return merged;
+            });
+          } else if (!serverData || serverData.length === 0) {
+            // Server returned no data - no more restaurants available
+            console.log(`🏁 Server returned no restaurants for page ${targetPage} - stopping pagination`);
+            setHasMore(false);
+          }
+          
+          const more = (serverData?.length === SERVER_PAGE_SIZE) || (serverData && serverData.length > 0 && targetPage < 10); // Be more aggressive about loading up to page 10
+          setHasMore(more);
+          console.log(`✅ Loaded ${serverData?.length || 0} restaurants from server, hasMore: ${more} (page ${targetPage})`);
+          
+          // Cache data to SQLite for offline use
+          if (serverData && serverData.length > 0) {
+            try {
+              console.log('💾 Caching server data to SQLite for offline use');
+              const restaurantsForCache: RestaurantRow[] = serverData.map(restaurant => ({
+                id: restaurant.id,
+                name: restaurant.name,
+                description: restaurant.description || null,
+                address: null, // We don't have address in the Restaurant interface
+                latitude: restaurant.location.latitude,
+                longitude: restaurant.location.longitude,
+                category: restaurant.category || 'casual', // Default category if undefined
+                price_range: restaurant.priceRange || null,
+                rating: restaurant.rating || null,
+                image_url: restaurant.image || null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                _sync_status: 'synced',
+                _last_modified: new Date().toISOString()
+              }));
+              
+              await DatabaseService.saveRestaurants(restaurantsForCache);
+              console.log('✅ Cached restaurants to SQLite');
+            } catch (cacheError) {
+              console.warn('⚠️ Failed to cache restaurants to SQLite:', cacheError);
             }
-          });
-        }
-        
-        // Set empty state to prevent crashes
-        if (targetPage === 1) {
-          setRestaurants([]);
-          setHasMore(false);
+          }
+          
+          if (crashLoggerReady && crashLogger && typeof crashLogger.logComponentEvent === 'function') {
+            crashLogger.logComponentEvent('HomeScreen', 'load_page_success', { 
+              page: targetPage, 
+              restaurantsCount: serverData?.length || 0,
+              total,
+              cachedToSQLite: true
+            });
+          }
+        } catch (serverError) {
+          console.error('❌ Server error:', serverError);
+          
+          if (crashLoggerReady && crashLogger && typeof crashLogger.logError === 'function') {
+            await crashLogger.logError(serverError as Error, {
+              component: 'HomeScreen',
+              screen: 'HomeScreen',
+              additionalContext: {
+                phase: 'load_page_server_error',
+                targetPage,
+                serverPage
+              }
+            });
+          }
+          
+          // Try to fall back to SQLite data if server fails
+          console.log('🌐 Server failed, trying SQLite fallback');
+          try {
+            const offset = (targetPage - 1) * SERVER_PAGE_SIZE;
+            const localRestaurants = await DatabaseService.getRestaurants(SERVER_PAGE_SIZE, offset);
+            
+            const restaurants: Restaurant[] = localRestaurants.map(local => ({
+              id: local.id,
+              name: local.name,
+              location: {
+                latitude: local.latitude || 40.7128, // Default to NYC if null
+                longitude: local.longitude || -74.0060,
+              },
+              image: local.image_url || '',
+              category: local.category,
+              rating: local.rating || 0,
+              priceRange: local.price_range || '$',
+              description: local.description || '',
+              phone: '', // Not stored in SQLite yet
+              hours: '', // Not stored in SQLite yet
+              website: '', // Not stored in SQLite yet
+            }));
+
+            if (targetPage === 1) {
+              setRestaurants(restaurants);
+            } else if (restaurants.length > 0) {
+              setRestaurants(prev => [...(prev || []), ...restaurants]);
+            }
+            
+            console.log(`📱 SQLite fallback: loaded ${restaurants.length} restaurants`);
+          } catch (sqliteError) {
+            console.error('❌ SQLite fallback also failed:', sqliteError);
+            // Set empty state to prevent crashes
+            if (targetPage === 1) {
+              setRestaurants([]);
+              setHasMore(false);
+            }
+          }
         }
       }
     } catch (error) {
@@ -972,7 +1120,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
         crashLogger.logComponentEvent('HomeScreen', 'load_page_end', { page: targetPage });
       }
     }
-  }, [crashLoggerReady, serverPage]);
+  }, [crashLoggerReady, serverPage, isOnline]);
 
   const onRefresh = useCallback(async () => {
     if (isLoadingPage) return;
