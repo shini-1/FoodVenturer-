@@ -1,4 +1,5 @@
 import { supabase, BUCKETS } from '../config/supabase';
+import * as FileSystem from 'expo-file-system';
 
 // Bucket name for storage
 const STORAGE_BUCKET = BUCKETS.RESTAURANT_IMAGES;
@@ -44,7 +45,7 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
 
 /**
  * Upload an image to the restaurant images bucket and return its public URL
- * Uses fetch API with proper error handling for React Native
+ * Uses Expo FileSystem for React Native compatibility (Option A)
  */
 export const uploadImageToRestaurantBucket = async (
   imageUri: string,
@@ -55,39 +56,56 @@ export const uploadImageToRestaurantBucket = async (
     const fileName = `${filePrefix}-${Date.now()}.jpg`;
     const filePath = `${fileName}`;
 
-    console.log('📷 Starting upload:', { imageUri, fileName });
+    console.log('📷 Starting upload with FileSystem:', { imageUri, fileName });
 
-    // Use fetch to get the image data and convert to blob
-    let imageBlob: Blob;
+    // Read file as base64 using Expo FileSystem (Option A - React Native compatible)
+    let base64Data: string;
     try {
-      const response = await fetch(imageUri);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
-      }
+      console.log('📷 Reading file as base64...');
+      base64Data = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: 'base64' as any, // Type assertion for Expo FileSystem
+      });
+      console.log('📷 Successfully read file, base64 length:', base64Data.length);
 
-      // Get the blob from the response
-      imageBlob = await response.blob();
-      console.log('📷 Successfully fetched image, size:', imageBlob.size);
+    } catch (readError: any) {
+      console.error('❌ Failed to read image file:', readError);
 
-    } catch (fetchError: any) {
-      console.error('❌ Failed to fetch image:', fetchError);
-
-      // If fetch fails, provide specific error messages
-      if (fetchError.message?.includes('Network request failed')) {
-        throw new Error('Network error while accessing the image. Please check your internet connection.');
-      } else if (fetchError.message?.includes('404') || fetchError.message?.includes('Not Found')) {
-        throw new Error('The selected image could not be accessed. Please try selecting a different image.');
+      // Provide specific error messages for common issues
+      if (readError.message?.includes('file does not exist') || readError.message?.includes('ENOENT')) {
+        throw new Error('The selected image file could not be found. Please try selecting a different image.');
+      } else if (readError.message?.includes('permission') || readError.message?.includes('EACCES')) {
+        throw new Error('Permission denied accessing the image file. Please check app permissions.');
+      } else if (readError.message?.includes('encoding')) {
+        throw new Error('File encoding error. Please try selecting the image again.');
       } else {
-        throw new Error(`Failed to access image: ${fetchError.message || 'Unknown error'}. Please try selecting the image again.`);
+        throw new Error(`Failed to read image file: ${readError.message || 'Unknown error'}. Please try selecting the image again.`);
       }
     }
 
-    // Upload the blob to Supabase
+    // Convert base64 to Uint8Array for Supabase upload (React Native compatible)
+    let bytes: Uint8Array;
+    try {
+      console.log('📷 Converting base64 to Uint8Array...');
+      const binaryString = atob(base64Data);
+      bytes = new Uint8Array(binaryString.length);
+
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      console.log('📷 Conversion successful, byte length:', bytes.length);
+
+    } catch (conversionError: any) {
+      console.error('❌ Base64 conversion failed:', conversionError);
+      throw new Error('Failed to process image data. Please try selecting a different image.');
+    }
+
+    // Upload to Supabase
     try {
       console.log('📷 Uploading to Supabase storage...');
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .upload(filePath, imageBlob, {
+        .upload(filePath, bytes, {
           contentType: contentType,
           upsert: true
         });
