@@ -281,6 +281,8 @@ const styles = StyleSheet.create({
     color: DESIGN_COLORS.textPrimary, // Black text
     backgroundColor: 'transparent', // Ensure no background color inheritance
     flex: 1, // Take full width of container
+    fontWeight: '500', // Match category dropdown weight
+    paddingVertical: 0, // Ensure proper vertical alignment
   },
   categoryDropdown: {
     flexDirection: 'row',

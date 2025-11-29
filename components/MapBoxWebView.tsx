@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { WebView } from 'react-native-webview';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useNetwork } from '../src/contexts/NetworkContext';
 import Constants from 'expo-constants';
 import { Category } from '../types';
@@ -392,9 +392,33 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = 
 
             updateStatus('Creating map...');
 
+            // Use different map style based on online status
+            let mapStyle;
+            if (!isOnline) {
+              // Offline-compatible style - basic background without external resources
+              mapStyle = {
+                version: 8,
+                sources: {},
+                layers: [
+                  {
+                    id: 'background',
+                    type: 'background',
+                    paint: {
+                      'background-color': '#e6f3ff' // Light blue background matching app theme
+                    }
+                  }
+                ]
+              };
+              console.log('🗺️ Using offline-compatible map style');
+            } else {
+              // Online style with MapBox tiles
+              mapStyle = 'mapbox://styles/mapbox/streets-v11';
+              console.log('🗺️ Using online MapBox style');
+            }
+
             const map = new mapboxgl.Map({
               container: 'map',
-              style: 'mapbox://styles/mapbox/streets-v11',
+              style: mapStyle,
               center: [122.3667, 11.7167],
               zoom: 12
             });
@@ -403,6 +427,11 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = 
 
             map.on('load', function() {
               console.log('🗺️ Map loaded successfully');
+
+              // Show offline indicator if needed
+              if (!isOnline) {
+                updateStatus('📱 Offline mode - Map loaded with markers only');
+              }
 
               // Add navigation control
               map.addControl(new mapboxgl.NavigationControl(), 'top-right');
@@ -469,11 +498,12 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = 
                 console.log('🗺️ Location button event listener added');
               }
 
-              // Process data
+            // Process data
               const categories = ${JSON.stringify(categories)};
               const restaurants = ${JSON.stringify(restaurants)};
+              const isOnline = ${isOnline};
 
-              console.log('🗺️ Processing', categories.length, 'categories and', restaurants.length, 'restaurants');
+              console.log('🗺️ Processing data - online:', isOnline, 'categories:', categories.length, 'restaurants:', restaurants.length);
 
               // Category configuration data
               const CATEGORY_CONFIG = ${JSON.stringify(Object.fromEntries(
@@ -704,7 +734,7 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = 
                     try {
                       map.fitBounds(bounds, { padding: 50 });
                       console.log('🗺️ Map fitted to bounds after all markers loaded');
-                      updateStatus('✅ Map ready with ' + loadedCount + ' markers');
+                      updateStatus(isOnline ? '✅ Map ready with ' + loadedCount + ' markers' : '📱 Offline - Map ready with ' + loadedCount + ' markers');
                     } catch (error) {
                       console.error('🗺️ Error fitting bounds:', error);
                       updateStatus('❌ Error fitting map bounds');
@@ -721,7 +751,7 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline, isTyping = 
                   if (validLocations > 0 && window.currentMarkers && window.currentMarkers.length > 0) {
                     try {
                       map.fitBounds(bounds, { padding: 50 });
-                      updateStatus('✅ Map ready with ' + window.currentMarkers.length + ' markers (safety timeout)');
+                      updateStatus(isOnline ? '✅ Map ready with ' + window.currentMarkers.length + ' markers (safety timeout)' : '📱 Offline - Map ready with ' + window.currentMarkers.length + ' markers (safety timeout)');
                     } catch (error) {
                       console.error('🗺️ Safety timeout bounds fit failed:', error);
                     }
@@ -911,6 +941,8 @@ function MapBoxWebView({ restaurants, isTyping = false }: MapBoxWebViewProps) {
   const { isOnline } = useNetwork();
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [allRestaurants, setAllRestaurants] = useState<Restaurant[]>([]);
+  const [restaurantsLoading, setRestaurantsLoading] = useState(false);
 
   // Detect if we're in Expo Go or a production build
   const isExpoGo = Constants.appOwnership === 'expo';
@@ -944,11 +976,62 @@ function MapBoxWebView({ restaurants, isTyping = false }: MapBoxWebViewProps) {
     fetchCategories();
   }, []);
 
-  console.log('🗺️ MapBoxWebView: Component rendered with', restaurants?.length || 0, 'restaurants, online:', isOnline);
-  console.log('🗺️ MapBoxWebView: Environment - isExpoGo:', isExpoGo, 'isProduction:', isProduction, 'categories:', categories.length);
+  // Load all restaurants for the map when online and in production
+  useEffect(() => {
+    const fetchAllRestaurants = async () => {
+      if (!isOnline || isExpoGo || categoriesLoading) return;
 
-  if (!restaurants || restaurants.length === 0) {
-    console.warn('🗺️ MapBoxWebView: No restaurants data provided!');
+      console.log('🗺️ MapBoxWebView: Loading all restaurants for map...');
+      setRestaurantsLoading(true);
+
+      try {
+        // Import restaurant service dynamically to avoid circular dependencies
+        const { restaurantService } = await import('../src/services/restaurantService');
+
+        if (!restaurantService || typeof restaurantService.getAllRestaurants !== 'function') {
+          console.warn('🗺️ Restaurant service not available, falling back to props data');
+          setAllRestaurants(restaurants || []);
+          return;
+        }
+
+        // Load all restaurants from Supabase (not paginated)
+        const allData = await restaurantService.getAllRestaurants();
+        console.log('🗺️ MapBoxWebView: Loaded', allData.length, 'restaurants from database');
+
+        setAllRestaurants(allData);
+      } catch (error) {
+        console.error('🗺️ Failed to load all restaurants for map:', error);
+        // Fallback to props data
+        setAllRestaurants(restaurants || []);
+      } finally {
+        setRestaurantsLoading(false);
+      }
+    };
+
+    fetchAllRestaurants();
+  }, [isOnline, isExpoGo, categoriesLoading, restaurants]);
+
+  console.log('🗺️ MapBoxWebView: Component rendered with', restaurants?.length || 0, 'props restaurants,', allRestaurants.length, 'loaded restaurants, online:', isOnline);
+
+  // Determine which restaurants to use for the map
+  const mapRestaurants = allRestaurants.length > 0 ? allRestaurants : restaurants;
+
+  console.log('🗺️ MapBoxWebView: Using', mapRestaurants.length, 'restaurants for map (all:', allRestaurants.length, 'props:', restaurants?.length || 0, ')');
+
+  if (restaurantsLoading && allRestaurants.length === 0) {
+    console.log('🗺️ MapBoxWebView: Loading all restaurants for map...');
+    return (
+      <View style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#4A90E2" />
+          <Text style={{ marginTop: 16, color: '#666' }}>Loading all restaurants for map...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!mapRestaurants || mapRestaurants.length === 0) {
+    console.warn('🗺️ MapBoxWebView: No restaurants data available!');
     return (
       <View style={styles.offlineBanner}>
         <Text style={styles.offlineText}>📍 No restaurants to display on map</Text>
@@ -960,23 +1043,23 @@ function MapBoxWebView({ restaurants, isTyping = false }: MapBoxWebViewProps) {
   if (!isOnline) {
     console.log('📱 OFFLINE: Checking for cached data...');
     // When offline, check if we have data to show
-    if (restaurants && restaurants.length > 0) {
+    if (mapRestaurants && mapRestaurants.length > 0) {
       console.log('📱 OFFLINE: Using cached data for full map experience');
-      return <MapBoxWebViewComponent restaurants={restaurants} categories={categories} isOnline={isOnline} isTyping={isTyping} />;
+      return <MapBoxWebViewComponent restaurants={mapRestaurants} categories={categories} isOnline={isOnline} isTyping={isTyping} />;
     } else {
       console.log('📱 OFFLINE: No cached data, showing fallback');
-      return <NativeMapFallback restaurants={restaurants} isOnline={isOnline} />;
+      return <NativeMapFallback restaurants={mapRestaurants} isOnline={isOnline} />;
     }
   }
 
   if (isExpoGo) {
     console.log('🧪 EXPO GO: Showing native fallback map');
-    return <NativeMapFallback restaurants={restaurants} isOnline={isOnline} />;
+    return <NativeMapFallback restaurants={mapRestaurants} isOnline={isOnline} />;
   }
 
   // Online and production build - use full MapBox
-  console.log('🌐 ONLINE: Rendering full MapBoxWebViewComponent');
-  return <MapBoxWebViewComponent restaurants={restaurants} categories={categories} isOnline={isOnline} isTyping={isTyping} />;
+  console.log('🌐 ONLINE: Rendering full MapBoxWebViewComponent with', mapRestaurants.length, 'restaurants');
+  return <MapBoxWebViewComponent restaurants={mapRestaurants} categories={categories} isOnline={isOnline} isTyping={isTyping} />;
 }
 
 const styles = StyleSheet.create({
