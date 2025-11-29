@@ -48,10 +48,19 @@ class RestaurantService {
         throw new Error('User not authenticated');
       }
 
-      // Check if user already has a restaurant (check local DB if offline)
-      const existingRestaurant = await this.getRestaurantByOwnerId(user.id);
-      if (existingRestaurant) {
-        throw new Error('You can only create one restaurant per account');
+      // Check if user already has a restaurant (with error handling)
+      try {
+        const existingRestaurant = await this.getRestaurantByOwnerId(user.id);
+        if (existingRestaurant) {
+          throw new Error('You can only create one restaurant per account');
+        }
+      } catch (checkError: any) {
+        // If the check fails for any reason other than "no restaurant found", log but continue
+        // This prevents crashes when the database is unavailable
+        if (checkError.message?.includes('only create one')) {
+          throw checkError; // Re-throw if it's the "already has restaurant" error
+        }
+        console.warn('⚠️ Could not verify existing restaurant, proceeding with creation:', checkError.message);
       }
 
       // Parse location string into coordinates (basic implementation)
@@ -129,6 +138,12 @@ class RestaurantService {
     try {
       console.log('🔍 Fetching restaurant by owner ID:', ownerId);
 
+      // Validate ownerId
+      if (!ownerId || typeof ownerId !== 'string') {
+        console.warn('⚠️ Invalid ownerId provided:', ownerId);
+        return null;
+      }
+
       const { data, error } = await supabase
         .from(this.RESTAURANTS_TABLE)
         .select('*')
@@ -138,8 +153,11 @@ class RestaurantService {
       if (error) {
         if (error.code === 'PGRST116') {
           // No rows returned
+          console.log('ℹ️ No restaurant found for owner:', ownerId);
           return null;
         }
+        // Log the error but don't crash
+        console.error('⚠️ Error fetching restaurant:', error);
         throw error;
       }
 

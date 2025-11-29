@@ -1,9 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import { restaurantService } from '../src/services/restaurantService';
-import { supabase } from '../src/config/supabase';
 import Header from '../components/Header';
 
 // Design colors matching the Home Screen exactly
@@ -25,43 +22,9 @@ interface BusinessDashboardScreenProps {
 
 function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
   const insets = useSafeAreaInsets();
-  const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    checkRestaurantStatus().catch(error => {
-      console.error('Error in initial useEffect:', error);
-      // Don't crash the app, just log the error and set loading to false
-      setLoading(false);
-    });
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      // Check restaurant status every time the screen comes into focus
-      // This ensures buttons update after creating a restaurant
-      checkRestaurantStatus().catch(error => {
-        console.error('Error in useFocusEffect:', error);
-        // Don't crash the app, just log the error
-      });
-    }, [])
-  );
-
-  const checkRestaurantStatus = async () => {
-    try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        console.error('User not authenticated');
-        return;
-      }
-
-      // Just check if user exists, don't store restaurant status
-      await restaurantService.getRestaurantByOwnerId(user.id);
-    } catch (error) {
-      console.error('Error checking restaurant status:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Removed async initialization to prevent crashes during navigation
+  // The dashboard will display immediately without waiting for restaurant status
 
   const quickActions = [
     { id: 'create-restaurant', label: 'Create Restaurant', icon: '🏪' },
@@ -102,19 +65,11 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
 
         <Text style={[styles.title, { color: DESIGN_COLORS.textPrimary }]}>Business Dashboard</Text>
 
-        {loading ? (
-          <View style={{ alignItems: 'center', padding: 40 }}>
-            <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textSecondary }]}>
-              Loading...
-            </Text>
-          </View>
-        ) : (
-          <View style={{ alignItems: 'center', padding: 20 }}>
-            <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textSecondary, textAlign: 'center' }]}>
-              Welcome to your Business Dashboard!{'\n'}Manage your restaurant and profile here.
-            </Text>
-          </View>
-        )}
+        <View style={{ alignItems: 'center', padding: 20 }}>
+          <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textSecondary, textAlign: 'center' }]}>
+            Welcome to your Business Dashboard!{'\n'}Manage your restaurant and profile here.
+          </Text>
+        </View>
 
         <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary }]}>Quick Actions</Text>
 

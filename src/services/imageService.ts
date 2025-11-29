@@ -1,5 +1,4 @@
 import { supabase, BUCKETS } from '../config/supabase';
-import * as FileSystem from 'expo-file-system';
 
 // Bucket name for storage
 const STORAGE_BUCKET = BUCKETS.RESTAURANT_IMAGES;
@@ -45,7 +44,7 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
 
 /**
  * Upload an image to the restaurant images bucket and return its public URL
- * Uses Expo FileSystem for React Native compatibility (Option A)
+ * Uses simple fetch API for broad compatibility
  */
 export const uploadImageToRestaurantBucket = async (
   imageUri: string,
@@ -56,56 +55,14 @@ export const uploadImageToRestaurantBucket = async (
     const fileName = `${filePrefix}-${Date.now()}.jpg`;
     const filePath = `${fileName}`;
 
-    console.log('📷 Starting upload with FileSystem:', { imageUri, fileName });
+    console.log('📷 Starting upload:', { imageUri, fileName });
 
-    // Read file as base64 using Expo FileSystem (Option A - React Native compatible)
-    let base64Data: string;
-    try {
-      console.log('📷 Reading file as base64...');
-      base64Data = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: 'base64' as any, // Type assertion for Expo FileSystem
-      });
-      console.log('📷 Successfully read file, base64 length:', base64Data.length);
-
-    } catch (readError: any) {
-      console.error('❌ Failed to read image file:', readError);
-
-      // Provide specific error messages for common issues
-      if (readError.message?.includes('file does not exist') || readError.message?.includes('ENOENT')) {
-        throw new Error('The selected image file could not be found. Please try selecting a different image.');
-      } else if (readError.message?.includes('permission') || readError.message?.includes('EACCES')) {
-        throw new Error('Permission denied accessing the image file. Please check app permissions.');
-      } else if (readError.message?.includes('encoding')) {
-        throw new Error('File encoding error. Please try selecting the image again.');
-      } else {
-        throw new Error(`Failed to read image file: ${readError.message || 'Unknown error'}. Please try selecting the image again.`);
-      }
-    }
-
-    // Convert base64 to Uint8Array for Supabase upload (React Native compatible)
-    let bytes: Uint8Array;
-    try {
-      console.log('📷 Converting base64 to Uint8Array...');
-      const binaryString = atob(base64Data);
-      bytes = new Uint8Array(binaryString.length);
-
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-
-      console.log('📷 Conversion successful, byte length:', bytes.length);
-
-    } catch (conversionError: any) {
-      console.error('❌ Base64 conversion failed:', conversionError);
-      throw new Error('Failed to process image data. Please try selecting a different image.');
-    }
-
-    // Upload to Supabase
+    // Upload directly to Supabase using the URI
     try {
       console.log('📷 Uploading to Supabase storage...');
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .upload(filePath, bytes, {
+        .upload(filePath, { uri: imageUri, type: contentType, name: fileName } as any, {
           contentType: contentType,
           upsert: true
         });
