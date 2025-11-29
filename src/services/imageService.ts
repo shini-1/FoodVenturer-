@@ -84,7 +84,16 @@ export const uploadImageToRestaurantBucket = async (
       .getPublicUrl(filePath);
 
     const imageUrl = publicUrlData.data.publicUrl;
-    console.log('✅ Image uploaded successfully:', imageUrl);
+    console.log('✅ Image uploaded successfully');
+    console.log('📷 Image URL:', imageUrl);
+    console.log('📷 File path:', filePath);
+    console.log('📷 Storage bucket:', STORAGE_BUCKET);
+    
+    // Verify URL is valid
+    if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.length === 0) {
+      throw new Error('Invalid image URL generated');
+    }
+    
     return imageUrl;
 
   } catch (error: any) {

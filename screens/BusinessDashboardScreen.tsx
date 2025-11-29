@@ -54,10 +54,11 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <TouchableOpacity onPress={() => {
-          if (navigation && typeof navigation.goBack === 'function') {
-            navigation.goBack();
+          if (navigation && typeof navigation.navigate === 'function') {
+            // Navigate directly to RoleSelection to avoid loop through BusinessPanel
+            navigation.navigate('RoleSelection');
           } else {
-            console.error('Navigation goBack not available');
+            console.error('Navigation navigate not available');
           }
         }} style={[styles.backButton, { top: insets.top + 10 }]}>
           <Text style={[styles.backButtonText, { color: DESIGN_COLORS.textPrimary }]}>✕</Text>

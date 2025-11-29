@@ -66,13 +66,21 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
   const rating = typeof restaurant.rating === 'number' ? restaurant.rating : 0;
   const ratingText = rating > 0 ? rating.toFixed(1) : 'No ratings yet';
 
+  // Debug logging for image display
+  const imageUri = restaurant.image || getPlaceholderImage();
+  if (!restaurant.image) {
+    console.log(`📷 Restaurant "${restaurant.name}" has no image, using placeholder`);
+  } else {
+    console.log(`📷 Restaurant "${restaurant.name}" image URL:`, restaurant.image);
+  }
+
   return (
     <Animated.View style={[styles.container, { transform: [{ scale: animatedScale }] }]}>
       <TouchableOpacity onPress={handlePress} style={styles.card}>
         {/* Image */}
         <Image
           source={{
-            uri: restaurant.image || getPlaceholderImage()
+            uri: imageUri
           }}
           style={styles.image}
         />
