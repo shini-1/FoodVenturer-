@@ -59,10 +59,10 @@ function RoleSelectionScreen({ navigation }: { navigation: any }) {
   const handleLoginSuccess = () => {
     console.log('🔍 Login success callback triggered');
     handleCloseModal();
-    // Navigate to business dashboard after modal closes
+    // Navigate to business panel first, which will redirect to dashboard
     setTimeout(() => {
-      console.log('🔍 Navigating to BusinessDashboard from RoleSelectionScreen');
-      navigation.navigate('BusinessDashboard');
+      console.log('🔍 Navigating to BusinessPanel from RoleSelectionScreen');
+      navigation.navigate('BusinessPanel');
     }, 300);
   };
 

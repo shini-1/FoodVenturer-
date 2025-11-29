@@ -1,4 +1,5 @@
 import { supabase, BUCKETS } from '../config/supabase';
+import * as FileSystem from 'expo-file-system';
 
 // Bucket name for storage
 const STORAGE_BUCKET = BUCKETS.RESTAURANT_IMAGES;
@@ -44,7 +45,7 @@ export const uploadAndUpdateRestaurantImage = async (imageUri: string, restauran
 
 /**
  * Upload an image to the restaurant images bucket and return its public URL
- * Does NOT update any database rows; useful for forms prior to record creation
+ * Uses Expo FileSystem for React Native compatibility
  */
 export const uploadImageToRestaurantBucket = async (
   imageUri: string,
@@ -55,40 +56,58 @@ export const uploadImageToRestaurantBucket = async (
     const fileName = `${filePrefix}-${Date.now()}.jpg`;
     const filePath = `${fileName}`;
 
-    console.log('📷 Uploading image to bucket:', imageUri);
+    console.log('📷 Starting upload:', { imageUri, fileName });
 
-    // Try to upload directly from URI using blob conversion
+    // Read file as base64 using Expo FileSystem (React Native compatible)
+    let base64Data: string;
     try {
-      const response = await fetch(imageUri);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
+      base64Data = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: 'base64',
+      });
+      console.log('📷 Successfully read file as base64, size:', base64Data.length);
+    } catch (readError) {
+      console.error('❌ Failed to read image file:', readError);
+      throw new Error('Failed to read image file. Please try selecting the image again.');
+    }
+
+    // Convert base64 to Uint8Array for Supabase upload
+    try {
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
 
-      const blob = await response.blob();
+      console.log('📷 Uploading to Supabase storage...');
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .upload(filePath, blob, {
-          contentType: response.headers.get('content-type') || contentType,
+        .upload(filePath, bytes, {
+          contentType: contentType,
           upsert: true
         });
 
       if (uploadError) {
-        throw new Error(`Failed to upload image: ${uploadError.message}`);
+        console.error('❌ Supabase upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
       }
+
+      console.log('✅ Upload successful');
     } catch (uploadError) {
       console.error('❌ Upload failed:', uploadError);
-      throw new Error(`Upload failed: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`);
+      throw new Error('Failed to upload image. Please check your internet connection.');
     }
 
+    // Get public URL
     const publicUrlData = await supabase.storage
       .from(STORAGE_BUCKET)
       .getPublicUrl(filePath);
 
     const imageUrl = publicUrlData.data.publicUrl;
-    console.log('✅ Image uploaded to bucket successfully:', imageUrl);
+    console.log('✅ Image uploaded successfully:', imageUrl);
     return imageUrl;
+
   } catch (error: any) {
-    console.error('❌ Error uploading image to storage:', error);
+    console.error('❌ Image upload failed:', error);
     throw new Error(error.message || 'Failed to upload image');
   }
 };

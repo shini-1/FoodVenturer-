@@ -29,14 +29,21 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    checkRestaurantStatus();
+    checkRestaurantStatus().catch(error => {
+      console.error('Error in initial useEffect:', error);
+      // Don't crash the app, just log the error and set loading to false
+      setLoading(false);
+    });
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       // Check restaurant status every time the screen comes into focus
       // This ensures buttons update after creating a restaurant
-      checkRestaurantStatus();
+      checkRestaurantStatus().catch(error => {
+        console.error('Error in useFocusEffect:', error);
+        // Don't crash the app, just log the error
+      });
     }, [])
   );
 
@@ -69,6 +76,11 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
   ];
 
   const handleActionPress = (actionId: string) => {
+    if (!navigation || typeof navigation.navigate !== 'function') {
+      console.error('Navigation object not available');
+      return;
+    }
+
     switch (actionId) {
       case 'create-restaurant':
         navigation.navigate('CreateRestaurant');
@@ -97,7 +109,13 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
     <View style={[styles.container, { backgroundColor: DESIGN_COLORS.background }]}>
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { top: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => {
+          if (navigation && typeof navigation.goBack === 'function') {
+            navigation.goBack();
+          } else {
+            console.error('Navigation goBack not available');
+          }
+        }} style={[styles.backButton, { top: insets.top + 10 }]}>
           <Text style={[styles.backButtonText, { color: DESIGN_COLORS.textPrimary }]}>✕</Text>
         </TouchableOpacity>
 

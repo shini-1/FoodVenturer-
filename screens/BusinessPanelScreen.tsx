@@ -9,7 +9,15 @@ function BusinessPanelScreen({ navigation }: { navigation: any }) {
   // Automatically navigate to business dashboard when this screen loads
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigation.navigate('BusinessDashboard');
+      try {
+        if (navigation && typeof navigation.navigate === 'function') {
+          navigation.navigate('BusinessDashboard');
+        } else {
+          console.error('Navigation object not available in BusinessPanelScreen');
+        }
+      } catch (error) {
+        console.error('Error navigating to BusinessDashboard:', error);
+      }
     }, 1000); // Small delay for smooth transition
 
     return () => clearTimeout(timer);
