@@ -64,39 +64,50 @@ export const uploadImageToRestaurantBucket = async (
 
     console.log('📷 Starting upload:', { imageUri, fileName });
 
-    // Step 1: Read the image file and convert to blob using expo-file-system
-    let imageBlob: Blob;
+    // Step 1: Read the image file as base64
+    let base64Data: string;
     try {
-      console.log('📷 Reading image from URI using expo-file-system...');
+      console.log('📷 Reading image from URI as base64...');
       
-      // Read the file as base64
-      const base64 = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: 'base64',
+      // Read file as base64 using expo-file-system
+      // Note: Using string literal 'base64' as EncodingType enum may not be exported in this version
+      base64Data = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: 'base64' as any,
       });
       
-      console.log('📷 Image read as base64, length:', base64.length);
-      
-      // Convert base64 to Blob
-      const byteCharacters = atob(base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      imageBlob = new Blob([byteArray], { type: contentType });
-      
-      console.log('📷 Image converted to blob, size:', imageBlob.size, 'bytes');
+      console.log('📷 Image read as base64, length:', base64Data.length);
     } catch (fileError: any) {
-      console.error('❌ Failed to read/convert image:', fileError);
-      throw new Error(`Failed to process image: ${fileError.message}`);
+      console.error('❌ Failed to read image:', fileError);
+      throw new Error(`Failed to read image file: ${fileError.message}`);
     }
 
-    // Step 2: Upload blob to Supabase
+    // Step 2: Convert base64 to ArrayBuffer for Supabase upload
+    let imageBuffer: ArrayBuffer;
+    try {
+      console.log('📷 Converting base64 to ArrayBuffer...');
+      
+      // Decode base64 to binary string
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      imageBuffer = bytes.buffer;
+      console.log('📷 Converted to ArrayBuffer, size:', imageBuffer.byteLength, 'bytes');
+    } catch (conversionError: any) {
+      console.error('❌ Failed to convert image:', conversionError);
+      throw new Error(`Failed to convert image: ${conversionError.message}`);
+    }
+
+    // Step 3: Upload ArrayBuffer directly to Supabase storage
     try {
       console.log('📷 Uploading to Supabase storage...');
+      
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .upload(filePath, imageBlob, {
+        .upload(filePath, imageBuffer, {
           contentType: contentType,
           upsert: true
         });
@@ -112,7 +123,7 @@ export const uploadImageToRestaurantBucket = async (
       throw new Error(`Failed to upload image: ${uploadError.message || 'Unknown upload error'}`);
     }
 
-    // Step 3: Get public URL
+    // Step 4: Get public URL
     const publicUrlData = await supabase.storage
       .from(STORAGE_BUCKET)
       .getPublicUrl(filePath);

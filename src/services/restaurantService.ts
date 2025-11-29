@@ -88,24 +88,47 @@ class RestaurantService {
         sync_status: 'pending' as const
       };
 
-      // Save to local database
-      await localDatabase.initialize();
-      await localDatabase.insertRestaurant(localRestaurantData);
+      // Insert directly to Supabase database
+      console.log('💾 Inserting restaurant to Supabase...');
+      const { data: insertedData, error: insertError } = await supabase
+        .from(this.RESTAURANTS_TABLE)
+        .insert({
+          id: restaurantId,
+          name: restaurantData.name,
+          description: restaurantData.description || '',
+          category: restaurantData.category || '',
+          price_range: restaurantData.priceRange || '₱',
+          location: {
+            latitude: location.latitude,
+            longitude: location.longitude
+          },
+          image: restaurantData.imageUrl || '',
+          phone: restaurantData.phone || '',
+          website: restaurantData.website || '',
+          hours: restaurantData.hours || '',
+          rating: 0,
+          owner_id: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
 
-      // If online, try to sync immediately, otherwise queue for later
-      if (networkService.isOnline()) {
-        try {
-          await syncService.sync({ syncRestaurants: true });
-        } catch (syncError) {
-          console.warn('Failed to sync immediately, operation queued:', syncError);
-        }
-      } else {
-        // Queue the operation for when we come back online
-        await localDatabase.addPendingOperation({
-          table_name: 'restaurants',
-          operation: 'insert',
-          data: JSON.stringify(localRestaurantData)
-        });
+      if (insertError) {
+        console.error('❌ Supabase insert error:', insertError);
+        throw new Error(`Failed to create restaurant: ${insertError.message}`);
+      }
+
+      console.log('✅ Restaurant inserted to Supabase successfully');
+
+      // Also save to local database for offline access
+      try {
+        await localDatabase.initialize();
+        await localDatabase.insertRestaurant(localRestaurantData);
+        console.log('✅ Restaurant saved to local database');
+      } catch (localError) {
+        console.warn('⚠️ Failed to save to local database:', localError);
+        // Don't fail the operation if local save fails
       }
 
       // Return the restaurant in the expected format

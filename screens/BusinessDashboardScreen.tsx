@@ -26,12 +26,65 @@ interface BusinessDashboardScreenProps {
 function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
   const insets = useSafeAreaInsets();
   const [hasRestaurant, setHasRestaurant] = useState(false);
-  const [isCheckingRestaurant, setIsCheckingRestaurant] = useState(false);
+  const [isCheckingRestaurant, setIsCheckingRestaurant] = useState(true);
   const [userRestaurant, setUserRestaurant] = useState<any>(null);
 
-  // Removed async restaurant checking to prevent crashes
-  // The dashboard will show "Create Restaurant" by default
-  // Users can navigate to create or manage their restaurant from here
+  // Check if user has a restaurant
+  const checkUserRestaurant = async () => {
+    try {
+      setIsCheckingRestaurant(true);
+      console.log('🔍 Checking if user has a restaurant...');
+
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.warn('⚠️ User not authenticated');
+        setHasRestaurant(false);
+        setIsCheckingRestaurant(false);
+        return;
+      }
+
+      // Query restaurant by owner_id
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('⚠️ Error checking restaurant:', error);
+        setHasRestaurant(false);
+      } else if (data) {
+        console.log('✅ User has a restaurant:', data.name);
+        setHasRestaurant(true);
+        setUserRestaurant(data);
+      } else {
+        console.log('ℹ️ User does not have a restaurant yet');
+        setHasRestaurant(false);
+        setUserRestaurant(null);
+      }
+    } catch (error: any) {
+      console.error('❌ Error checking restaurant status:', error);
+      setHasRestaurant(false);
+    } finally {
+      setIsCheckingRestaurant(false);
+    }
+  };
+
+  // Check on mount
+  useEffect(() => {
+    checkUserRestaurant();
+  }, []);
+
+  // Re-check when screen gains focus (after creating restaurant)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('🔄 Dashboard focused, re-checking restaurant status...');
+      checkUserRestaurant();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const quickActions = [
     {
@@ -87,10 +140,14 @@ function BusinessDashboardScreen({ navigation }: BusinessDashboardScreenProps) {
         <Text style={[styles.title, { color: DESIGN_COLORS.textPrimary }]}>Business Dashboard</Text>
 
         <View style={{ alignItems: 'center', padding: 20 }}>
-          <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textSecondary, textAlign: 'center' }]}>
-            Welcome to your Business Dashboard!{'\n'}
-            Manage your restaurant and profile here.
-          </Text>
+          {isCheckingRestaurant ? (
+            <ActivityIndicator size="small" color={DESIGN_COLORS.textPrimary} />
+          ) : (
+            <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textSecondary, textAlign: 'center' }]}>
+              Welcome to your Business Dashboard!{'\n'}
+              {hasRestaurant ? `Managing: ${userRestaurant?.name}` : 'Create your first restaurant to get started.'}
+            </Text>
+          )}
         </View>
 
         <Text style={[styles.sectionTitle, { color: DESIGN_COLORS.textPrimary }]}>Quick Actions</Text>
