@@ -678,7 +678,8 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
     const isLoadingRef = useRef(false);
     const refreshingRef = useRef(false);
     const hasMoreRef = useRef(true);
-    const SERVER_PAGE_SIZE = 5;
+    const previousRestaurantCountRef = useRef(0); // Track previous count
+    const SERVER_PAGE_SIZE = 20;
     const [serverPage, setServerPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isLoadingPage, setIsLoadingPage] = useState(false);
@@ -1030,23 +1031,23 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
     return () => clearTimeout(timer);
   }, [loadPage, crashLoggerReady]);
 
-  // Refresh restaurants when screen comes into focus (e.g., after rating a restaurant)
-  useEffect(() => {
-    if (navigation && typeof navigation.addListener === 'function') {
-      const unsubscribe = navigation.addListener('focus', () => {
-        console.log('🏠 HomeScreen focused - refreshing restaurants');
-        // Refresh the first page to get updated ratings
-        setServerPage(1);
-        setRestaurants([]);
-        loadPage(1);
-      });
+  // DISABLED: This was causing restaurant count to reset from 40 back to 20
+  // useEffect(() => {
+  //   if (navigation && typeof navigation.addListener === 'function') {
+  //     const unsubscribe = navigation.addListener('focus', () => {
+  //       console.log('🏠 HomeScreen focused - refreshing restaurants');
+  //       // Refresh the first page to get updated ratings
+  //       setServerPage(1);
+  //       setRestaurants([]);
+  //       loadPage(1);
+  //     });
 
-      return unsubscribe;
-    } else {
-      console.warn('⚠️ Navigation addListener not available');
-      return () => {};
-    }
-  }, [navigation, loadPage]);
+  //     return unsubscribe;
+  //   } else {
+  //     console.warn('⚠️ Navigation addListener not available');
+  //     return () => {};
+  //   }
+  // }, [navigation, loadPage]);
 
   useEffect(() => {
     isLoadingRef.current = isLoadingPage;
@@ -1075,10 +1076,42 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
   }, [restaurants.length, hasMore, isLoadingPage, refreshing, loadPage]);
 
   useEffect(() => {
-    console.log('🏠 HomeScreen: Restaurants state updated:', restaurants.length);
+    const previousCount = previousRestaurantCountRef.current;
+    const currentCount = restaurants.length;
+
+    console.log('🏠 HomeScreen: Restaurants state updated:', currentCount);
+
+    // Track significant changes
+    if (previousCount !== currentCount) {
+      console.log('🔄 Restaurant count changed:', {
+        from: previousCount,
+        to: currentCount,
+        difference: currentCount - previousCount,
+        hasMore,
+        isLoadingPage,
+        refreshing,
+        serverPage
+      });
+
+      // Alert on problematic transitions
+      if (currentCount < previousCount && previousCount >= 40 && currentCount <= 20) {
+        console.error('🚨 CRITICAL: Restaurant count DROPPED significantly!');
+        console.error('🚨 Previous:', previousCount, 'Current:', currentCount);
+        console.error('🚨 This indicates data was cleared/reset - check for focus effects or state resets');
+      }
+    }
+
+    previousRestaurantCountRef.current = currentCount;
+
     // Log restaurant count and validity instead of full objects to prevent rendering issues
     const validLocations = (restaurants || []).filter(r => r?.location?.latitude && r?.location?.longitude).length;
     console.log('📍 HomeScreen: Restaurant locations:', `${validLocations}/${restaurants.length} have valid coordinates`);
+
+    // Track if we went from 40 back to 20
+    if (restaurants.length === 20 && hasMore === false) {
+      console.warn('⚠️ ALERT: Restaurants count is 20 with hasMore=false - possible data reset!');
+      console.warn('⚠️ This suggests pagination stopped working or data was cleared');
+    }
   }, [restaurants]);
 
   // Categorize restaurants using centralized config
@@ -1698,8 +1731,8 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
           }
         }}
         onEndReachedThreshold={0.5}
-        initialNumToRender={5}
-        maxToRenderPerBatch={5}
+        initialNumToRender={20}
+        maxToRenderPerBatch={20}
         windowSize={3}
         removeClippedSubviews={true}
         ListEmptyComponent={
