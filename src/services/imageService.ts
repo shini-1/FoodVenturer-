@@ -4,6 +4,45 @@ import { supabase, BUCKETS } from '../config/supabase';
 const STORAGE_BUCKET = BUCKETS.RESTAURANT_IMAGES;
 
 /**
+ * Upload an image to Supabase Storage and update the restaurant record with the image URL
+ * @param imageUri - Local URI of the image to upload
+ * @param restaurantId - ID of the restaurant to associate the image with
+ * @param imageType - Type of image (logo, banner, etc.)
+ * @returns - URL of the uploaded image
+ */
+export const uploadAndUpdateRestaurantImage = async (imageUri: string, restaurantId: string, imageType: string): Promise<string> => {
+  try {
+    // Validate inputs
+    if (!imageUri || !restaurantId || !imageType) {
+      throw new Error('Missing required parameters: imageUri, restaurantId, or imageType');
+    }
+
+    console.log('📷 Uploading image and updating restaurant:', { imageUri, restaurantId, imageType });
+
+    // Upload to bucket first
+    const imageUrl = await uploadImageToRestaurantBucket(imageUri, `${restaurantId}_${imageType}`, 'image/jpeg');
+
+    // Update the restaurant record with the image URL
+    const { error: updateError } = await supabase
+      .from('restaurants')
+      .update({ image: imageUrl })
+      .eq('id', restaurantId);
+
+    if (updateError) {
+      console.error('Supabase update restaurant error:', updateError);
+      throw new Error(`Failed to update restaurant with image URL: ${updateError.message}`);
+    }
+
+    console.log('✅ Image uploaded and restaurant updated successfully:', imageUrl);
+    return imageUrl;
+
+  } catch (error) {
+    console.error('❌ Image upload and update failed:', error);
+    throw error;
+  }
+};
+
+/**
  * Upload an image to the restaurant images bucket and return its public URL
  * Does NOT update any database rows; useful for forms prior to record creation
  */

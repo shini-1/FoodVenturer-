@@ -4,7 +4,7 @@ import { useTheme } from '../theme/ThemeContext';
 import Header from '../components/Header';
 import { getRestaurants, deleteRestaurant, getApprovedRestaurants, getPendingRestaurants, approveRestaurant, rejectRestaurant, deleteRestaurantOwner, updateRestaurantOwner, getRestaurantStats, updateRestaurant, addRestaurant } from '../services/restaurants';
 import { menuService } from '../src/services/menuService';
-import { uploadAndUpdateRestaurantImage } from '../services/imageService';
+import { uploadAndUpdateRestaurantImage } from '../src/services/imageService';
 import { Restaurant, RestaurantOwner, RestaurantSubmission, MenuItem } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
