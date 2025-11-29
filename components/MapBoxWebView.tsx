@@ -473,9 +473,9 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
                 return DEFAULT_CATEGORY;
               }
 
-              // Slow load feature - load markers in batches of 20
-              const BATCH_SIZE = 20;
-              const BATCH_DELAY = 500; // 500ms delay between batches
+              // Slow load feature - load markers in batches of 50 (increased from 20)
+              const BATCH_SIZE = 50;
+              const BATCH_DELAY = 300; // Reduced delay for faster loading
               let loadedCount = 0;
               
               function loadMarkerBatch(startIndex) {
@@ -509,7 +509,7 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
                 }
                 
                 loadedCount = endIndex;
-                updateStatus('✅ Map ready with ' + loadedCount + ' markers');
+                updateStatus('✅ Map loading... ' + loadedCount + '/' + restaurants.length + ' markers');
                 
                 // Load next batch if there are more restaurants
                 if (endIndex < restaurants.length) {
@@ -518,6 +518,7 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
                   }, BATCH_DELAY);
                 } else {
                   console.log('🗺️ All ' + restaurants.length + ' markers loaded');
+                  updateStatus('✅ Map ready with ' + loadedCount + ' markers');
                 }
               }
               
@@ -525,13 +526,17 @@ function MapBoxWebViewComponent({ restaurants, categories, isOnline }: { restaur
               if (restaurants.length > 0) {
                 loadMarkerBatch(0);
                 
-                // Fit bounds to all restaurants
+                // Fit bounds to all restaurants AFTER all markers are loaded
                 const bounds = new mapboxgl.LngLatBounds();
                 restaurants.forEach(restaurant => {
                   bounds.extend([restaurant.location.longitude, restaurant.location.latitude]);
                 });
-                map.fitBounds(bounds, { padding: 50 });
-                console.log('🗺️ Map fitted to bounds');
+                
+                // Wait for all markers to load before fitting bounds
+                setTimeout(() => {
+                  map.fitBounds(bounds, { padding: 50 });
+                  console.log('🗺️ Map fitted to bounds after all markers loaded');
+                }, (Math.ceil(restaurants.length / BATCH_SIZE) * BATCH_DELAY) + 500);
               } else {
                 updateStatus('✅ Map ready with 0 markers');
               }
@@ -760,9 +765,20 @@ function MapBoxWebView({ restaurants }: MapBoxWebViewProps) {
     );
   }
 
-// FORCE MAPBOX FOR DEBUGGING
-console.log('🗺️ FORCED: Rendering MapBoxWebViewComponent with', categories.length, 'categories');
-return <MapBoxWebViewComponent restaurants={restaurants} categories={categories} isOnline={isOnline} />;
+  // Conditional rendering based on online status and environment
+  if (!isOnline) {
+    console.log('🗺️ OFFLINE: Showing offline fallback map');
+    return <NativeMapFallback restaurants={restaurants} isOnline={isOnline} />;
+  }
+
+  if (isExpoGo) {
+    console.log('🗺️ EXPO GO: Showing native fallback map');
+    return <NativeMapFallback restaurants={restaurants} isOnline={isOnline} />;
+  }
+
+  // Online and production build - use full MapBox
+  console.log('🗺️ ONLINE: Rendering full MapBoxWebViewComponent');
+  return <MapBoxWebViewComponent restaurants={restaurants} categories={categories} isOnline={isOnline} />;
 }
 
 const styles = StyleSheet.create({

@@ -16,6 +16,7 @@ interface EnhancedRestaurantCardProps {
   showRanking?: boolean;
   ratingData?: any;
   navigation?: any;
+  parsedAddress?: string; // Add parsed address prop
 }
 
 const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
@@ -24,7 +25,8 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
   showSyncStatus = true,
   showRanking = true,
   ratingData,
-  navigation
+  navigation,
+  parsedAddress
 }) => {
   const { theme } = useTheme();
   const [animatedScale] = useState(new Animated.Value(1));
@@ -87,7 +89,7 @@ const EnhancedRestaurantCard: React.FC<EnhancedRestaurantCardProps> = ({
 
           {/* Location */}
           <Text style={styles.location} numberOfLines={2}>
-            📍 {restaurant.location?.latitude?.toFixed(4) || 'N/A'}, {restaurant.location?.longitude?.toFixed(4) || 'N/A'}
+            📍 {parsedAddress || `${restaurant.location?.latitude?.toFixed(4) || 'N/A'}, ${restaurant.location?.longitude?.toFixed(4) || 'N/A'}`}
           </Text>
 
           {/* Category */}

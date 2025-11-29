@@ -27,6 +27,7 @@ import { crashLogger } from '../src/services/crashLogger';
 import { cacheStatusService } from '../src/services/cacheStatusService';
 import { ratingSyncService } from '../src/services/ratingSyncService';
 import { ratingCalculationService, RestaurantRatingData } from '../src/services/ratingCalculationService';
+import { useNetwork } from '../src/contexts/NetworkContext';
 
 import { Restaurant } from '../types';
 
@@ -642,7 +643,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
     }; // Fallback theme
   }
   
-  // const { isOnline } = useNetwork(); // Disabled - not using offline features for now
+  const { isOnline } = useNetwork();
   
   // Initialize crash logger with fallback
   const [crashLoggerReady, setCrashLoggerReady] = useState(false);
@@ -1255,21 +1256,40 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
       return [];
     }
 
-    // Apply rating-based sorting
-    let sortedRestaurants = [...filteredRestaurants];
-    
-    if (sortBy === 'highest' || sortBy === 'lowest' || sortBy === 'trending' || sortBy === 'mostReviewed') {
-      // Use rating calculation service for sorting
-      sortedRestaurants = ratingCalculationService.sortRestaurantsByRating(filteredRestaurants, sortBy);
-    } else if (sortBy === 'newest') {
-      // Sort by newest (would need timestamp data - using reverse order for now)
-      sortedRestaurants.reverse();
-    } else if (sortBy === 'name') {
-      // Sort alphabetically
-      sortedRestaurants.sort((a, b) => a.name.localeCompare(b.name));
-    }
+    // Separate restaurants into two groups: with ratings and without ratings
+    const restaurantsWithRatings = filteredRestaurants.filter(restaurant => 
+      restaurant && typeof restaurant.rating === 'number' && restaurant.rating > 0
+    );
+    const restaurantsWithoutRatings = filteredRestaurants.filter(restaurant => 
+      !restaurant || typeof restaurant.rating !== 'number' || restaurant.rating <= 0
+    );
 
-    return sortedRestaurants;
+    console.log(`📊 Sorting ${restaurantsWithRatings.length} rated restaurants and ${restaurantsWithoutRatings.length} unrated restaurants`);
+
+    // Function to apply sorting to a restaurant array
+    const applySorting = (restaurants: CategorizedRestaurant[]): CategorizedRestaurant[] => {
+      let sortedRestaurants = [...restaurants];
+      
+      if (sortBy === 'highest' || sortBy === 'lowest' || sortBy === 'trending' || sortBy === 'mostReviewed') {
+        // Use rating calculation service for sorting
+        sortedRestaurants = ratingCalculationService.sortRestaurantsByRating(restaurants, sortBy);
+      } else if (sortBy === 'newest') {
+        // Sort by newest (would need timestamp data - using reverse order for now)
+        sortedRestaurants.reverse();
+      } else if (sortBy === 'name') {
+        // Sort alphabetically
+        sortedRestaurants.sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      return sortedRestaurants;
+    };
+
+    // Apply sorting to each group separately
+    const sortedWithRatings = applySorting(restaurantsWithRatings);
+    const sortedWithoutRatings = applySorting(restaurantsWithoutRatings);
+
+    // Combine groups with rated restaurants first
+    return [...sortedWithRatings, ...sortedWithoutRatings];
   }, [filteredRestaurants, sortBy]);
 
   useEffect(() => {
@@ -1465,30 +1485,14 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
       return (
         <View style={styles.footer}>
           <ActivityIndicator style={styles.footerSpinner} color="#4A90E2" size="small" />
+          <Text style={styles.loadingText}>Loading more restaurants...</Text>
         </View>
       );
     }
 
-    // Show manual load more button when there are more restaurants available
-    if (hasMore && !isLoadingPage) {
-      return (
-        <View style={styles.footer}>
-          <TouchableOpacity
-            onPress={() => {
-              const nextPage = Math.floor(restaurants.length / SERVER_PAGE_SIZE) + 1;
-              console.log(`🔘 Manual load more: loading page ${nextPage}`);
-              loadPage(nextPage);
-            }}
-            style={styles.loadMoreButton}
-          >
-            <Text style={styles.loadMoreButtonText}>Load More Restaurants</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    return null;
-  }, [hasMore, isLoadingPage, restaurants.length, loadPage]);
+    // No manual load more button - continuous loading happens automatically
+    return <View style={{ height: 20 }} />;
+  }, [hasMore, isLoadingPage]);
 
   // Error boundary - show error screen if something went wrong
   if (hasError) {
@@ -1607,7 +1611,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
             value={searchText}
             onChangeText={setSearchText}
             style={styles.searchInput}
-            placeholderTextColor="#999"
+            placeholderTextColor={DESIGN_COLORS.textPlaceholder}
           />
         </View>
         
@@ -1722,6 +1726,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
               <EnhancedRestaurantCard
                 restaurant={item as CategorizedRestaurant}
                 ratingData={ratingData}
+                parsedAddress={addressCache[item.id] ? addressCache[item.id].replace('📍 ', '') : undefined}
                 onPress={() => {
                   if (item.id && navigation && typeof navigation.navigate === 'function') {
                     navigation.navigate('RestaurantDetail', {
@@ -1759,8 +1764,11 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
         refreshing={refreshing}
         onRefresh={onRefresh}
         onEndReached={() => {
+          // More aggressive continuous loading
           if (isLoadingPage || refreshing) return;
-          if (hasMore) {
+
+          if (hasMore && restaurants.length > 0) {
+            console.log(`🔄 Continuous loading: ${restaurants.length} restaurants loaded, loading more...`);
             setServerPage((sp) => {
               const next = sp + 1;
               loadPage(next);
@@ -1768,7 +1776,7 @@ function HomeScreen({ navigation }: { navigation: any }): React.ReactElement {
             });
           }
         }}
-        onEndReachedThreshold={0.5}
+        onEndReachedThreshold={0.3} // Increased from 0.1 to 0.3 for smoother continuous loading
         initialNumToRender={20}
         maxToRenderPerBatch={20}
         windowSize={3}
